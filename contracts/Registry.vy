@@ -52,3 +52,43 @@ def add_pool(_pool: address, _n_coins: int128) -> bool:
         self.markets[_coin].length = _length + 1
 
     return True
+
+
+@public
+def remove_pool(_pool: address) -> bool:
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
+
+    # remove _pool from pool_list
+    _location: int128 = self.pool_data[_pool].location
+    _length: int128 = self.pool_count - 1
+
+    if _location < _length:
+        # replace _pool with final value in pool_list
+        _addr: address = self.pool_list[_length]
+        self.pool_list[_location] = _addr
+        self.pool_data[_addr].location = _location
+
+    # delete final pool_list value
+    self.pool_list[_length] = ZERO_ADDRESS
+    self.pool_count = _length
+
+    for i in range(MAX_COINS):
+        _market: address = self.pool_data[_pool].coins[i]
+        if _market == ZERO_ADDRESS:
+            break
+
+        # delete coin address from pool_data
+        self.pool_data[_pool].coins[i] = ZERO_ADDRESS
+
+        # delete pool address from markets
+        _length = self.markets[_market].length - 1
+        for x in range(65536):
+            if x > _length:
+                break
+            if self.markets[_market].addresses[x] == _pool:
+                self.markets[_market].addresses[x] = self.markets[_market].addresses[_length]
+        self.markets[_market].addresses[_length] = ZERO_ADDRESS
+        self.markets[_market].length = _length
+
+    return True
