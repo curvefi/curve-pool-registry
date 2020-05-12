@@ -9,9 +9,11 @@ struct AddressArray:
 struct PoolArray:
     location: int128
     coins: address[MAX_COINS]
+    underlying_coins: address[MAX_COINS]
 
 contract CurvePool:
     def coins(i: int128) -> address: constant
+    def underlying_coins(i: int128) -> address: constant
 
 admin: address
 
@@ -20,11 +22,20 @@ pool_count: public(int128)  # actual length of pool_list
 
 pool_data: map(address, PoolArray)   # data for specific pools
 markets: map(address, AddressArray)  # list of pools where a token is tradeable
+underlying_markets: map(address, AddressArray)  # list of pools where a token is tradeable
 
 
 @public
 def __init__():
     self.admin = msg.sender
+
+
+@private
+def _add_pool_to_market(_coin: address, _pool: address):
+    _length: int128 = self.markets[_coin].length
+    self.markets[_coin].addresses[_length] = _pool
+    self.markets[_coin].length = _length + 1
+
 
 
 @public
@@ -42,14 +53,19 @@ def add_pool(_pool: address, _n_coins: int128) -> bool:
         if i == _n_coins:
             break
 
-        # add coin address to pool_data
+        # add coin
         _coin: address = CurvePool(_pool).coins(i)
         self.pool_data[_pool].coins[i] = _coin
-
-        # add pool address to markets
         _length = self.markets[_coin].length
         self.markets[_coin].addresses[_length] = _pool
         self.markets[_coin].length = _length + 1
+
+        # add underlying coin
+        _coin = CurvePool(_pool).underlying_coins(i)
+        self.pool_data[_pool].underlying_coins[i] = _coin
+        _length = self.underlying_markets[_coin].length
+        self.underlying_markets[_coin].addresses[_length] = _pool
+        self.underlying_markets[_coin].length = _length + 1
 
     return True
 
@@ -74,22 +90,38 @@ def remove_pool(_pool: address) -> bool:
     self.pool_count = _length
 
     for i in range(MAX_COINS):
-        _market: address = self.pool_data[_pool].coins[i]
-        if _market == ZERO_ADDRESS:
+        _coin: address = self.pool_data[_pool].coins[i]
+        if _coin == ZERO_ADDRESS:
             break
 
         # delete coin address from pool_data
         self.pool_data[_pool].coins[i] = ZERO_ADDRESS
 
-        # delete pool address from markets
-        _length = self.markets[_market].length - 1
+        # remove coin from markets
+        _length = self.markets[_coin].length - 1
         for x in range(65536):
             if x > _length:
                 break
-            if self.markets[_market].addresses[x] == _pool:
-                self.markets[_market].addresses[x] = self.markets[_market].addresses[_length]
-        self.markets[_market].addresses[_length] = ZERO_ADDRESS
-        self.markets[_market].length = _length
+            if self.markets[_coin].addresses[x] == _pool:
+                self.markets[_coin].addresses[x] = self.markets[_coin].addresses[_length]
+                break
+        self.markets[_coin].addresses[_length] = ZERO_ADDRESS
+        self.markets[_coin].length = _length
+
+        # delete underlying_coin from pool_data
+        _coin = self.pool_data[_pool].underlying_coins[i]
+        self.pool_data[_pool].underlying_coins[i] = ZERO_ADDRESS
+
+        # remove underlying_coin from underlying_markets
+        _length = self.underlying_markets[_coin].length - 1
+        for x in range(65536):
+            if x > _length:
+                break
+            if self.underlying_markets[_coin].addresses[x] == _pool:
+                self.underlying_markets[_coin].addresses[x] = self.underlying_markets[_coin].addresses[_length]
+                break
+        self.underlying_markets[_coin].addresses[_length] = ZERO_ADDRESS
+        self.underlying_markets[_coin].length = _length
 
     return True
 
@@ -104,12 +136,23 @@ def get_pool_info(_pool: address) -> (address[MAX_COINS], address[MAX_COINS]):
 @constant
 def find_pool_for_coins(_buying: address, _selling: address, i: uint256) -> address:
     _increment: uint256 = i
+
     _length: int128 = self.markets[_buying].length
     for x in range(65536):
         if x == _length:
             break
         _pool: address = self.markets[_buying].addresses[x]
         if _selling in self.pool_data[_pool].coins:
+            if _increment == 0:
+                return _pool
+            _increment -= 1
+
+    _length = self.underlying_markets[_buying].length
+    for x in range(65536):
+        if x == _length:
+            break
+        _pool: address = self.underlying_markets[_buying].addresses[x]
+        if _selling in self.pool_data[_pool].underlying_coins:
             if _increment == 0:
                 return _pool
             _increment -= 1
