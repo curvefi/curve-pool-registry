@@ -15,7 +15,7 @@ contract CurvePool:
 
 admin: address
 
-pool_list: address[65536]   # master list of pools
+pool_list: public(address[65536])   # master list of pools
 pool_count: public(int128)  # actual length of pool_list
 
 pool_data: map(address, PoolArray)   # data for specific pools
@@ -92,3 +92,9 @@ def remove_pool(_pool: address) -> bool:
         self.markets[_market].length = _length
 
     return True
+
+
+@public
+@constant
+def get_pool_info(_pool: address) -> (address[MAX_COINS], address[MAX_COINS]):
+    return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins
