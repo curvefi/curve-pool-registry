@@ -98,3 +98,20 @@ def remove_pool(_pool: address) -> bool:
 @constant
 def get_pool_info(_pool: address) -> (address[MAX_COINS], address[MAX_COINS]):
     return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins
+
+
+@public
+@constant
+def find_pool_for_coins(_buying: address, _selling: address, i: uint256) -> address:
+    _increment: uint256 = i
+    _length: int128 = self.markets[_buying].length
+    for x in range(65536):
+        if x == _length:
+            break
+        _pool: address = self.markets[_buying].addresses[x]
+        if _selling in self.pool_data[_pool].coins:
+            if _increment == 0:
+                return _pool
+            _increment -= 1
+
+    return ZERO_ADDRESS
