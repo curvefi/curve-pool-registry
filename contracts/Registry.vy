@@ -1,5 +1,7 @@
 # @version 0.1.0
 
+from vyper.interfaces import ERC20
+
 MAX_COINS: constant(int128) = 7
 
 struct AddressArray:
@@ -14,6 +16,7 @@ struct PoolArray:
 contract CurvePool:
     def coins(i: int128) -> address: constant
     def underlying_coins(i: int128) -> address: constant
+
 
 admin: address
 
@@ -158,3 +161,23 @@ def find_pool_for_coins(_buying: address, _selling: address, i: uint256) -> addr
             _increment -= 1
 
     return ZERO_ADDRESS
+
+
+@public
+@constant
+def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]):
+    _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+
+    for i in range(7):
+        _coin: address = self.pool_data[_pool].coins[i]
+        if _coin == ZERO_ADDRESS:
+            break
+        _balances[i] = ERC20(_coin).balanceOf(_pool)
+        _underlying_coin: address = self.pool_data[_pool].underlying_coins[i]
+        if _coin == _underlying_coin:
+            _underlying_balances[i] = _balances[i]
+        else:
+            _underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
+
+    return _balances, _underlying_balances
