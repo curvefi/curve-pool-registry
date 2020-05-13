@@ -16,6 +16,7 @@ struct PoolArray:
 contract CurvePool:
     def coins(i: int128) -> address: constant
     def underlying_coins(i: int128) -> address: constant
+    def get_dy(i: int128, j: int128, dx: uint256) -> uint256: constant
 
 
 admin: address
@@ -181,3 +182,33 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
             _underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
 
     return _balances, _underlying_balances
+
+
+
+@private
+@constant
+def _get_token_indices(_pool: address, _buying: address, _selling: address) -> (int128, int128):
+    i: int128 = -1
+    j: int128 = -1
+
+    for x in range(7):
+        _coin: address = self.pool_data[_pool].coins[x]
+        if _coin == _buying:
+            i = x
+        elif _coin == _selling:
+            j = x
+        elif _coin == ZERO_ADDRESS:
+            break
+    assert min(i, j) != -1
+
+    return i, j
+
+
+@public
+@constant
+def get_dy(_pool: address, _buying: address, _selling: address, dx: uint256) -> uint256:
+    i: int128 = 0
+    j: int128 = 0
+    i, j = self._get_token_indices(_pool, _buying, _selling)
+
+    return CurvePool(_pool).get_dy(i, j, dx)
