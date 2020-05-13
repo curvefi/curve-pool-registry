@@ -17,6 +17,8 @@ contract CurvePool:
     def coins(i: int128) -> address: constant
     def underlying_coins(i: int128) -> address: constant
     def get_dy(i: int128, j: int128, dx: uint256) -> uint256: constant
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
+    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
 
 
 admin: address
@@ -59,17 +61,21 @@ def add_pool(_pool: address, _n_coins: int128) -> bool:
 
         # add coin
         _coin: address = CurvePool(_pool).coins(i)
+        ERC20(_coin).approve(_pool, MAX_UINT256)
         self.pool_data[_pool].coins[i] = _coin
         _length = self.markets[_coin].length
         self.markets[_coin].addresses[_length] = _pool
         self.markets[_coin].length = _length + 1
 
         # add underlying coin
-        _coin = CurvePool(_pool).underlying_coins(i)
-        self.pool_data[_pool].underlying_coins[i] = _coin
-        _length = self.underlying_markets[_coin].length
-        self.underlying_markets[_coin].addresses[_length] = _pool
-        self.underlying_markets[_coin].length = _length + 1
+        _ucoin: address = CurvePool(_pool).underlying_coins(i)
+        if _ucoin != _coin:
+            ERC20(_ucoin).approve(_pool, MAX_UINT256)
+
+        self.pool_data[_pool].underlying_coins[i] = _ucoin
+        _length = self.underlying_markets[_ucoin].length
+        self.underlying_markets[_ucoin].addresses[_length] = _pool
+        self.underlying_markets[_ucoin].length = _length + 1
 
     return True
 
@@ -184,7 +190,6 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
     return _balances, _underlying_balances
 
 
-
 @private
 @constant
 def _get_token_indices(_pool: address, _buying: address, _selling: address) -> (int128, int128):
@@ -212,3 +217,17 @@ def get_dy(_pool: address, _buying: address, _selling: address, dx: uint256) -> 
     i, j = self._get_token_indices(_pool, _buying, _selling)
 
     return CurvePool(_pool).get_dy(i, j, dx)
+
+
+@public
+@nonreentrant('lock')
+def exchange(_pool: address, _buying: address, _selling: address, dx: uint256, min_dy: uint256):
+    i: int128 = 0
+    j: int128 = 0
+    i, j = self._get_token_indices(_pool, _buying, _selling)
+
+    _initial_balance: uint256 = ERC20(_selling).balanceOf(self)
+    ERC20(_buying).transferFrom(msg.sender, self, dx)
+    CurvePool(_pool).exchange(i, j, dx, min_dy)
+    dy: uint256 = ERC20(_selling).balanceOf(self) - _initial_balance
+    ERC20(_selling).transfer(msg.sender, dy)
