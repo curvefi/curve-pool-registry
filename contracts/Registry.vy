@@ -13,6 +13,7 @@ struct PoolArray:
     decimals: bytes32
     coins: address[MAX_COINS]
     underlying_coins: address[MAX_COINS]
+    calldata: bytes[72]
 
 contract CurvePool:
     def A() -> uint256: constant
@@ -33,7 +34,6 @@ pool_data: map(address, PoolArray)   # data for specific pools
 markets: map(address, AddressArray)  # list of pools where a token is tradeable
 underlying_markets: map(address, AddressArray)  # list of pools where a token is tradeable
 
-
 @public
 def __init__():
     self.admin = msg.sender
@@ -46,9 +46,8 @@ def _add_pool_to_market(_coin: address, _pool: address):
     self.markets[_coin].length = _length + 1
 
 
-
 @public
-def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS]) -> bool:
+def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS], _calldata: bytes[72]) -> bool:
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
@@ -57,6 +56,7 @@ def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS]) ->
     self.pool_list[_length] = _pool
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
+    self.pool_data[_pool].calldata = _calldata
 
     _decimals_packed: uint256 = 0
 
@@ -164,6 +164,24 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
             break
 
     return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins, _decimals
+
+
+# TODO let this be @constant
+@public
+def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
+    _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _calldata: bytes[72] = self.pool_data[_pool].calldata
+    for i in range(MAX_COINS):
+        _coin: address = self.pool_data[_pool].coins[i]
+        if _coin == ZERO_ADDRESS:
+            break
+        if _coin == self.pool_data[_pool].underlying_coins[i]:
+            _rates[i] = 1 ** 18
+        else:
+            _response: bytes[32] = raw_call(_coin, _calldata, outsize=32)
+            _rates[i] = convert(_response, uint256)
+
+    return _rates
 
 
 @public
