@@ -14,6 +14,8 @@ struct PoolArray:
     underlying_coins: address[MAX_COINS]
 
 contract CurvePool:
+    def A() -> uint256: constant
+    def fee() -> uint256: constant
     def coins(i: int128) -> address: constant
     def underlying_coins(i: int128) -> address: constant
     def get_dy(i: int128, j: int128, dx: uint256) -> uint256: constant
@@ -138,8 +140,13 @@ def remove_pool(_pool: address) -> bool:
 
 @public
 @constant
-def get_pool_info(_pool: address) -> (address[MAX_COINS], address[MAX_COINS]):
-    return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins
+def get_pool_info(_pool: address) -> (uint256, uint256, address[MAX_COINS], address[MAX_COINS]):
+    return (
+        CurvePool(_pool).A(),
+        CurvePool(_pool).fee(),
+        self.pool_data[_pool].coins,
+        self.pool_data[_pool].underlying_coins,
+    )
 
 
 @public
