@@ -10,6 +10,7 @@ struct AddressArray:
 
 struct PoolArray:
     location: int128
+    decimals: bytes32
     coins: address[MAX_COINS]
     underlying_coins: address[MAX_COINS]
 
@@ -47,7 +48,7 @@ def _add_pool_to_market(_coin: address, _pool: address):
 
 
 @public
-def add_pool(_pool: address, _n_coins: int128) -> bool:
+def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS]) -> bool:
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
@@ -57,9 +58,13 @@ def add_pool(_pool: address, _n_coins: int128) -> bool:
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
 
+    _decimals_packed: uint256 = 0
+
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
+
+        _decimals_packed += shift(_decimals[i], i*16)
 
         # add coin
         _coin: address = CurvePool(_pool).coins(i)
@@ -78,6 +83,8 @@ def add_pool(_pool: address, _n_coins: int128) -> bool:
         _length = self.underlying_markets[_ucoin].length
         self.underlying_markets[_ucoin].addresses[_length] = _pool
         self.underlying_markets[_ucoin].length = _length + 1
+
+    self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
 
     return True
 
@@ -140,13 +147,23 @@ def remove_pool(_pool: address) -> bool:
 
 @public
 @constant
-def get_pool_info(_pool: address) -> (uint256, uint256, address[MAX_COINS], address[MAX_COINS]):
-    return (
-        CurvePool(_pool).A(),
-        CurvePool(_pool).fee(),
-        self.pool_data[_pool].coins,
-        self.pool_data[_pool].underlying_coins,
-    )
+def get_pool_info(_pool: address) -> (uint256, uint256):
+    return CurvePool(_pool).A(), CurvePool(_pool).fee()
+
+
+@public
+@constant
+def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], uint256[MAX_COINS]):
+    _decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+
+
+    _decimals_packed: bytes32 = self.pool_data[_pool].decimals
+    for i in range(MAX_COINS):
+        _decimals[i] = convert(slice(_decimals_packed, 30-(i*2), 2), uint256)
+        if _decimals[i] == 0:
+            break
+
+    return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins, _decimals
 
 
 @public
@@ -183,7 +200,7 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
     _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
 
-    for i in range(7):
+    for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
             break
@@ -203,7 +220,7 @@ def _get_token_indices(_pool: address, _buying: address, _selling: address) -> (
     i: int128 = -1
     j: int128 = -1
 
-    for x in range(7):
+    for x in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[x]
         if _coin == _buying:
             i = x
