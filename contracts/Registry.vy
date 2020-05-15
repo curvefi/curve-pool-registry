@@ -29,23 +29,16 @@ contract CurvePool:
 admin: address
 
 pool_list: public(address[65536])  # master list of pools
-pool_count: public(int128)  # actual length of pool_list
+pool_count: public(int128)         # actual length of pool_list
 
-pool_data: map(address, PoolArray)  # data for specific pools
-markets: map(address, AddressArray)  # list of pools where a token is tradeable
-underlying_markets: map(address, AddressArray)  # list of pools where a token is tradeable
+pool_data: map(address, PoolArray)              # data for specific pools
+markets: map(address, AddressArray)             # list of pools where coin is tradeable
+underlying_markets: map(address, AddressArray)  # list of pools where coin is tradeable
 
 
 @public
 def __init__():
     self.admin = msg.sender
-
-
-@private
-def _add_pool_to_market(_coin: address, _pool: address):
-    _length: int128 = self.markets[_coin].length
-    self.markets[_coin].addresses[_length] = _pool
-    self.markets[_coin].length = _length + 1
 
 
 @public
