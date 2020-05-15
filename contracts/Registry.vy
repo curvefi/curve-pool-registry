@@ -12,7 +12,7 @@ struct PoolArray:
     location: int128
     decimals: bytes32
     coins: address[MAX_COINS]
-    underlying_coins: address[MAX_COINS]
+    ul_coins: address[MAX_COINS]
     calldata: bytes[72]
 
 contract CurvePool:
@@ -31,9 +31,9 @@ admin: address
 pool_list: public(address[65536])  # master list of pools
 pool_count: public(int128)         # actual length of pool_list
 
-pool_data: map(address, PoolArray)              # data for specific pools
-markets: map(address, AddressArray)             # list of pools where coin is tradeable
-underlying_markets: map(address, AddressArray)  # list of pools where coin is tradeable
+pool_data: map(address, PoolArray)      # data for specific pools
+markets: map(address, AddressArray)     # list of pools where coin is tradeable
+ul_markets: map(address, AddressArray)  # list of pools where underlying coin is tradeable
 
 
 @public
@@ -88,10 +88,10 @@ def add_pool(
         if _ucoin != _coin:
             ERC20(_ucoin).approve(_pool, MAX_UINT256)
 
-        self.pool_data[_pool].underlying_coins[i] = _ucoin
-        _length = self.underlying_markets[_ucoin].length
-        self.underlying_markets[_ucoin].addresses[_length] = _pool
-        self.underlying_markets[_ucoin].length = _length + 1
+        self.pool_data[_pool].ul_coins[i] = _ucoin
+        _length = self.ul_markets[_ucoin].length
+        self.ul_markets[_ucoin].addresses[_length] = _pool
+        self.ul_markets[_ucoin].length = _length + 1
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
 
@@ -140,19 +140,19 @@ def remove_pool(_pool: address):
         self.markets[_coin].length = _length
 
         # delete underlying_coin from pool_data
-        _coin = self.pool_data[_pool].underlying_coins[i]
-        self.pool_data[_pool].underlying_coins[i] = ZERO_ADDRESS
+        _coin = self.pool_data[_pool].ul_coins[i]
+        self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
 
-        # remove underlying_coin from underlying_markets
-        _length = self.underlying_markets[_coin].length - 1
+        # remove underlying_coin from ul_markets
+        _length = self.ul_markets[_coin].length - 1
         for x in range(65536):
             if x > _length:
                 break
-            if self.underlying_markets[_coin].addresses[x] == _pool:
-                self.underlying_markets[_coin].addresses[x] = self.underlying_markets[_coin].addresses[_length]
+            if self.ul_markets[_coin].addresses[x] == _pool:
+                self.ul_markets[_coin].addresses[x] = self.ul_markets[_coin].addresses[_length]
                 break
-        self.underlying_markets[_coin].addresses[_length] = ZERO_ADDRESS
-        self.underlying_markets[_coin].length = _length
+        self.ul_markets[_coin].addresses[_length] = ZERO_ADDRESS
+        self.ul_markets[_coin].length = _length
 
 
 @public
@@ -186,7 +186,7 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
         if _decimals[i] == 0:
             break
 
-    return self.pool_data[_pool].coins, self.pool_data[_pool].underlying_coins, _decimals
+    return self.pool_data[_pool].coins, self.pool_data[_pool].ul_coins, _decimals
 
 
 # TODO let this be @constant
@@ -206,7 +206,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
             break
-        if _coin == self.pool_data[_pool].underlying_coins[i]:
+        if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 1 ** 18
         else:
             _response: bytes[32] = raw_call(_coin, _calldata, outsize=32)
@@ -241,12 +241,12 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
                 return _pool
             _increment -= 1
 
-    _length = self.underlying_markets[_from].length
+    _length = self.ul_markets[_from].length
     for x in range(65536):
         if x == _length:
             break
-        _pool: address = self.underlying_markets[_from].addresses[x]
-        if _to in self.pool_data[_pool].underlying_coins:
+        _pool: address = self.ul_markets[_from].addresses[x]
+        if _to in self.pool_data[_pool].ul_coins:
             if _increment == 0:
                 return _pool
             _increment -= 1
@@ -274,7 +274,7 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
         if _coin == ZERO_ADDRESS:
             break
         _balances[i] = ERC20(_coin).balanceOf(_pool)
-        _underlying_coin: address = self.pool_data[_pool].underlying_coins[i]
+        _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
             _underlying_balances[i] = _balances[i]
         else:
@@ -300,7 +300,7 @@ def _get_token_indices(
 
     for x in range(MAX_COINS):
         if _is_underlying:
-            _coin = self.pool_data[_pool].underlying_coins[x]
+            _coin = self.pool_data[_pool].ul_coins[x]
         else:
             _coin = self.pool_data[_pool].coins[x]
         if _coin == _from:
