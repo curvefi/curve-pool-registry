@@ -27,12 +27,13 @@ contract CurvePool:
 
 admin: address
 
-pool_list: public(address[65536])   # master list of pools
+pool_list: public(address[65536])  # master list of pools
 pool_count: public(int128)  # actual length of pool_list
 
-pool_data: map(address, PoolArray)   # data for specific pools
+pool_data: map(address, PoolArray)  # data for specific pools
 markets: map(address, AddressArray)  # list of pools where a token is tradeable
 underlying_markets: map(address, AddressArray)  # list of pools where a token is tradeable
+
 
 @public
 def __init__():
@@ -47,7 +48,21 @@ def _add_pool_to_market(_coin: address, _pool: address):
 
 
 @public
-def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS], _calldata: bytes[72]) -> bool:
+def add_pool(
+    _pool: address,
+    _n_coins: int128,
+    _decimals: uint256[MAX_COINS],
+    _calldata: bytes[72],
+):
+    """
+    @notice Add a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to add
+    @param _n_coins Number of coins in the pool
+    @param _decimals Underlying coin decimal values
+    @param _calldata Calldata to query coin rates
+    """
+
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
@@ -64,7 +79,7 @@ def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS], _c
         if i == _n_coins:
             break
 
-        _decimals_packed += shift(_decimals[i], i*16)
+        _decimals_packed += shift(_decimals[i], i * 16)
 
         # add coin
         _coin: address = CurvePool(_pool).coins(i)
@@ -86,11 +101,14 @@ def add_pool(_pool: address, _n_coins: int128, _decimals: uint256[MAX_COINS], _c
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
 
-    return True
-
 
 @public
-def remove_pool(_pool: address) -> bool:
+def remove_pool(_pool: address):
+    """
+    @notice Remove a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to remove
+    """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
 
@@ -142,24 +160,35 @@ def remove_pool(_pool: address) -> bool:
         self.underlying_markets[_coin].addresses[_length] = ZERO_ADDRESS
         self.underlying_markets[_coin].length = _length
 
-    return True
-
 
 @public
 @constant
 def get_pool_info(_pool: address) -> (uint256, uint256):
+    """
+    @notice Get info on a pool
+    @param _pool Pool address
+    @return Amplification coefficient
+    @return Pool fee
+    """
     return CurvePool(_pool).A(), CurvePool(_pool).fee()
 
 
 @public
 @constant
 def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], uint256[MAX_COINS]):
+    """
+    @notice Get information on coins in a pool
+    @dev Empty values in the returned arrays may be ignored
+    @param _pool Pool address
+    @return Coin addresses
+    @return Underlying coin addresses
+    @return Underlying coin decimal values
+    """
     _decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-
-
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
+
     for i in range(MAX_COINS):
-        _decimals[i] = convert(slice(_decimals_packed, 30-(i*2), 2), uint256)
+        _decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
         if _decimals[i] == 0:
             break
 
@@ -169,6 +198,14 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
 # TODO let this be @constant
 @public
 def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get rates between coins and underlying coins
+    @dev For coins where there is no underlying coin, or where
+         the underlying coin cannot be swapped, the rate is
+         given as 1e18
+    @param _pool Pool address
+    @return Rates between coins and underlying coins
+    """
     _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _calldata: bytes[72] = self.pool_data[_pool].calldata
     for i in range(MAX_COINS):
@@ -186,25 +223,36 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
 
 @public
 @constant
-def find_pool_for_coins(_buying: address, _selling: address, i: uint256) -> address:
+def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
+    """
+    @notice Find an available pool for exchanging two coins
+    @dev For coins where there is no underlying coin, or where
+         the underlying coin cannot be swapped, the rate is
+         given as 1e18
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param i Index value. When multiple pools are available
+            this value is used to return the n'th address.
+    @return Pool address
+    """
     _increment: uint256 = i
 
-    _length: int128 = self.markets[_buying].length
+    _length: int128 = self.markets[_from].length
     for x in range(65536):
         if x == _length:
             break
-        _pool: address = self.markets[_buying].addresses[x]
-        if _selling in self.pool_data[_pool].coins:
+        _pool: address = self.markets[_from].addresses[x]
+        if _to in self.pool_data[_pool].coins:
             if _increment == 0:
                 return _pool
             _increment -= 1
 
-    _length = self.underlying_markets[_buying].length
+    _length = self.underlying_markets[_from].length
     for x in range(65536):
         if x == _length:
             break
-        _pool: address = self.underlying_markets[_buying].addresses[x]
-        if _selling in self.pool_data[_pool].underlying_coins:
+        _pool: address = self.underlying_markets[_from].addresses[x]
+        if _to in self.pool_data[_pool].underlying_coins:
             if _increment == 0:
                 return _pool
             _increment -= 1
@@ -215,6 +263,15 @@ def find_pool_for_coins(_buying: address, _selling: address, i: uint256) -> addr
 @public
 @constant
 def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]):
+    """
+    @notice Get all coin balances for a pool
+    @dev For coins where there is no underlying coin, or where
+         the underlying coin cannot be swapped, the rate is
+         given as 1e18
+    @param _pool Pool address
+    @return Coin balances
+    @return Underlying coin balances
+    """
     _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
 
@@ -234,15 +291,18 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
 
 @private
 @constant
-def _get_token_indices(_pool: address, _buying: address, _selling: address) -> (int128, int128):
+def _get_token_indices(_pool: address, _from: address, _to: address) -> (int128, int128):
+    """
+    Convert coin addresses to indices for use with pool methods.
+    """
     i: int128 = -1
     j: int128 = -1
 
     for x in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[x]
-        if _coin == _buying:
+        if _coin == _from:
             i = x
-        elif _coin == _selling:
+        elif _coin == _to:
             j = x
         elif _coin == ZERO_ADDRESS:
             break
@@ -253,23 +313,43 @@ def _get_token_indices(_pool: address, _buying: address, _selling: address) -> (
 
 @public
 @constant
-def get_dy(_pool: address, _buying: address, _selling: address, dx: uint256) -> uint256:
+def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+    """
+    @notice Get the current number of coins received in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_from` to be sent
+    @return Quantity of `_to` to be received
+    """
     i: int128 = 0
     j: int128 = 0
-    i, j = self._get_token_indices(_pool, _buying, _selling)
+    i, j = self._get_token_indices(_pool, _from, _to)
 
-    return CurvePool(_pool).get_dy(i, j, dx)
+    return CurvePool(_pool).get_dy(i, j, _amount)
 
 
 @public
-@nonreentrant('lock')
-def exchange(_pool: address, _buying: address, _selling: address, dx: uint256, min_dy: uint256):
+@nonreentrant("lock")
+def exchange(_pool: address, _from: address, _to: address, _amount: uint256, _expected: uint256):
+    """
+    @notice Perform an exchange.
+    @dev Prior to calling this function you must approve
+         this contract to transfer `_amount` coins from `_from`
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @param _expected Minimum quantity of `_from` received
+           in order for the transaction to succeed
+    """
     i: int128 = 0
     j: int128 = 0
-    i, j = self._get_token_indices(_pool, _buying, _selling)
+    i, j = self._get_token_indices(_pool, _from, _to)
 
-    _initial_balance: uint256 = ERC20(_selling).balanceOf(self)
-    ERC20(_buying).transferFrom(msg.sender, self, dx)
-    CurvePool(_pool).exchange(i, j, dx, min_dy)
-    dy: uint256 = ERC20(_selling).balanceOf(self) - _initial_balance
-    ERC20(_selling).transfer(msg.sender, dy)
+    _initial_balance: uint256 = ERC20(_to).balanceOf(self)
+
+    ERC20(_from).transferFrom(msg.sender, self, _amount)
+    CurvePool(_pool).exchange(i, j, _amount, _expected)
+
+    _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
+    ERC20(_to).transfer(msg.sender, _received)
