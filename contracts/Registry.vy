@@ -292,30 +292,49 @@ def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]
 def _get_token_indices(
     _pool: address,
     _from: address,
-    _to: address,
-    _is_underlying: bool
-) -> (int128, int128):
+    _to: address
+) -> (int128, int128, bool):
     """
     Convert coin addresses to indices for use with pool methods.
     """
     i: int128 = -1
     j: int128 = -1
     _coin: address = ZERO_ADDRESS
+    _check_underlying: bool = True
 
+    # check coin markets
     for x in range(MAX_COINS):
-        if _is_underlying:
-            _coin = self.pool_data[_pool].ul_coins[x]
-        else:
-            _coin = self.pool_data[_pool].coins[x]
+        _coin = self.pool_data[_pool].coins[x]
         if _coin == _from:
             i = x
         elif _coin == _to:
             j = x
         elif _coin == ZERO_ADDRESS:
             break
-    assert min(i, j) != -1
+        else:
+            continue
+        if min(i, j) > -1:
+            return i, j, False
+        if _coin != self.pool_data[_pool].ul_coins[x]:
+            _check_underlying = False
 
-    return i, j
+    assert _check_underlying, "No available market"
+
+    # check underlying coin markets
+    for x in range(MAX_COINS):
+        _coin = self.pool_data[_pool].ul_coins[x]
+        if _coin == _from:
+            i = x
+        elif _coin == _to:
+            j = x
+        elif _coin == ZERO_ADDRESS:
+            break
+        else:
+            continue
+        if i > -1 and j > -1:
+            return i, j, True
+
+    raise "No available market"
 
 
 @public
@@ -336,32 +355,13 @@ def get_exchange_amount(
     """
     i: int128 = 0
     j: int128 = 0
-    i, j = self._get_token_indices(_pool, _from, _to, False)
+    _is_underlying: bool = False
+    i, j, _is_underlying = self._get_token_indices(_pool, _from, _to)
 
-    return CurvePool(_pool).get_dy(i, j, _amount)
-
-
-@public
-@constant
-def get_exchange_underlying_amount(
-    _pool: address,
-    _from: address,
-    _to: address,
-    _amount: uint256
-) -> uint256:
-    """
-    @notice Get the current number of coins received in an exchange
-    @param _pool Pool address
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param _amount Quantity of `_from` to be sent
-    @return Quantity of `_to` to be received
-    """
-    i: int128 = 0
-    j: int128 = 0
-    i, j = self._get_token_indices(_pool, _from, _to, True)
-
-    return CurvePool(_pool).get_dy_underlying(i, j, _amount)
+    if _is_underlying:
+        return CurvePool(_pool).get_dy_underlying(i, j, _amount)
+    else:
+        return CurvePool(_pool).get_dy(i, j, _amount)
 
 
 @public
@@ -386,47 +386,16 @@ def exchange(
     """
     i: int128 = 0
     j: int128 = 0
-    i, j = self._get_token_indices(_pool, _from, _to, False)
+    _is_underlying: bool = False
+    i, j, _is_underlying = self._get_token_indices(_pool, _from, _to)
 
     _initial_balance: uint256 = ERC20(_to).balanceOf(self)
 
     ERC20(_from).transferFrom(msg.sender, self, _amount)
-    CurvePool(_pool).exchange(i, j, _amount, _expected)
-
-    _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
-    ERC20(_to).transfer(msg.sender, _received)
-
-    return True
-
-
-@public
-@nonreentrant("lock")
-def exchange_underlying(
-    _pool: address,
-    _from: address,
-    _to: address,
-    _amount: uint256,
-    _expected: uint256
-) -> bool:
-    """
-    @notice Perform an exchange of underlying coins.
-    @dev Prior to calling this function you must approve
-         this contract to transfer `_amount` coins from `_from`
-    @param _from Address of coin being sent
-    @param _to Address of coin being received
-    @param _amount Quantity of `_from` being sent
-    @param _expected Minimum quantity of `_from` received
-           in order for the transaction to succeed
-    @return True
-    """
-    i: int128 = 0
-    j: int128 = 0
-    i, j = self._get_token_indices(_pool, _from, _to, True)
-
-    _initial_balance: uint256 = ERC20(_to).balanceOf(self)
-
-    ERC20(_from).transferFrom(msg.sender, self, _amount)
-    CurvePool(_pool).exchange_underlying(i, j, _amount, _expected)
+    if _is_underlying:
+        CurvePool(_pool).exchange_underlying(i, j, _amount, _expected)
+    else:
+        CurvePool(_pool).exchange(i, j, _amount, _expected)
 
     _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
     ERC20(_to).transfer(msg.sender, _received)
