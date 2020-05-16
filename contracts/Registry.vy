@@ -194,6 +194,7 @@ def get_pool_coins(_pool: address) -> PoolCoins:
 def get_pool_info(_pool: address) -> PoolInfo:
     """
     @notice Get information on a pool
+    @dev Reverts if the pool address is unknown
     @param _pool Pool address
     @return balances, underlying balances, underlying decimals, amplification coefficient, fees
     """
@@ -210,6 +211,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
+            assert i != 0
             break
         _pool_info.decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
         _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)

@@ -15,7 +15,6 @@ def registry_all(accounts, registry, pool_compound, pool_y, pool_susd):
     yield registry
 
 
-
 def test_remove_first(accounts, registry_all, pool_compound, pool_y, pool_susd):
     registry_all.remove_pool(pool_compound, {'from': accounts[0]})
 
@@ -86,7 +85,8 @@ def test_get_pool_info(accounts, registry_all, pool_y, pool_susd):
     assert registry_all.get_pool_info(pool_susd) == pool_info
 
     registry_all.remove_pool(pool_susd, {'from': accounts[0]})
-    assert registry_all.get_pool_info(pool_susd) == registry_all.get_pool_info(ZERO_ADDRESS)
+    with brownie.reverts():
+        registry_all.get_pool_info(pool_susd)
 
     registry_all.add_pool(pool_susd, 4, [18, 6, 6, 18, 0, 0, 0], b"", {'from': accounts[0]})
     assert registry_all.get_pool_info(pool_susd) == pool_info

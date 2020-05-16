@@ -81,12 +81,10 @@ def test_add_multiple(accounts, registry, pool_y, pool_susd):
 
 
 def test_get_pool_info(accounts, registry, pool_y, pool_susd):
-    empty_pool_info = registry.get_pool_info(pool_y)
-
     registry.add_pool(pool_y, 4, [1, 2, 3, 4, 0, 0, 0], b"", {'from': accounts[0]})
     y_pool_info = registry.get_pool_info(pool_y)
-    assert y_pool_info != empty_pool_info
 
     registry.add_pool(pool_susd, 4, [33, 44, 55, 66, 0, 0, 0], b"", {'from': accounts[0]})
     susd_pool_info = registry.get_pool_info(pool_susd)
-    assert y_pool_info != susd_pool_info != empty_pool_info
+
+    assert y_pool_info != susd_pool_info

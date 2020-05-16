@@ -1,3 +1,4 @@
+import brownie
 import pytest
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -17,10 +18,12 @@ def registry_compound(accounts, registry, pool_compound):
 
 
 def test_unknown_pool(registry, pool_y):
-    # unknown pool should return empty values
-    coin_info = registry.get_pool_info(pool_y)
+    with brownie.reverts():
+        registry.get_pool_info(ZERO_ADDRESS)
 
-    assert not next((x for i in coin_info[:3] for x in i if x not in (0, ZERO_ADDRESS)), False)
+    with brownie.reverts():
+        registry.get_pool_info(pool_y)
+
 
 
 def test_fee(accounts, registry_compound, pool_compound, DAI, cUSDC):
