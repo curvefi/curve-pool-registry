@@ -178,6 +178,8 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
     @return Underlying coin addresses
     @return Underlying coin decimal values
     """
+    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    _ul_coins: address[MAX_COINS] = empty(address[MAX_COINS])
     _decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
 
@@ -185,8 +187,10 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
         _decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
         if _decimals[i] == 0:
             break
+        _coins[i] = self.pool_data[_pool].coins[i]
+        _ul_coins[i] = self.pool_data[_pool].ul_coins[i]
 
-    return self.pool_data[_pool].coins, self.pool_data[_pool].ul_coins, _decimals
+    return _coins, _ul_coins, _decimals
 
 
 # TODO let this be @constant
