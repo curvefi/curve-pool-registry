@@ -15,6 +15,11 @@ struct PoolArray:
     ul_coins: address[MAX_COINS]
     calldata: bytes[72]
 
+struct PoolCoins:
+    coins: address[MAX_COINS]
+    underlying_coins: address[MAX_COINS]
+    decimals: uint256[MAX_COINS]
+
 struct PoolInfo:
     balances: uint256[MAX_COINS]
     underlying_balances: uint256[MAX_COINS]
@@ -163,28 +168,24 @@ def remove_pool(_pool: address):
 
 @public
 @constant
-def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], uint256[MAX_COINS]):
+def get_pool_coins(_pool: address) -> PoolCoins:
     """
     @notice Get information on coins in a pool
     @dev Empty values in the returned arrays may be ignored
     @param _pool Pool address
-    @return Coin addresses
-    @return Underlying coin addresses
-    @return Underlying coin decimal values
+    @return Coin addresses, underlying coin addresses, underlying coin decimals
     """
-    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    _ul_coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    _decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _coins: PoolCoins = empty(PoolCoins)
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
 
     for i in range(MAX_COINS):
-        _decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
-        if _decimals[i] == 0:
+        _coins.decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
+        if _coins.decimals[i] == 0:
             break
-        _coins[i] = self.pool_data[_pool].coins[i]
-        _ul_coins[i] = self.pool_data[_pool].ul_coins[i]
+        _coins.coins[i] = self.pool_data[_pool].coins[i]
+        _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
 
-    return _coins, _ul_coins, _decimals
+    return _coins
 
 
 @public
