@@ -15,6 +15,12 @@ struct PoolArray:
     ul_coins: address[MAX_COINS]
     calldata: bytes[72]
 
+struct PoolInfo:
+    balances: uint256[MAX_COINS]
+    underlying_balances: uint256[MAX_COINS]
+    A: uint256
+    fee: uint256
+
 contract CurvePool:
     def A() -> uint256: constant
     def fee() -> uint256: constant
@@ -157,18 +163,6 @@ def remove_pool(_pool: address):
 
 @public
 @constant
-def get_pool_info(_pool: address) -> (uint256, uint256):
-    """
-    @notice Get info on a pool
-    @param _pool Pool address
-    @return Amplification coefficient
-    @return Pool fee
-    """
-    return CurvePool(_pool).A(), CurvePool(_pool).fee()
-
-
-@public
-@constant
 def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], uint256[MAX_COINS]):
     """
     @notice Get information on coins in a pool
@@ -191,6 +185,35 @@ def get_pool_coins(_pool: address) -> (address[MAX_COINS], address[MAX_COINS], u
         _ul_coins[i] = self.pool_data[_pool].ul_coins[i]
 
     return _coins, _ul_coins, _decimals
+
+
+@public
+@constant
+def get_pool_info(_pool: address) -> PoolInfo:
+    """
+    @notice Get information on a pool
+    @param _pool Pool address
+    @return balances, underlying balances, amplification coefficient, fees
+    """
+    _pool_info: PoolInfo = PoolInfo({
+        balances: empty(uint256[MAX_COINS]),
+        underlying_balances: empty(uint256[MAX_COINS]),
+        A: CurvePool(_pool).A(),
+        fee: CurvePool(_pool).fee()
+    })
+
+    for i in range(MAX_COINS):
+        _coin: address = self.pool_data[_pool].coins[i]
+        if _coin == ZERO_ADDRESS:
+            break
+        _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
+        _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
+        if _coin == _underlying_coin:
+            _pool_info.underlying_balances[i] = _pool_info.balances[i]
+        else:
+            _pool_info.underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
+
+    return _pool_info
 
 
 # TODO let this be @constant
@@ -256,35 +279,6 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
             _increment -= 1
 
     return ZERO_ADDRESS
-
-
-@public
-@constant
-def get_pool_balances(_pool: address) -> (uint256[MAX_COINS], uint256[MAX_COINS]):
-    """
-    @notice Get all coin balances for a pool
-    @dev For coins where there is no underlying coin, or where
-         the underlying coin cannot be swapped, the rate is
-         given as 1e18
-    @param _pool Pool address
-    @return Coin balances
-    @return Underlying coin balances
-    """
-    _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    _underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-
-    for i in range(MAX_COINS):
-        _coin: address = self.pool_data[_pool].coins[i]
-        if _coin == ZERO_ADDRESS:
-            break
-        _balances[i] = ERC20(_coin).balanceOf(_pool)
-        _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
-        if _coin == _underlying_coin:
-            _underlying_balances[i] = _balances[i]
-        else:
-            _underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
-
-    return _balances, _underlying_balances
 
 
 @private
