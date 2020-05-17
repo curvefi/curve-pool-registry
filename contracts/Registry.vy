@@ -224,8 +224,8 @@ def get_pool_info(_pool: address) -> PoolInfo:
     return _pool_info
 
 
-# TODO let this be @constant
 @public
+@constant
 def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     """
     @notice Get rates between coins and underlying coins
@@ -242,9 +242,9 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == ZERO_ADDRESS:
             break
         if _coin == self.pool_data[_pool].ul_coins[i]:
-            _rates[i] = 1 ** 18
+            _rates[i] = 10 ** 18
         else:
-            _response: bytes[32] = raw_call(_coin, _calldata, outsize=32)
+            _response: bytes[32] = raw_call(_coin, _calldata, outsize=32, is_static_call=True)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
