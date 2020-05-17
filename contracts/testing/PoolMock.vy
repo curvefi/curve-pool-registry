@@ -68,6 +68,51 @@ def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
     return self._get_dy(self.underlying_coin_list[i], self.underlying_coin_list[j], dx)
 
 
+@private
+def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_dy: uint256):
+    dy: uint256 = self._get_dy(_from, _to, dx)
+    assert dy >= min_dy, "Exchange resulted in fewer coins than expected"
+
+    _response: bytes[32] = raw_call(
+        _from,
+        concat(
+            method_id("transferFrom(address,address,uint256)", bytes[4]),
+            convert(_sender, bytes32),
+            convert(self, bytes32),
+            convert(dx, bytes32)
+        ),
+        outsize=32
+    )
+    if len(_response) != 0:
+        assert convert(_response, bool)
+
+    ERC20Mock(_to)._mint_for_testing(dy)
+
+    _response = raw_call(
+        _to,
+        concat(
+            method_id("transfer(address,uint256)", bytes[4]),
+            convert(_sender, bytes32),
+            convert(dy, bytes32)
+        ),
+        outsize=32
+    )
+    if len(_response) != 0:
+        assert convert(_response, bool)
+
+
+@public
+@nonreentrant('lock')
+def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256):
+    self._exchange(msg.sender, self.coin_list[i], self.coin_list[j], dx, min_dy)
+
+
+@public
+@nonreentrant('lock')
+def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
+    self._exchange(msg.sender, self.underlying_coin_list[i], self.underlying_coin_list[j], dx, min_dy)
+
+
 # testing functions
 
 @public
