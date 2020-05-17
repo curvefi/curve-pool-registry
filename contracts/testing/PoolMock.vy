@@ -81,7 +81,7 @@ def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_d
             convert(self, bytes32),
             convert(dx, bytes32)
         ),
-        outsize=32
+        max_outsize=32
     )
     if len(_response) != 0:
         assert convert(_response, bool)
@@ -95,7 +95,7 @@ def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_d
             convert(_sender, bytes32),
             convert(dy, bytes32)
         ),
-        outsize=32
+        max_outsize=32
     )
     if len(_response) != 0:
         assert convert(_response, bool)

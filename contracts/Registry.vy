@@ -244,7 +244,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 10 ** 18
         else:
-            _response: bytes[32] = raw_call(_coin, _calldata, outsize=32, is_static_call=True)  # dev: bad response
+            _response: bytes[32] = raw_call(_coin, _calldata, max_outsize=32, is_static_call=True)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
@@ -401,7 +401,7 @@ def exchange(
             convert(self, bytes32),
             convert(_amount, bytes32)
         ),
-        outsize=32
+        max_outsize=32
     )
     if len(_response) != 0:
         assert convert(_response, bool)
@@ -419,7 +419,7 @@ def exchange(
             convert(msg.sender, bytes32),
             convert(_received, bytes32)
         ),
-        outsize=32
+        max_outsize=32
     )
     if len(_response) != 0:
         assert convert(_response, bool)
