@@ -393,13 +393,35 @@ def exchange(
 
     _initial_balance: uint256 = ERC20(_to).balanceOf(self)
 
-    ERC20(_from).transferFrom(msg.sender, self, _amount)
+    _response: bytes[32] = raw_call(
+        _from,
+        concat(
+            method_id("transferFrom(address,address,uint256)", bytes[4]),
+            convert(msg.sender, bytes32),
+            convert(self, bytes32),
+            convert(_amount, bytes32)
+        ),
+        outsize=32
+    )
+    if len(_response) != 0:
+        assert convert(_response, bool)
+
     if _is_underlying:
         CurvePool(_pool).exchange_underlying(i, j, _amount, _expected)
     else:
         CurvePool(_pool).exchange(i, j, _amount, _expected)
 
     _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
-    ERC20(_to).transfer(msg.sender, _received)
+    _response = raw_call(
+        _to,
+        concat(
+            method_id("transfer(address,uint256)", bytes[4]),
+            convert(msg.sender, bytes32),
+            convert(_received, bytes32)
+        ),
+        outsize=32
+    )
+    if len(_response) != 0:
+        assert convert(_response, bool)
 
     return True
