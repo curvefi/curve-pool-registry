@@ -2,7 +2,10 @@
 @notice Mock Curve pool for testing
 """
 
+FEE_PRECISION: constant(uint256) = 10**10
+
 contract ERC20Mock:
+    def decimals() -> uint256: constant
     def _mint_for_testing(_amount: uint256) -> bool: modifying
 
 n_coins: int128
@@ -42,10 +45,27 @@ def underlying_coins(i: int128) -> address:
     return self.underlying_coin_list[i]
 
 
+@private
+@constant
+def _get_dy(_from: address, _to: address, _dx: uint256) -> uint256:
+    _from_precision: uint256 = ERC20Mock(_from).decimals()
+    _to_precision: uint256 = ERC20Mock(_to).decimals()
+    _dy: uint256 = _dx * (10**_to_precision) / (10**_from_precision)
+    _fee: uint256 = _dy * self.fee / FEE_PRECISION
+
+    return _dy - _fee
+
+
 @public
 @constant
 def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
-    return dx
+    return self._get_dy(self.coin_list[i], self.coin_list[j], dx)
+
+
+@public
+@constant
+def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
+    return self._get_dy(self.underlying_coin_list[i], self.underlying_coin_list[j], dx)
 
 
 # testing functions
