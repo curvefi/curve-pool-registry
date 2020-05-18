@@ -150,35 +150,33 @@ def test_same_token_underlying(accounts, registry, pool_compound, cDAI):
         registry.exchange(pool_compound, cDAI, cDAI, 10**18, 0, {'from': accounts[0]})
 
 
-def test_token_returns_false(PoolMock, ERC20ReturnFalse, accounts, DAI, registry):
-    bad_token = ERC20ReturnFalse.deploy("BAD", "Bad Token", 18, {'from': accounts[0]})
-    coins = [DAI, bad_token, ZERO_ADDRESS, ZERO_ADDRESS]
+def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
+    coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
     pool = PoolMock.deploy(2, coins, coins, 70, 4000000, {'from': accounts[0]})
     registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     DAI._mint_for_testing(10**18, {'from': accounts[0]})
     DAI.approve(registry, 10**18, {'from': accounts[0]})
-    expected = registry.get_exchange_amount(pool, DAI, bad_token, 10**18)
+    expected = registry.get_exchange_amount(pool, DAI, BAD, 10**18)
 
-    registry.exchange(pool, DAI, bad_token, 10**18, 0, {'from': accounts[0]})
+    registry.exchange(pool, DAI, BAD, 10**18, 0, {'from': accounts[0]})
 
     assert DAI.balanceOf(accounts[0]) == 0
-    assert bad_token.balanceOf(accounts[0]) == expected
+    assert BAD.balanceOf(accounts[0]) == expected
 
-    new_expected = registry.get_exchange_amount(pool, bad_token, DAI, expected)
+    new_expected = registry.get_exchange_amount(pool, BAD, DAI, expected)
 
-    bad_token.approve(registry, expected, {'from': accounts[0]})
-    registry.exchange(pool, bad_token, DAI, expected, 0, {'from': accounts[0]})
+    BAD.approve(registry, expected, {'from': accounts[0]})
+    registry.exchange(pool, BAD, DAI, expected, 0, {'from': accounts[0]})
 
     assert DAI.balanceOf(accounts[0]) == new_expected
-    assert bad_token.balanceOf(accounts[0]) == 0
+    assert BAD.balanceOf(accounts[0]) == 0
 
 
-def test_token_returns_false_revert(PoolMock, ERC20ReturnFalse, accounts, DAI, registry):
-    bad_token = ERC20ReturnFalse.deploy("BAD", "Bad Token", 18, {'from': accounts[0]})
-    coins = [DAI, bad_token, ZERO_ADDRESS, ZERO_ADDRESS]
+def test_token_returns_false_revert(PoolMock, accounts, BAD, DAI, registry):
+    coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
     pool = PoolMock.deploy(2, coins, coins, 70, 4000000, {'from': accounts[0]})
     registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     with brownie.reverts():
-        registry.exchange(pool, bad_token, DAI, 10**18, 0, {'from': accounts[0]})
+        registry.exchange(pool, BAD, DAI, 10**18, 0, {'from': accounts[0]})

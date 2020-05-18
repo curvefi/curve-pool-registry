@@ -98,3 +98,10 @@ def yUSDT(yERC20, accounts, USDT):
 @pytest.fixture(scope="module")
 def yTUSD(yERC20, accounts, TUSD):
     yield yERC20.deploy("yTUSDT", "iearn TUSD", 18, TUSD, 10**18, {"from": accounts[0]})
+
+
+# token that returns false on a failed transfer
+
+@pytest.fixture(scope="module")
+def BAD(ERC20ReturnFalse, accounts):
+    yield ERC20ReturnFalse.deploy("BAD", "Bad Token", 18, {'from': accounts[0]})
