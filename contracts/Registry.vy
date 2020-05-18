@@ -469,3 +469,26 @@ def revert_transfer_ownership():
     assert msg.sender == self.admin
 
     self.transfer_ownership_deadline = 0
+
+
+@public
+def claim_token_balance(_token: address):
+    """
+    @notice Transfer any ERC20 balance held by this contract
+    @dev The entire balance is transferred to `self.admin`
+    @param _token Token address
+    """
+    assert msg.sender == self.admin
+
+    _balance: uint256 = ERC20(_token).balanceOf(self)
+    _response: bytes[32] = raw_call(
+        _token,
+        concat(
+            method_id("transfer(address,uint256)", bytes[4]),
+            convert(msg.sender, bytes32),
+            convert(_balance, bytes32)
+        ),
+        max_outsize=32
+    )
+    if len(_response) != 0:
+        assert convert(_response, bool)
