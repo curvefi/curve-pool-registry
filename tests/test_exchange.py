@@ -1,6 +1,5 @@
 import brownie
 
-
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -37,6 +36,47 @@ def test_exchange_underlying(accounts, registry, pool_compound, DAI, USDC):
     assert DAI.balanceOf(accounts[0]) == 0
     assert USDC.balanceOf(accounts[0]) == expected
 
+
+def test_exchange_registry_has_balance(accounts, registry, pool_compound, cDAI, cUSDC):
+    registry.add_pool(
+        pool_compound,
+        2,
+        [18, 6, 0, 0, 0, 0, 0],
+        b"",
+        {'from': accounts[0]}
+    )
+    cDAI._mint_for_testing(20**18, {'from': accounts[0]})
+    cUSDC._mint_for_testing(20**18, {'from': accounts[0]})
+
+    cDAI.transfer(registry, 31337, {'from': accounts[0]})
+    cUSDC.transfer(registry, 31337, {'from': accounts[0]})
+
+    cDAI.approve(registry, 10**18, {'from': accounts[0]})
+    registry.exchange(pool_compound, cDAI, cUSDC, 10**18, 0, {'from': accounts[0]})
+
+    assert cDAI.balanceOf(registry) == 31337
+    assert cUSDC.balanceOf(registry) == 31337
+
+
+def test_exchange_underlying_registry_has_balance(accounts, registry, pool_compound, DAI, USDC):
+    registry.add_pool(
+        pool_compound,
+        2,
+        [18, 6, 0, 0, 0, 0, 0],
+        b"",
+        {'from': accounts[0]}
+    )
+    DAI._mint_for_testing(20**18, {'from': accounts[0]})
+    USDC._mint_for_testing(20**18, {'from': accounts[0]})
+
+    DAI.transfer(registry, 31337, {'from': accounts[0]})
+    USDC.transfer(registry, 31337, {'from': accounts[0]})
+
+    DAI.approve(registry, 10**18, {'from': accounts[0]})
+    registry.exchange(pool_compound, DAI, USDC, 10**18, 0, {'from': accounts[0]})
+
+    assert DAI.balanceOf(registry) == 31337
+    assert USDC.balanceOf(registry) == 31337
 
 
 def test_exchange_erc20_no_return_value(accounts, registry, pool_susd, DAI, USDT):
