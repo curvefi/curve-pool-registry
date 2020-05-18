@@ -8,7 +8,7 @@ contract ERC20Mock:
     def decimals() -> uint256: constant
     def _mint_for_testing(_amount: uint256) -> bool: modifying
 
-n_coins: int128
+n_coins: public(int128)
 coin_list: address[4]
 underlying_coin_list: address[4]
 
