@@ -39,6 +39,8 @@ contract CurvePool:
 
 
 admin: address
+transfer_ownership_deadline: uint256
+future_admin: address
 
 pool_list: public(address[65536])  # master list of pools
 pool_count: public(int128)         # actual length of pool_list
@@ -425,3 +427,45 @@ def exchange(
         assert convert(_response, bool)
 
     return True
+
+
+# Admin functions
+
+@public
+def commit_transfer_ownership(_new_admin: address):
+    """
+    @notice Initiate a transfer of contract ownership
+    @dev Once initiated, the actual transfer may be performed three days later
+    @param _new_admin Address of the new owner account
+    """
+    assert msg.sender == self.admin
+    assert self.transfer_ownership_deadline == 0
+
+    self.transfer_ownership_deadline = block.timestamp + 3*86400
+    self.future_admin = _new_admin
+
+
+@public
+def apply_transfer_ownership():
+    """
+    @notice Finalize a transfer of contract ownership
+    @dev May only be called by the current owner, three days after a
+         call to `commit_transfer_ownership`
+    """
+    assert msg.sender == self.admin
+    assert self.transfer_ownership_deadline != 0
+    assert block.timestamp >= self.transfer_ownership_deadline
+
+    self.admin = self.future_admin
+    self.transfer_ownership_deadline = 0
+
+
+@public
+def revert_transfer_ownership():
+    """
+    @notice Revert a transfer of contract ownership
+    @dev May only be called by the current owner
+    """
+    assert msg.sender == self.admin
+
+    self.transfer_ownership_deadline = 0
