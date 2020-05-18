@@ -38,6 +38,19 @@ contract CurvePool:
     def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
 
 
+CommitNewAdmin: event({deadline: indexed(uint256), admin: indexed(address)})
+NewAdmin: event({admin: indexed(address)})
+TokenExchange: event({
+    buyer: indexed(address),
+    pool: indexed(address),
+    token_sold: address,
+    token_bought: address,
+    amount_sold: uint256,
+    amount_bought: uint256
+})
+PoolAdded: event({pool: indexed(address), calldata: bytes[72]})
+PoolRemoved: event({pool: indexed(address)})
+
 admin: public(address)
 transfer_ownership_deadline: uint256
 future_admin: address
@@ -108,6 +121,7 @@ def add_pool(
         self.ul_markets[_ucoin].length = _length + 1
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
+    log.PoolAdded(_pool, _calldata)
 
 
 @public
@@ -167,6 +181,8 @@ def remove_pool(_pool: address):
                 break
         self.ul_markets[_coin].addresses[_length] = ZERO_ADDRESS
         self.ul_markets[_coin].length = _length
+
+    log.PoolRemoved(_pool)
 
 
 @public
@@ -426,6 +442,8 @@ def exchange(
     if len(_response) != 0:
         assert convert(_response, bool)
 
+    log.TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
+
     return True
 
 
@@ -441,8 +459,11 @@ def commit_transfer_ownership(_new_admin: address):
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline == 0  # dev: transfer already active
 
-    self.transfer_ownership_deadline = block.timestamp + 3*86400
+    _deadline: uint256 = block.timestamp + 3*86400
+    self.transfer_ownership_deadline = _deadline
     self.future_admin = _new_admin
+
+    log.CommitNewAdmin(_deadline, _new_admin)
 
 
 @public
@@ -456,8 +477,11 @@ def apply_transfer_ownership():
     assert self.transfer_ownership_deadline != 0  # dev: transfer not active
     assert block.timestamp >= self.transfer_ownership_deadline    # dev: now < deadline
 
-    self.admin = self.future_admin
+    _new_admin: address = self.future_admin
+    self.admin = _new_admin
     self.transfer_ownership_deadline = 0
+
+    log.NewAdmin(_new_admin)
 
 
 @public
