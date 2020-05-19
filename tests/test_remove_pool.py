@@ -1,18 +1,7 @@
+import brownie
 import pytest
 
-import brownie
-
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
-
-@pytest.fixture(scope="module")
-def registry_all(accounts, registry, pool_compound, pool_y, pool_susd):
-    registry.add_pool(pool_compound, 2, [18, 6, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
-
-    for pool in (pool_y, pool_susd):
-        registry.add_pool(pool, 4, [18, 6, 6, 18, 0, 0, 0], b"", {'from': accounts[0]})
-
-    yield registry
 
 
 def test_remove_first(accounts, registry_all, pool_compound, pool_y, pool_susd):

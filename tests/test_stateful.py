@@ -1,5 +1,3 @@
-from collections import deque
-
 import brownie
 from brownie.test import contract_strategy, strategy
 

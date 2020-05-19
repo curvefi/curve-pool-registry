@@ -10,11 +10,82 @@ def isolation_setup(fn_isolation):
     pass
 
 
-# registry
+# registries
 
 @pytest.fixture(scope="module")
 def registry(Registry, accounts):
     yield Registry.deploy({'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def registry_compound(accounts, Registry, pool_compound, cDAI):
+    registry = Registry.deploy({'from': accounts[0]})
+    registry.add_pool(
+        pool_compound,
+        2,
+        [18, 6, 0, 0, 0, 0, 0],
+        cDAI.exchangeRateStored.signature,
+        {'from': accounts[0]}
+    )
+
+    yield registry
+
+
+@pytest.fixture(scope="module")
+def registry_y(Registry, accounts, pool_y, yDAI):
+    registry = Registry.deploy({'from': accounts[0]})
+    registry.add_pool(
+        pool_y,
+        4,
+        [18, 6, 6, 18, 0, 0, 0],
+        yDAI.getPricePerFullShare.signature,
+        {'from': accounts[0]}
+    )
+
+    yield registry
+
+
+@pytest.fixture(scope="module")
+def registry_susd(Registry, accounts, pool_susd):
+    registry = Registry.deploy({'from': accounts[0]})
+    registry.add_pool(
+        pool_susd,
+        4,
+        [18, 6, 6, 18, 0, 0, 0],
+        b"",
+        {'from': accounts[0]}
+    )
+
+    yield registry
+
+
+@pytest.fixture(scope="module")
+def registry_all(Registry, accounts, pool_compound, pool_y, pool_susd, cDAI, yDAI):
+    registry = Registry.deploy({'from': accounts[0]})
+
+    registry.add_pool(
+        pool_compound,
+        2,
+        [18, 6, 0, 0, 0, 0, 0],
+        cDAI.exchangeRateStored.signature,
+        {'from': accounts[0]}
+    )
+    registry.add_pool(
+        pool_y,
+        4,
+        [18, 6, 6, 18, 0, 0, 0],
+        yDAI.getPricePerFullShare.signature,
+        {'from': accounts[0]}
+    )
+    registry.add_pool(
+        pool_susd,
+        4,
+        [18, 6, 6, 18, 0, 0, 0],
+        b"",
+        {'from': accounts[0]}
+    )
+
+    yield registry
 
 
 # curve pools

@@ -1,21 +1,7 @@
+import brownie
 import pytest
 
-import brownie
-
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
-
-@pytest.fixture
-def registry_compound(accounts, registry, pool_compound):
-    registry.add_pool(
-        pool_compound,
-        2,
-        [18, 6, 0, 0, 0, 0, 0],
-        b"\x4d\x89\x6d\xbd",
-        {'from': accounts[0]}
-    )
-
-    yield registry
 
 
 def test_add_to_pool_list(registry_compound, pool_compound):
@@ -32,8 +18,10 @@ def test_get_pool_coins(registry_compound, pool_compound):
     coin_info = registry_compound.get_pool_coins(pool_compound)
 
     assert coin_info['coins'] == [pool_compound.coins(0),  pool_compound.coins(1)] + [ZERO_ADDRESS] * 5
-    assert coin_info['underlying_coins'] == [pool_compound.underlying_coins(0),  pool_compound.underlying_coins(1)] + [ZERO_ADDRESS] * 5
     assert coin_info['decimals'] == [18, 6, 0, 0, 0, 0, 0]
+
+    expected = [pool_compound.underlying_coins(0), pool_compound.underlying_coins(1)] + [ZERO_ADDRESS] * 5
+    assert coin_info['underlying_coins'] == expected
 
 
 def test_admin_only(accounts, registry, pool_compound):
