@@ -11,9 +11,9 @@ struct AddressArray:
 struct PoolArray:
     location: int128
     decimals: bytes32
+    signature: bytes32
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
-    calldata: bytes[72]
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -48,7 +48,7 @@ TokenExchange: event({
     amount_sold: uint256,
     amount_bought: uint256
 })
-PoolAdded: event({pool: indexed(address), calldata: bytes[72]})
+PoolAdded: event({pool: indexed(address), signature: bytes[4]})
 PoolRemoved: event({pool: indexed(address)})
 
 admin: public(address)
@@ -176,7 +176,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     @return Rates between coins and underlying coins
     """
     _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    _calldata: bytes[72] = self.pool_data[_pool].calldata
+    _signature: bytes[4] = slice(self.pool_data[_pool].signature, 0, 4)
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
@@ -184,7 +184,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 10 ** 18
         else:
-            _response: bytes[32] = raw_call(_coin, _calldata, max_outsize=32, is_static_call=True)  # dev: bad response
+            _response: bytes[32] = raw_call(_coin, _signature, max_outsize=32, is_static_call=True)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
@@ -356,7 +356,7 @@ def add_pool(
     _pool: address,
     _n_coins: int128,
     _decimals: uint256[MAX_COINS],
-    _calldata: bytes[72],
+    _signature: bytes[4],
 ):
     """
     @notice Add a pool to the registry
@@ -364,7 +364,7 @@ def add_pool(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _decimals Underlying coin decimal values
-    @param _calldata Calldata to query coin rates
+    @param _signature Encoded function signature to query coin rates
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
@@ -374,7 +374,7 @@ def add_pool(
     self.pool_list[_length] = _pool
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
-    self.pool_data[_pool].calldata = _calldata
+    self.pool_data[_pool].signature = convert(_signature, bytes32)
 
     _decimals_packed: uint256 = 0
 
@@ -403,7 +403,7 @@ def add_pool(
         self.ul_markets[_ucoin].length = _length + 1
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
-    log.PoolAdded(_pool, _calldata)
+    log.PoolAdded(_pool, _signature)
 
 
 @public
