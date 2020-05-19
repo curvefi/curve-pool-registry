@@ -61,7 +61,7 @@ pool_count: public(int128)         # actual length of pool_list
 pool_data: map(address, PoolArray)      # data for specific pools
 markets: map(address, AddressArray)     # list of pools where coin is tradeable
 ul_markets: map(address, AddressArray)  # list of pools where underlying coin is tradeable
-
+gas_estimates: map(address, uint256)
 
 @public
 def __init__():
@@ -188,6 +188,25 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
             _rates[i] = convert(_response, uint256)
 
     return _rates
+
+
+@public
+@constant
+def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
+    """
+    @notice Estimate the gas used in an exchange.
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @return Upper-bound gas estimate, in wei
+    """
+    _total: uint256 = 0
+    for _addr in [_from, _pool, _to]:
+        _gas: uint256 = self.gas_estimates[_addr]
+        assert _gas != 0  # dev: value not set
+        _total += _gas
+
+    return _total
 
 
 @private
@@ -446,6 +465,21 @@ def remove_pool(_pool: address):
         self.ul_markets[_coin].length = _length
 
     log.PoolRemoved(_pool)
+
+
+@public
+def set_gas_estimates(_addr: address[10], _amount: uint256[10]):
+    """
+    @notice Set gas estimate amounts
+    @param _addr Array of pool or coin addresses
+    @param _amount Array of gas estimate amounts
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    for i in range(10):
+        if _addr[i] == ZERO_ADDRESS:
+            break
+        self.gas_estimates[_addr[i]] = _amount[i]
 
 
 @public
