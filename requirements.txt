@@ -1,0 +1,5 @@
+eth-brownie>=1.8.6,<2.0.0
+
+### pre-release version of Vyper 0.2.0
+# once the actual version is released, this should be changed
+-e git+git://github.com/vyperlang/vyper.git@1ebce95ed4fec4d96120d93df6f347799e8c7e02#egg=vyper

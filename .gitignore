@@ -2,6 +2,7 @@ __pycache__
 .history
 .hypothesis/
 .venv/
+.vscode/
 build/
 reports/
 venv/
