@@ -69,120 +69,42 @@ def __init__():
 
 
 @public
-def add_pool(
-    _pool: address,
-    _n_coins: int128,
-    _decimals: uint256[MAX_COINS],
-    _calldata: bytes[72],
-):
+@constant
+def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
     """
-    @notice Add a pool to the registry
-    @dev Only callable by admin
-    @param _pool Pool address to add
-    @param _n_coins Number of coins in the pool
-    @param _decimals Underlying coin decimal values
-    @param _calldata Calldata to query coin rates
+    @notice Find an available pool for exchanging two coins
+    @dev For coins where there is no underlying coin, or where
+         the underlying coin cannot be swapped, the rate is
+         given as 1e18
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param i Index value. When multiple pools are available
+            this value is used to return the n'th address.
+    @return Pool address
     """
+    _increment: uint256 = i
 
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
-
-    # add pool to pool_list
-    _length: int128 = self.pool_count
-    self.pool_list[_length] = _pool
-    self.pool_count = _length + 1
-    self.pool_data[_pool].location = _length
-    self.pool_data[_pool].calldata = _calldata
-
-    _decimals_packed: uint256 = 0
-
-    for i in range(MAX_COINS):
-        if i == _n_coins:
+    _length: int128 = self.markets[_from].length
+    for x in range(65536):
+        if x == _length:
             break
+        _pool: address = self.markets[_from].addresses[x]
+        if _to in self.pool_data[_pool].coins:
+            if _increment == 0:
+                return _pool
+            _increment -= 1
 
-        _decimals_packed += shift(_decimals[i], i * 16)
-
-        # add coin
-        _coin: address = CurvePool(_pool).coins(i)
-        ERC20(_coin).approve(_pool, MAX_UINT256)
-        self.pool_data[_pool].coins[i] = _coin
-        _length = self.markets[_coin].length
-        self.markets[_coin].addresses[_length] = _pool
-        self.markets[_coin].length = _length + 1
-
-        # add underlying coin
-        _ucoin: address = CurvePool(_pool).underlying_coins(i)
-        if _ucoin != _coin:
-            ERC20(_ucoin).approve(_pool, MAX_UINT256)
-
-        self.pool_data[_pool].ul_coins[i] = _ucoin
-        _length = self.ul_markets[_ucoin].length
-        self.ul_markets[_ucoin].addresses[_length] = _pool
-        self.ul_markets[_ucoin].length = _length + 1
-
-    self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
-    log.PoolAdded(_pool, _calldata)
-
-
-@public
-def remove_pool(_pool: address):
-    """
-    @notice Remove a pool to the registry
-    @dev Only callable by admin
-    @param _pool Pool address to remove
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
-
-    # remove _pool from pool_list
-    _location: int128 = self.pool_data[_pool].location
-    _length: int128 = self.pool_count - 1
-
-    if _location < _length:
-        # replace _pool with final value in pool_list
-        _addr: address = self.pool_list[_length]
-        self.pool_list[_location] = _addr
-        self.pool_data[_addr].location = _location
-
-    # delete final pool_list value
-    self.pool_list[_length] = ZERO_ADDRESS
-    self.pool_count = _length
-
-    for i in range(MAX_COINS):
-        _coin: address = self.pool_data[_pool].coins[i]
-        if _coin == ZERO_ADDRESS:
+    _length = self.ul_markets[_from].length
+    for x in range(65536):
+        if x == _length:
             break
+        _pool: address = self.ul_markets[_from].addresses[x]
+        if _to in self.pool_data[_pool].ul_coins:
+            if _increment == 0:
+                return _pool
+            _increment -= 1
 
-        # delete coin address from pool_data
-        self.pool_data[_pool].coins[i] = ZERO_ADDRESS
-
-        # remove coin from markets
-        _length = self.markets[_coin].length - 1
-        for x in range(65536):
-            if x > _length:
-                break
-            if self.markets[_coin].addresses[x] == _pool:
-                self.markets[_coin].addresses[x] = self.markets[_coin].addresses[_length]
-                break
-        self.markets[_coin].addresses[_length] = ZERO_ADDRESS
-        self.markets[_coin].length = _length
-
-        # delete underlying_coin from pool_data
-        _coin = self.pool_data[_pool].ul_coins[i]
-        self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
-
-        # remove underlying_coin from ul_markets
-        _length = self.ul_markets[_coin].length - 1
-        for x in range(65536):
-            if x > _length:
-                break
-            if self.ul_markets[_coin].addresses[x] == _pool:
-                self.ul_markets[_coin].addresses[x] = self.ul_markets[_coin].addresses[_length]
-                break
-        self.ul_markets[_coin].addresses[_length] = ZERO_ADDRESS
-        self.ul_markets[_coin].length = _length
-
-    log.PoolRemoved(_pool)
+    return ZERO_ADDRESS
 
 
 @public
@@ -266,45 +188,6 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
             _rates[i] = convert(_response, uint256)
 
     return _rates
-
-
-@public
-@constant
-def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
-    """
-    @notice Find an available pool for exchanging two coins
-    @dev For coins where there is no underlying coin, or where
-         the underlying coin cannot be swapped, the rate is
-         given as 1e18
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param i Index value. When multiple pools are available
-            this value is used to return the n'th address.
-    @return Pool address
-    """
-    _increment: uint256 = i
-
-    _length: int128 = self.markets[_from].length
-    for x in range(65536):
-        if x == _length:
-            break
-        _pool: address = self.markets[_from].addresses[x]
-        if _to in self.pool_data[_pool].coins:
-            if _increment == 0:
-                return _pool
-            _increment -= 1
-
-    _length = self.ul_markets[_from].length
-    for x in range(65536):
-        if x == _length:
-            break
-        _pool: address = self.ul_markets[_from].addresses[x]
-        if _to in self.pool_data[_pool].ul_coins:
-            if _increment == 0:
-                return _pool
-            _increment -= 1
-
-    return ZERO_ADDRESS
 
 
 @private
@@ -448,6 +331,122 @@ def exchange(
 
 
 # Admin functions
+
+@public
+def add_pool(
+    _pool: address,
+    _n_coins: int128,
+    _decimals: uint256[MAX_COINS],
+    _calldata: bytes[72],
+):
+    """
+    @notice Add a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to add
+    @param _n_coins Number of coins in the pool
+    @param _decimals Underlying coin decimal values
+    @param _calldata Calldata to query coin rates
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    # add pool to pool_list
+    _length: int128 = self.pool_count
+    self.pool_list[_length] = _pool
+    self.pool_count = _length + 1
+    self.pool_data[_pool].location = _length
+    self.pool_data[_pool].calldata = _calldata
+
+    _decimals_packed: uint256 = 0
+
+    for i in range(MAX_COINS):
+        if i == _n_coins:
+            break
+
+        _decimals_packed += shift(_decimals[i], i * 16)
+
+        # add coin
+        _coin: address = CurvePool(_pool).coins(i)
+        ERC20(_coin).approve(_pool, MAX_UINT256)
+        self.pool_data[_pool].coins[i] = _coin
+        _length = self.markets[_coin].length
+        self.markets[_coin].addresses[_length] = _pool
+        self.markets[_coin].length = _length + 1
+
+        # add underlying coin
+        _ucoin: address = CurvePool(_pool).underlying_coins(i)
+        if _ucoin != _coin:
+            ERC20(_ucoin).approve(_pool, MAX_UINT256)
+
+        self.pool_data[_pool].ul_coins[i] = _ucoin
+        _length = self.ul_markets[_ucoin].length
+        self.ul_markets[_ucoin].addresses[_length] = _pool
+        self.ul_markets[_ucoin].length = _length + 1
+
+    self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
+    log.PoolAdded(_pool, _calldata)
+
+
+@public
+def remove_pool(_pool: address):
+    """
+    @notice Remove a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to remove
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
+
+    # remove _pool from pool_list
+    _location: int128 = self.pool_data[_pool].location
+    _length: int128 = self.pool_count - 1
+
+    if _location < _length:
+        # replace _pool with final value in pool_list
+        _addr: address = self.pool_list[_length]
+        self.pool_list[_location] = _addr
+        self.pool_data[_addr].location = _location
+
+    # delete final pool_list value
+    self.pool_list[_length] = ZERO_ADDRESS
+    self.pool_count = _length
+
+    for i in range(MAX_COINS):
+        _coin: address = self.pool_data[_pool].coins[i]
+        if _coin == ZERO_ADDRESS:
+            break
+
+        # delete coin address from pool_data
+        self.pool_data[_pool].coins[i] = ZERO_ADDRESS
+
+        # remove coin from markets
+        _length = self.markets[_coin].length - 1
+        for x in range(65536):
+            if x > _length:
+                break
+            if self.markets[_coin].addresses[x] == _pool:
+                self.markets[_coin].addresses[x] = self.markets[_coin].addresses[_length]
+                break
+        self.markets[_coin].addresses[_length] = ZERO_ADDRESS
+        self.markets[_coin].length = _length
+
+        # delete underlying_coin from pool_data
+        _coin = self.pool_data[_pool].ul_coins[i]
+        self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
+
+        # remove underlying_coin from ul_markets
+        _length = self.ul_markets[_coin].length - 1
+        for x in range(65536):
+            if x > _length:
+                break
+            if self.ul_markets[_coin].addresses[x] == _pool:
+                self.ul_markets[_coin].addresses[x] = self.ul_markets[_coin].addresses[_length]
+                break
+        self.ul_markets[_coin].addresses[_length] = ZERO_ADDRESS
+        self.ul_markets[_coin].length = _length
+
+    log.PoolRemoved(_pool)
+
 
 @public
 def commit_transfer_ownership(_new_admin: address):
