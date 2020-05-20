@@ -4,6 +4,13 @@ from vyper.interfaces import ERC20
 
 MAX_COINS: constant(int128) = 7
 
+ZA: constant(address) = ZERO_ADDRESS
+EMPTY_ADDRESS_ARRAY: constant(address[7]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA]
+
+ZERO: constant(uint256) = convert(0, uint256)
+EMPTY_UINT256_ARRAY: constant(uint256[7]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
+
+
 struct AddressArray:
     length: int128
     addresses: address[65536]
@@ -62,10 +69,20 @@ pool_data: map(address, PoolArray)      # data for specific pools
 markets: map(address, AddressArray)     # list of pools where coin is tradeable
 ul_markets: map(address, AddressArray)  # list of pools where underlying coin is tradeable
 gas_estimates: map(address, uint256)
+returns_none: map(address, bool)
+
 
 @public
-def __init__():
+def __init__(_returns_none: address[4]):
+    """
+    @notice Constructor function
+    @param _returns_none Token addresses that return None on a successful transfer
+    """
     self.admin = msg.sender
+    for _addr in _returns_none:
+        if _addr == ZERO_ADDRESS:
+            break
+        self.returns_none[_addr] = True
 
 
 @public
@@ -116,7 +133,11 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     @param _pool Pool address
     @return Coin addresses, underlying coin addresses, underlying coin decimals
     """
-    _coins: PoolCoins = empty(PoolCoins)
+    _coins: PoolCoins = PoolCoins({
+        coins: EMPTY_ADDRESS_ARRAY,
+        underlying_coins: EMPTY_ADDRESS_ARRAY,
+        decimals: EMPTY_UINT256_ARRAY
+    })
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
 
     for i in range(MAX_COINS):
@@ -139,9 +160,9 @@ def get_pool_info(_pool: address) -> PoolInfo:
     @return balances, underlying balances, underlying decimals, amplification coefficient, fees
     """
     _pool_info: PoolInfo = PoolInfo({
-        balances: empty(uint256[MAX_COINS]),
-        underlying_balances: empty(uint256[MAX_COINS]),
-        decimals: empty(uint256[MAX_COINS]),
+        balances: EMPTY_UINT256_ARRAY,
+        underlying_balances: EMPTY_UINT256_ARRAY,
+        decimals: EMPTY_UINT256_ARRAY,
         A: CurvePool(_pool).A(),
         fee: CurvePool(_pool).fee()
     })
@@ -165,7 +186,6 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
 
 @public
-@constant
 def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     """
     @notice Get rates between coins and underlying coins
@@ -175,7 +195,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     @param _pool Pool address
     @return Rates between coins and underlying coins
     """
-    _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _rates: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
     _signature: bytes[4] = slice(self.pool_data[_pool].signature, 0, 4)
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
@@ -184,7 +204,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 10 ** 18
         else:
-            _response: bytes[32] = raw_call(_coin, _signature, max_outsize=32, is_static_call=True)  # dev: bad response
+            _response: bytes[32] = raw_call(_coin, _signature, outsize=32)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
@@ -313,18 +333,10 @@ def exchange(
 
     _initial_balance: uint256 = ERC20(_to).balanceOf(self)
 
-    _response: bytes[32] = raw_call(
-        _from,
-        concat(
-            method_id("transferFrom(address,address,uint256)", bytes[4]),
-            convert(msg.sender, bytes32),
-            convert(self, bytes32),
-            convert(_amount, bytes32)
-        ),
-        max_outsize=32
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
+    if self.returns_none[_from]:
+        ERC20(_from).transferFrom(msg.sender, self, _amount)
+    else:
+        assert_modifiable(ERC20(_from).transferFrom(msg.sender, self, _amount))
 
     if _is_underlying:
         CurvePool(_pool).exchange_underlying(i, j, _amount, _expected)
@@ -332,17 +344,11 @@ def exchange(
         CurvePool(_pool).exchange(i, j, _amount, _expected)
 
     _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
-    _response = raw_call(
-        _to,
-        concat(
-            method_id("transfer(address,uint256)", bytes[4]),
-            convert(msg.sender, bytes32),
-            convert(_received, bytes32)
-        ),
-        max_outsize=32
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
+
+    if self.returns_none[_to]:
+        ERC20(_to).transfer(msg.sender, _received)
+    else:
+        assert_modifiable(ERC20(_to).transfer(msg.sender, _received))
 
     log.TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
 
@@ -492,7 +498,7 @@ def commit_transfer_ownership(_new_admin: address):
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline == 0  # dev: transfer already active
 
-    _deadline: uint256 = block.timestamp + 3*86400
+    _deadline: uint256 = as_unitless_number(block.timestamp) + 3*86400
     self.transfer_ownership_deadline = _deadline
     self.future_admin = _new_admin
 
@@ -508,7 +514,7 @@ def apply_transfer_ownership():
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline != 0  # dev: transfer not active
-    assert block.timestamp >= self.transfer_ownership_deadline    # dev: now < deadline
+    assert block.timestamp >= self.transfer_ownership_deadline  # dev: now < deadline
 
     _new_admin: address = self.future_admin
     self.admin = _new_admin
@@ -538,14 +544,4 @@ def claim_token_balance(_token: address):
     assert msg.sender == self.admin  # dev: admin-only function
 
     _balance: uint256 = ERC20(_token).balanceOf(self)
-    _response: bytes[32] = raw_call(
-        _token,
-        concat(
-            method_id("transfer(address,uint256)", bytes[4]),
-            convert(msg.sender, bytes32),
-            convert(_balance, bytes32)
-        ),
-        max_outsize=32
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
+    ERC20(_token).transfer(msg.sender, _balance)
