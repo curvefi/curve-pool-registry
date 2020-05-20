@@ -91,7 +91,7 @@ Prior to calling this function you must call the `approve` method in `from`, aut
 
 ## Testing and Development
 
-**This contract is still under active development. It requires use of a pre-release version of the Vyper compiler. It has not been audited.**
+This project is written for compilation with Vyper [`0.1.0-beta17`](https://github.com/vyperlang/vyper/releases/tag/v0.1.0-beta.17).
 
 Unit testing and development of this project is performed using [Brownie](https://github.com/iamdefinitelyahuman/brownie).
 
