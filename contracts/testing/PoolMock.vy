@@ -6,11 +6,14 @@ FEE_PRECISION: constant(uint256) = 10**10
 
 contract ERC20Mock:
     def decimals() -> uint256: constant
+    def transfer(_to: address, _amount: uint256) -> bool: modifying
+    def transferFrom(_from: address, _to: address, _amount: uint256) -> bool: modifying
     def _mint_for_testing(_amount: uint256) -> bool: modifying
 
 n_coins: public(int128)
 coin_list: address[4]
 underlying_coin_list: address[4]
+returns_none: map(address, bool)
 
 A: public(uint256)
 fee: public(uint256)
@@ -21,6 +24,7 @@ def __init__(
     _n_coins: int128,
     _coin_list: address[4],
     _underlying_coin_list: address[4],
+    _returns_none: address[4],
     _A: uint256,
     _fee: uint256,
 ):
@@ -29,6 +33,10 @@ def __init__(
     self.underlying_coin_list = _underlying_coin_list
     self.A = _A
     self.fee = _fee
+    for _addr in _returns_none:
+        if _addr == ZERO_ADDRESS:
+            break
+        self.returns_none[_addr] = True
 
 
 @public
@@ -73,32 +81,16 @@ def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_d
     dy: uint256 = self._get_dy(_from, _to, dx)
     assert dy >= min_dy, "Exchange resulted in fewer coins than expected"
 
-    _response: bytes[32] = raw_call(
-        _from,
-        concat(
-            method_id("transferFrom(address,address,uint256)", bytes[4]),
-            convert(_sender, bytes32),
-            convert(self, bytes32),
-            convert(dx, bytes32)
-        ),
-        max_outsize=32
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
+    if self.returns_none[_from]:
+        ERC20Mock(_from).transferFrom(_sender, self, dx)
+    else:
+        assert_modifiable(ERC20Mock(_from).transferFrom(_sender, self, dx))
 
     ERC20Mock(_to)._mint_for_testing(dy)
-
-    _response = raw_call(
-        _to,
-        concat(
-            method_id("transfer(address,uint256)", bytes[4]),
-            convert(_sender, bytes32),
-            convert(dy, bytes32)
-        ),
-        max_outsize=32
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
+    if self.returns_none[_to]:
+        ERC20Mock(_to).transfer(_sender, dy)
+    else:
+        assert_modifiable(ERC20Mock(_to).transfer(_sender, dy))
 
 
 @public
