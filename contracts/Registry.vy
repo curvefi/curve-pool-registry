@@ -474,6 +474,18 @@ def remove_pool(_pool: address):
 
 
 @public
+def set_returns_none(_addr: address, _is_returns_none: bool):
+    """
+    @notice Set `returns_none` value for a coin
+    @param _addr Coin address
+    @param _is_returns_none if True, coin returns None on a successful transfer
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    self.returns_none[_addr] = _is_returns_none
+
+
+@public
 def set_gas_estimates(_addr: address[10], _amount: uint256[10]):
     """
     @notice Set gas estimate amounts
