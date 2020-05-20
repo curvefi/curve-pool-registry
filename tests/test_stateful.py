@@ -19,7 +19,7 @@ class StateMachine:
     st_decimals = strategy('uint8[7]', max_value=42)
     st_amount = strategy('uint256', max_value=1e18)
 
-    def __init__(cls, PoolMock, accounts, registry, coins, underlying):
+    def __init__(cls, PoolMock, accounts, registry, coins, underlying, USDT):
         """
         Initial state machine setup.
 
@@ -35,18 +35,19 @@ class StateMachine:
 
         # create pools
         for i in range(3):
-            cls._create_pool(PoolMock, 2, coins[:2], underlying[:2])
+            cls._create_pool(PoolMock, 2, coins[:2], underlying[:2], USDT)
             coins.insert(0, coins.pop())
             underlying.insert(0, underlying.pop())
 
         for i in range(2):
-            cls._create_pool(PoolMock, 3, coins[:3], underlying[:3])
+            cls._create_pool(PoolMock, 3, coins[:3], underlying[:3], USDT)
             coins.insert(0, coins.pop())
             underlying.insert(0, underlying.pop())
-        cls._create_pool(PoolMock, 4, coins, underlying)
+
+        cls._create_pool(PoolMock, 4, coins, underlying, USDT)
 
     @classmethod
-    def _create_pool(cls, PoolMock, n_coins, coins, underlying):
+    def _create_pool(cls, PoolMock, n_coins, coins, underlying, USDT):
         # Create a pool and add it to `cls.pool_info`
         coins = coins + ([ZERO_ADDRESS] * (7-n_coins))
         underlying = underlying + ([ZERO_ADDRESS] * (7-n_coins))
@@ -55,6 +56,7 @@ class StateMachine:
             n_coins,
             coins[:4],
             underlying[:4],
+            [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
             70,
             4000000,
             {'from': cls.accounts[0]}
@@ -210,4 +212,4 @@ def test_state_machine(
     coins = [yDAI, yUSDC, yUSDT, yTUSD]
     underlying = [DAI, USDC, USDT, TUSD]
 
-    state_machine(StateMachine, PoolMock, accounts, registry, coins, underlying)
+    state_machine(StateMachine, PoolMock, accounts, registry, coins, underlying, USDT)

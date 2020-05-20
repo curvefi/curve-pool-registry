@@ -101,7 +101,8 @@ def test_same_token_underlying(accounts, registry_compound, pool_compound, cDAI)
 
 def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
     coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
-    pool = PoolMock.deploy(2, coins, coins, 70, 4000000, {'from': accounts[0]})
+    returns_none = [ZERO_ADDRESS] * 4
+    pool = PoolMock.deploy(2, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
     registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     DAI._mint_for_testing(10**18, {'from': accounts[0]})
@@ -124,7 +125,8 @@ def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
 
 def test_token_returns_false_revert(PoolMock, accounts, BAD, DAI, registry):
     coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
-    pool = PoolMock.deploy(2, coins, coins, 70, 4000000, {'from': accounts[0]})
+    returns_none = [ZERO_ADDRESS] * 4
+    pool = PoolMock.deploy(2, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
     registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     with brownie.reverts():
