@@ -19,6 +19,7 @@ struct PoolArray:
     location: int128
     decimals: bytes32
     rate_method_id: bytes32
+    lp_token: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
 
@@ -31,6 +32,7 @@ struct PoolInfo:
     balances: uint256[MAX_COINS]
     underlying_balances: uint256[MAX_COINS]
     decimals: uint256[MAX_COINS]
+    lp_token: address
     A: uint256
     fee: uint256
 
@@ -163,6 +165,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         balances: EMPTY_UINT256_ARRAY,
         underlying_balances: EMPTY_UINT256_ARRAY,
         decimals: EMPTY_UINT256_ARRAY,
+        lp_token: self.pool_data[_pool].lp_token,
         A: CurvePool(_pool).A(),
         fee: CurvePool(_pool).fee()
     })
@@ -361,6 +364,7 @@ def exchange(
 def add_pool(
     _pool: address,
     _n_coins: int128,
+    _lp_token: address,
     _decimals: uint256[MAX_COINS],
     _rate_method_id: bytes[4],
 ):
@@ -369,6 +373,7 @@ def add_pool(
     @dev Only callable by admin
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
+    @param _lp_token Pool deposit token address
     @param _decimals Underlying coin decimal values
     @param _rate_method_id Encoded function signature to query coin rates
     """
@@ -380,6 +385,7 @@ def add_pool(
     self.pool_list[_length] = _pool
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
+    self.pool_data[_pool].lp_token = _lp_token
     self.pool_data[_pool].rate_method_id = convert(_rate_method_id, bytes32)
 
     _decimals_packed: uint256 = 0
