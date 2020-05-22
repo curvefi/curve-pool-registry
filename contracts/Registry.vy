@@ -66,6 +66,13 @@ pool_count: public(uint256)         # actual length of pool_list
 pool_data: map(address, PoolArray)
 gas_estimates: map(address, uint256)
 returns_none: map(address, bool)
+
+# mapping of coin -> coin -> pools for trading
+
+# all addresses are converted to uint256 prior to storage. coin addresses are stored
+# using the smaller value first. within each pool address array, the first value
+# is shifted 16 bits to the left, and these 16 bits are used to store the array length.
+
 markets: map(uint256, map(uint256, uint256[65536]))
 
 
@@ -397,7 +404,7 @@ def add_pool(
             break
 
         # add pool to markets
-        for x in range(i, i+MAX_COINS):
+        for x in range(i, i + MAX_COINS):
             if x == i:
                 continue
             if x == _n_coins:
@@ -477,8 +484,8 @@ def remove_pool(_pool: address):
         if _coins[i] == ZERO_ADDRESS:
             break
 
-        # remove pool to markets
-        for x in range(i, i+MAX_COINS):
+        # remove pool from markets
+        for x in range(i, i + MAX_COINS):
             if x == i:
                 continue
             if _coins[x] == ZERO_ADDRESS:
