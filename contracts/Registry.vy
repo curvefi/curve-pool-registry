@@ -159,7 +159,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     @notice Get information on a pool
     @dev Reverts if the pool address is unknown
     @param _pool Pool address
-    @return balances, underlying balances, underlying decimals, amplification coefficient, fees
+    @return balances, underlying balances, underlying decimals, lp token, amplification coefficient, fees
     """
     _pool_info: PoolInfo = PoolInfo({
         balances: EMPTY_UINT256_ARRAY,

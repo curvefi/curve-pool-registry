@@ -84,11 +84,11 @@ class StateMachine:
 
         if st_pool in self.added_pools:
             with brownie.reverts("dev: pool exists"):
-                self.registry.add_pool(st_pool, n_coins, st_decimals, b"", {'from': self.accounts[0]})
+                self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, st_decimals, b"", {'from': self.accounts[0]})
         else:
             decimals = st_decimals[:n_coins] + [0] * (7 - n_coins)
 
-            self.registry.add_pool(st_pool, n_coins, decimals, b"", {'from': self.accounts[0]})
+            self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, decimals, b"", {'from': self.accounts[0]})
             self.added_pools.add(st_pool)
             self.pool_info[st_pool]['decimals'] = decimals
 

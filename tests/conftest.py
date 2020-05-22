@@ -19,12 +19,13 @@ def registry(Registry, accounts, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_compound(accounts, Registry, pool_compound, cDAI, USDT):
+def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_compound,
         2,
+        lp_compound,
         [18, 6, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
         {'from': accounts[0]}
@@ -34,12 +35,13 @@ def registry_compound(accounts, Registry, pool_compound, cDAI, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_y(Registry, accounts, pool_y, yDAI, USDT):
+def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_y,
         4,
+        lp_y,
         [18, 6, 6, 18, 0, 0, 0],
         yDAI.getPricePerFullShare.signature,
         {'from': accounts[0]}
@@ -49,12 +51,13 @@ def registry_y(Registry, accounts, pool_y, yDAI, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_susd(Registry, accounts, pool_susd, USDT):
+def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_susd,
         4,
+        lp_susd,
         [18, 6, 6, 18, 0, 0, 0],
         b"",
         {'from': accounts[0]}
@@ -64,13 +67,19 @@ def registry_susd(Registry, accounts, pool_susd, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_all(Registry, accounts, pool_compound, pool_y, pool_susd, cDAI, yDAI, USDT):
+def registry_all(
+    Registry, accounts,
+    pool_compound, pool_y, pool_susd,
+    cDAI, yDAI, USDT,
+    lp_compound, lp_y, lp_susd
+):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
 
     registry.add_pool(
         pool_compound,
         2,
+        lp_compound,
         [18, 6, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
         {'from': accounts[0]}
@@ -78,6 +87,7 @@ def registry_all(Registry, accounts, pool_compound, pool_y, pool_susd, cDAI, yDA
     registry.add_pool(
         pool_y,
         4,
+        lp_y,
         [18, 6, 6, 18, 0, 0, 0],
         yDAI.getPricePerFullShare.signature,
         {'from': accounts[0]}
@@ -85,6 +95,7 @@ def registry_all(Registry, accounts, pool_compound, pool_y, pool_susd, cDAI, yDA
     registry.add_pool(
         pool_susd,
         4,
+        lp_susd,
         [18, 6, 6, 18, 0, 0, 0],
         b"",
         {'from': accounts[0]}
@@ -116,6 +127,22 @@ def pool_susd(PoolMock, accounts, DAI, USDC, USDT, sUSD):
     coins = [DAI, USDC, USDT, sUSD]
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     yield PoolMock.deploy(4, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
+
+# lp tokens
+
+@pytest.fixture(scope="module")
+def lp_compound(ERC20, accounts):
+    yield ERC20.deploy("Curve Compound LP Token", "lpCOMP", 18, {"from": accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def lp_y(ERC20, accounts):
+    yield ERC20.deploy("Curve Y LP Token", "lpY", 18, {"from": accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def lp_susd(ERC20, accounts):
+    yield ERC20.deploy("Curve sUSD LP Token", "lpSUSD", 18, {"from": accounts[0]})
 
 
 # base stablecoins

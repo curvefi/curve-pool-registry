@@ -69,10 +69,11 @@ def test_exchange_erc20_no_return_value(accounts, registry_susd, pool_susd, DAI,
     assert USDT.balanceOf(accounts[0]) == 0
 
 
-def test_min_dy(accounts, registry, pool_compound, DAI, USDC):
+def test_min_dy(accounts, registry, pool_compound, lp_compound, DAI, USDC):
     registry.add_pool(
         pool_compound,
         2,
+        lp_compound,
         [18, 6, 0, 0, 0, 0, 0],
         b"",
         {'from': accounts[0]}
@@ -103,7 +104,7 @@ def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
     coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
     returns_none = [ZERO_ADDRESS] * 4
     pool = PoolMock.deploy(2, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
-    registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
+    registry.add_pool(pool, 2, ZERO_ADDRESS, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     DAI._mint_for_testing(10**18, {'from': accounts[0]})
     DAI.approve(registry, 10**18, {'from': accounts[0]})
@@ -127,7 +128,7 @@ def test_token_returns_false_revert(PoolMock, accounts, BAD, DAI, registry):
     coins = [DAI, BAD, ZERO_ADDRESS, ZERO_ADDRESS]
     returns_none = [ZERO_ADDRESS] * 4
     pool = PoolMock.deploy(2, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
-    registry.add_pool(pool, 2, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
+    registry.add_pool(pool, 2, ZERO_ADDRESS, [18, 18, 0, 0, 0, 0, 0], b"", {'from': accounts[0]})
 
     with brownie.reverts():
         registry.exchange(pool, BAD, DAI, 10**18, 0, {'from': accounts[0]})

@@ -67,7 +67,7 @@ def test_pool_coins(accounts, registry_all, pool_compound, pool_y, pool_susd):
     assert coin_info[2] == [0, 0, 0, 0, 0, 0, 0]
 
 
-def test_get_pool_info(accounts, registry_all, pool_y, pool_susd):
+def test_get_pool_info(accounts, registry_all, pool_y, pool_susd, lp_susd):
     pool_info = registry_all.get_pool_info(pool_susd)
 
     registry_all.remove_pool(pool_y, {'from': accounts[0]})
@@ -77,5 +77,5 @@ def test_get_pool_info(accounts, registry_all, pool_y, pool_susd):
     with brownie.reverts():
         registry_all.get_pool_info(pool_susd)
 
-    registry_all.add_pool(pool_susd, 4, [18, 6, 6, 18, 0, 0, 0], b"", {'from': accounts[0]})
+    registry_all.add_pool(pool_susd, 4, lp_susd, [18, 6, 6, 18, 0, 0, 0], b"", {'from': accounts[0]})
     assert registry_all.get_pool_info(pool_susd) == pool_info

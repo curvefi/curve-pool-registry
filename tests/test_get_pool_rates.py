@@ -32,10 +32,11 @@ def test_removed_pool(accounts, registry_y, pool_y, yDAI):
     assert registry_y.get_pool_rates.call(pool_y) == [0, 0, 0, 0, 0, 0, 0]
 
 
-def test_fix_incorrect_calldata(accounts, registry, pool_compound, cDAI):
+def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, cDAI):
     registry.add_pool(
         pool_compound,
         2,
+        lp_compound,
         [18, 6, 0, 0, 0, 0, 0],
         "0xdEAdbEEf",
         {'from': accounts[0]}
@@ -48,6 +49,7 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, cDAI):
     registry.add_pool(
         pool_compound,
         2,
+        lp_compound,
         [18, 6, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
         {'from': accounts[0]}
