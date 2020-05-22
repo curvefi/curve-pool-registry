@@ -11,10 +11,6 @@ ZERO: constant(uint256) = convert(0, uint256)
 EMPTY_UINT256_ARRAY: constant(uint256[7]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
 
 
-struct AddressArray:
-    length: int128
-    addresses: address[65536]
-
 struct PoolArray:
     location: int128
     decimals: bytes32
@@ -70,7 +66,7 @@ pool_count: public(int128)         # actual length of pool_list
 pool_data: map(address, PoolArray)      # data for specific pools
 gas_estimates: map(address, uint256)
 returns_none: map(address, bool)
-markets: map(uint256, map(uint256, AddressArray))
+markets: map(uint256, map(uint256, uint256[65536]))
 
 
 @public
@@ -104,7 +100,11 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
     _first: uint256 = min(convert(_from, uint256), convert(_to, uint256))
     _second: uint256 = max(convert(_from, uint256), convert(_to, uint256))
 
-    return self.markets[_first][_second].addresses[i]
+    if i == 0:
+        _addr: uint256 = shift(self.markets[_first][_second][0], -16)
+        return convert(convert(_addr, bytes32), address)
+
+    return convert(convert(self.markets[_first][_second][i], bytes32), address)
 
 
 @public
@@ -405,18 +405,30 @@ def add_pool(
 
             _first: uint256 = min(convert(_coins[i], uint256), convert(_coins[x], uint256))
             _second: uint256 = max(convert(_coins[i], uint256), convert(_coins[x], uint256))
-            _length = self.markets[_first][_second].length
-            self.markets[_first][_second].addresses[_length] = _pool
-            self.markets[_first][_second].length = _length + 1
+
+            _pool_zero: uint256 = self.markets[_first][_second][0]
+            p: uint256 = 0
+            if _pool_zero != 0:
+                p = _pool_zero % 65536
+                self.markets[_first][_second][p] = convert(_pool, uint256)
+                self.markets[_first][_second][0] = _pool_zero + 1
+            else:
+                self.markets[_first][_second][0] = shift(convert(_pool, uint256), 16) + 1
 
             if _ucoins[i] == _coins[i] and _ucoins[x] == _coins[x]:
                 continue
 
             _first = min(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
             _second = max(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
-            _length = self.markets[_first][_second].length
-            self.markets[_first][_second].addresses[_length] = _pool
-            self.markets[_first][_second].length = _length + 1
+
+            _pool_zero = self.markets[_first][_second][0]
+
+            if _pool_zero != 0:
+                p = _pool_zero % 65536
+                self.markets[_first][_second][p] = convert(_pool, uint256)
+                self.markets[_first][_second][0] = _pool_zero + 1
+            else:
+                self.markets[_first][_second][0] = shift(convert(_pool, uint256), 16) + 1
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
     log.PoolAdded(_pool, _rate_method_id)
@@ -474,30 +486,43 @@ def remove_pool(_pool: address):
 
             _first: uint256 = min(convert(_coins[i], uint256), convert(_coins[x], uint256))
             _second: uint256 = max(convert(_coins[i], uint256), convert(_coins[x], uint256))
-            _length = self.markets[_first][_second].length - 1
-            for n in range(65536):
-                if n == _length:
-                    break
-                if self.markets[_first][_second].addresses[n] == _pool:
-                    self.markets[_first][_second].addresses[n] = self.markets[_first][_second].addresses[_length]
-                    break
-            self.markets[_first][_second].addresses[_length] = ZERO_ADDRESS
-            self.markets[_first][_second].length = _length
+
+            _pool_zero: uint256 = self.markets[_first][_second][0]
+            p: uint256 = _pool_zero % 65536 - 1
+            if p == 0:
+                self.markets[_first][_second][0] = 0
+            elif shift(_pool_zero, -16) == convert(_pool, uint256):
+                self.markets[_first][_second][0] = shift(self.markets[_first][_second][p], 16) + p
+                self.markets[_first][_second][p] = 0
+            else:
+                self.markets[_first][_second][0] = _pool_zero - 1
+                for n in range(1, 65536):
+                    if n == convert(p, int128):
+                        break
+                    if self.markets[_first][_second][n] == convert(_pool, uint256):
+                        self.markets[_first][_second][n] = self.markets[_first][_second][p]
+                self.markets[_first][_second][p] = 0
 
             if _ucoins[i] == _coins[i] and _ucoins[x] == _coins[x]:
                 continue
 
             _first = min(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
             _second = max(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
-            _length = self.markets[_first][_second].length
-            for n in range(65536):
-                if n == _length:
-                    break
-                if self.markets[_first][_second].addresses[n] == _pool:
-                    self.markets[_first][_second].addresses[n] = self.markets[_first][_second].addresses[_length]
-                    break
-            self.markets[_first][_second].addresses[_length] = ZERO_ADDRESS
-            self.markets[_first][_second].length = _length
+            _pool_zero = self.markets[_first][_second][0]
+            p = _pool_zero % 65536 - 1
+            if p == 0:
+                self.markets[_first][_second][0] = 0
+            elif shift(_pool_zero, -16) == convert(_pool, uint256):
+                self.markets[_first][_second][0] = shift(self.markets[_first][_second][p], 16) + p
+                self.markets[_first][_second][p] = 0
+            else:
+                self.markets[_first][_second][0] = _pool_zero - 1
+                for n in range(1, 65536):
+                    if n == convert(p, int128):
+                        break
+                    if self.markets[_first][_second][n] == convert(_pool, uint256):
+                        self.markets[_first][_second][n] = self.markets[_first][_second][p]
+                self.markets[_first][_second][p] = 0
 
     log.PoolRemoved(_pool)
 
