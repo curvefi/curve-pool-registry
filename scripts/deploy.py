@@ -56,7 +56,6 @@ def main():
         web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
 
     registry = Registry.deploy(TETHERS, {'from': deployer})
-    registry.set_alias('registry-alpha')
     with open('registry.abi', 'w') as f:
         json.dump(registry.abi, f, indent=True)
 
