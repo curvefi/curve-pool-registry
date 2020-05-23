@@ -134,7 +134,7 @@ def get_pool_coins(_pool: address) -> PoolCoins:
         _coins.coins[i] = self.pool_data[_pool].coins[i]
         if _coins.coins[i] == ZERO_ADDRESS:
             break
-        _coins.decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
+        _coins.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
         _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
 
     return _coins
@@ -165,7 +165,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         if _coin == ZERO_ADDRESS:
             assert i != 0
             break
-        _pool_info.decimals[i] = convert(slice(_decimals_packed, 30 - (i * 2), 2), uint256)
+        _pool_info.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
         _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
@@ -385,7 +385,7 @@ def add_pool(
         if i == _n_coins:
             break
 
-        _decimals_packed += shift(_decimals[i], i * 16)
+        _decimals_packed += shift(_decimals[i], i * 8)
 
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
