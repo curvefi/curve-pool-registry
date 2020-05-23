@@ -16,7 +16,7 @@ class StateMachine:
     st_coin2 = contract_strategy("yERC20")
     st_underlying = contract_strategy("ERC20")
     st_underlying2 = contract_strategy("ERC20")
-    st_decimals = strategy('uint8[7]', max_value=42)
+    st_decimals = strategy('uint8[8]', max_value=42)
     st_amount = strategy('uint256', max_value=1e18)
 
     def __init__(cls, PoolMock, accounts, registry, coins, underlying, USDT):
@@ -49,8 +49,8 @@ class StateMachine:
     @classmethod
     def _create_pool(cls, PoolMock, n_coins, coins, underlying, USDT):
         # Create a pool and add it to `cls.pool_info`
-        coins = coins + ([ZERO_ADDRESS] * (7-n_coins))
-        underlying = underlying + ([ZERO_ADDRESS] * (7-n_coins))
+        coins = coins + ([ZERO_ADDRESS] * (8-n_coins))
+        underlying = underlying + ([ZERO_ADDRESS] * (8-n_coins))
 
         pool = PoolMock.deploy(
             n_coins,
@@ -86,7 +86,7 @@ class StateMachine:
             with brownie.reverts("dev: pool exists"):
                 self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, st_decimals, b"", {'from': self.accounts[0]})
         else:
-            decimals = st_decimals[:n_coins] + [0] * (7 - n_coins)
+            decimals = st_decimals[:n_coins] + [0] * (8 - n_coins)
 
             self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, decimals, b"", {'from': self.accounts[0]})
             self.added_pools.add(st_pool)
@@ -184,9 +184,9 @@ class StateMachine:
                 assert coins['underlying_coins'] == self.pool_info[pool]['underlying']
                 assert coins['decimals'] == self.pool_info[pool]['decimals']
             else:
-                assert coins['coins'] == [ZERO_ADDRESS] * 7
-                assert coins['underlying_coins'] == [ZERO_ADDRESS] * 7
-                assert coins['decimals'] == [0] * 7
+                assert coins['coins'] == [ZERO_ADDRESS] * 8
+                assert coins['underlying_coins'] == [ZERO_ADDRESS] * 8
+                assert coins['decimals'] == [0] * 8
 
     def invariant_info(self):
         """

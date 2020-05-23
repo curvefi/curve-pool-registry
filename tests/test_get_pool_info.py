@@ -32,44 +32,44 @@ def test_A(accounts, registry_compound, pool_compound, DAI, cUSDC):
 def test_underlying_balances(accounts, registry_compound, pool_compound, DAI):
 
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
 
     DAI._mint_for_testing(1000000, {'from': accounts[0]})
     DAI.transfer(pool_compound, 1000000, {'from': accounts[0]})
 
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [1000000, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [1000000, 0, 0, 0, 0, 0, 0, 0]
 
 
 def test_balances(accounts, registry_compound, pool_compound, cUSDC):
 
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
 
     cUSDC._mint_for_testing(1000000, {'from': accounts[0]})
     cUSDC.transfer(pool_compound, 1000000, {'from': accounts[0]})
 
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['balances'] == [0, 1000000, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [0, 1000000, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
 
 
 def test_decimals(registry_compound, pool_compound):
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['decimals'] == [18, 6, 0, 0, 0, 0, 0]
+    assert pool_info['decimals'] == [18, 6, 0, 0, 0, 0, 0, 0]
 
 
 def test_balances_no_lending(accounts, registry_susd, pool_susd, DAI):
     pool_info = registry_susd.get_pool_info(pool_susd)
-    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [0, 0, 0, 0, 0, 0, 0, 0]
 
     DAI._mint_for_testing(1000000, {'from': accounts[0]})
     DAI.transfer(pool_susd, 1000000, {'from': accounts[0]})
 
     pool_info = registry_susd.get_pool_info(pool_susd)
-    assert pool_info['balances'] == [1000000, 0, 0, 0, 0, 0, 0]
-    assert pool_info['underlying_balances'] == [1000000, 0, 0, 0, 0, 0, 0]
+    assert pool_info['balances'] == [1000000, 0, 0, 0, 0, 0, 0, 0]
+    assert pool_info['underlying_balances'] == [1000000, 0, 0, 0, 0, 0, 0, 0]
