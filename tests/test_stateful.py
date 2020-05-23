@@ -16,7 +16,7 @@ class StateMachine:
     st_coin2 = contract_strategy("yERC20")
     st_underlying = contract_strategy("ERC20")
     st_underlying2 = contract_strategy("ERC20")
-    st_decimals = strategy('uint8[8]', max_value=42)
+    st_decimals = strategy('uint8[8]', min_value=1, max_value=42)
     st_amount = strategy('uint256', max_value=1e18)
 
     def __init__(cls, PoolMock, accounts, registry, coins, underlying, USDT):
