@@ -32,6 +32,7 @@ struct PoolInfo:
     A: uint256
     fee: uint256
 
+
 contract CurvePool:
     def A() -> uint256: constant
     def fee() -> uint256: constant
@@ -41,6 +42,9 @@ contract CurvePool:
     def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256: constant
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
     def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
+
+contract GasEstimator:
+    def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: constant
 
 
 CommitNewAdmin: event({deadline: indexed(uint256), admin: indexed(address)})
@@ -56,6 +60,7 @@ TokenExchange: event({
 PoolAdded: event({pool: indexed(address), rate_method_id: bytes[4]})
 PoolRemoved: event({pool: indexed(address)})
 
+
 admin: public(address)
 transfer_ownership_deadline: uint256
 future_admin: address
@@ -64,11 +69,12 @@ pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: map(address, PoolArray)
-gas_estimates: map(address, uint256)
 returns_none: map(address, bool)
 
-# mapping of coin -> coin -> pools for trading
+gas_estimate_values: map(address, uint256)
+gas_estimate_contracts: map(address, address)
 
+# mapping of coin -> coin -> pools for trading
 # all addresses are converted to uint256 prior to storage. coin addresses are stored
 # using the smaller value first. within each pool address array, the first value
 # is shifted 16 bits to the left, and these 16 bits are used to store the array length.
@@ -212,8 +218,12 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     @return Upper-bound gas estimate, in wei
     """
     _total: uint256 = 0
+    _estimator: address = self.gas_estimate_contracts[_pool]
+    if _estimator != ZERO_ADDRESS:
+        return GasEstimator(_estimator).estimate_gas_used(_pool, _from, _to)
+
     for _addr in [_from, _pool, _to]:
-        _gas: uint256 = self.gas_estimates[_addr]
+        _gas: uint256 = self.gas_estimate_values[_addr]
         assert _gas != 0  # dev: value not set
         _total += _gas
 
@@ -558,7 +568,19 @@ def set_gas_estimates(_addr: address[10], _amount: uint256[10]):
     for i in range(10):
         if _addr[i] == ZERO_ADDRESS:
             break
-        self.gas_estimates[_addr[i]] = _amount[i]
+        self.gas_estimate_values[_addr[i]] = _amount[i]
+
+
+@public
+def set_gas_estimate_contract(_pool: address, _estimator: address):
+    """
+    @notice Set gas estimate contract
+    @param _pool Pool address
+    @param _estimator GasEstimator address
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    self.gas_estimate_contracts[_pool] = _estimator
 
 
 @public
