@@ -1,7 +1,5 @@
 # @version 0.1.0
 
-from vyper.interfaces import ERC20
-
 MAX_COINS: constant(int128) = 8
 
 ZA: constant(address) = ZERO_ADDRESS
@@ -402,8 +400,6 @@ def add_pool(
         if i == _n_coins:
             break
 
-        _decimals_packed += shift(_decimals[i], i * 8)
-
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
         ERC20(_coins[i]).approve(_pool, MAX_UINT256)
@@ -415,6 +411,14 @@ def add_pool(
             ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
 
         self.pool_data[_pool].ul_coins[i] = _ucoins[i]
+
+        # add decimals
+        _value: uint256 = _decimals[i]
+        if _value == 0:
+            _value = ERC20(_ucoins[i]).decimals()
+
+        assert _value < 256  # dev: decimal overflow
+        _decimals_packed += shift(_value, i * 8)
 
     for i in range(MAX_COINS):
         if i == _n_coins:
@@ -431,7 +435,6 @@ def add_pool(
             _second: uint256 = max(convert(_coins[i], uint256), convert(_coins[x], uint256))
 
             _pool_zero: uint256 = self.markets[_first][_second][0]
-            _length = 0
             if _pool_zero != 0:
                 _length = _pool_zero % 65536
                 self.markets[_first][_second][_length] = convert(_pool, uint256)
