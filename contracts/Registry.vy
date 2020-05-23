@@ -2,13 +2,13 @@
 
 from vyper.interfaces import ERC20
 
-MAX_COINS: constant(int128) = 7
+MAX_COINS: constant(int128) = 8
 
 ZA: constant(address) = ZERO_ADDRESS
-EMPTY_ADDRESS_ARRAY: constant(address[7]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA]
+EMPTY_ADDRESS_ARRAY: constant(address[MAX_COINS]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA, ZA]
 
 ZERO: constant(uint256) = convert(0, uint256)
-EMPTY_UINT256_ARRAY: constant(uint256[7]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
+EMPTY_UINT256_ARRAY: constant(uint256[MAX_COINS]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
 
 
 struct PoolArray:
