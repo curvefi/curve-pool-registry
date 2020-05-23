@@ -33,6 +33,13 @@ struct PoolInfo:
     fee: uint256
 
 
+contract ERC20:
+    def decimals() -> uint256: constant
+    def balanceOf(addr: address) -> uint256: constant
+    def approve(spender: address, amount: uint256) -> bool: modifying
+    def transfer(to: address, amount: uint256) -> bool: modifying
+    def transferFrom(spender: address, to: address, amount: uint256) -> bool: modifying
+
 contract CurvePool:
     def A() -> uint256: constant
     def fee() -> uint256: constant
