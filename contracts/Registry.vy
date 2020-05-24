@@ -27,6 +27,7 @@ struct PoolInfo:
     balances: uint256[MAX_COINS]
     underlying_balances: uint256[MAX_COINS]
     decimals: uint256[MAX_COINS]
+    underlying_decimals: uint256[MAX_COINS]
     lp_token: address
     A: uint256
     fee: uint256
@@ -159,25 +160,31 @@ def get_pool_info(_pool: address) -> PoolInfo:
     @notice Get information on a pool
     @dev Reverts if the pool address is unknown
     @param _pool Pool address
-    @return balances, underlying balances, underlying decimals, lp token, amplification coefficient, fees
+    @return balances, underlying balances, decimals, underlying decimals,
+            lp token, amplification coefficient, fees
     """
     _pool_info: PoolInfo = PoolInfo({
         balances: EMPTY_UINT256_ARRAY,
         underlying_balances: EMPTY_UINT256_ARRAY,
         decimals: EMPTY_UINT256_ARRAY,
+        underlying_decimals: EMPTY_UINT256_ARRAY,
         lp_token: self.pool_data[_pool].lp_token,
         A: CurvePool(_pool).A(),
         fee: CurvePool(_pool).fee()
     })
 
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
+    _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
 
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
             assert i != 0
             break
+
         _pool_info.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
+        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, 31 - i, 1), uint256)
+
         _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
