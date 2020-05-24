@@ -104,6 +104,12 @@ def __init__(_returns_none: address[4]):
 
 
 @public
+@payable
+def __default__():
+    pass
+
+
+@public
 @constant
 def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
     """
@@ -325,6 +331,7 @@ def get_exchange_amount(
 
 
 @public
+@payable
 @nonreentrant("lock")
 def exchange(
     _pool: address,
@@ -349,24 +356,38 @@ def exchange(
     _is_underlying: bool = False
     i, j, _is_underlying = self._get_token_indices(_pool, _from, _to)
 
-    _initial_balance: uint256 = ERC20(_to).balanceOf(self)
+    # record initial balance
+    _initial_balance: uint256 = 0
+    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        _initial_balance = as_unitless_number(self.balance - msg.value)
+    else:
+        _initial_balance = ERC20(_to).balanceOf(self)
 
-    if self.returns_none[_from]:
+    # perform / verify input transfer
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        assert _amount == msg.value, "Incorrect ETH amount"
+    elif self.returns_none[_from]:
         ERC20(_from).transferFrom(msg.sender, self, _amount)
     else:
         assert_modifiable(ERC20(_from).transferFrom(msg.sender, self, _amount))
 
+    # perform coin exchange
     if _is_underlying:
-        CurvePool(_pool).exchange_underlying(i, j, _amount, _expected)
+        CurvePool(_pool).exchange_underlying(i, j, _amount, _expected, value=msg.value)
     else:
-        CurvePool(_pool).exchange(i, j, _amount, _expected)
+        CurvePool(_pool).exchange(i, j, _amount, _expected, value=msg.value)
 
-    _received: uint256 = ERC20(_to).balanceOf(self) - _initial_balance
-
-    if self.returns_none[_to]:
-        ERC20(_to).transfer(msg.sender, _received)
+    # perform output transfer
+    _received: uint256 = 0
+    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        _received = as_unitless_number(self.balance) - _initial_balance
+        send(msg.sender, _received)
     else:
-        assert_modifiable(ERC20(_to).transfer(msg.sender, _received))
+        _received = ERC20(_to).balanceOf(self) - _initial_balance
+        if self.returns_none[_to]:
+            ERC20(_to).transfer(msg.sender, _received)
+        else:
+            assert_modifiable(ERC20(_to).transfer(msg.sender, _received))
 
     log.TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
 
