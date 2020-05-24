@@ -41,9 +41,6 @@ POOLS = [
         ),
 ]
 
-# For tests XXX (alpha)
-POOLS = [POOLS[-1]]
-
 
 def main():
     deployer = accounts.at(DEPLOYER) if DEPLOYER else accounts[1]
@@ -55,10 +52,21 @@ def main():
     if POA:
         web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
 
-    registry = Registry.deploy(TETHERS, {'from': deployer})
+    while True:
+        try:
+            registry = Registry.deploy(TETHERS, {'from': deployer})
+        except KeyError:
+            continue
+        break
     with open('registry.abi', 'w') as f:
         json.dump(registry.abi, f, indent=True)
 
-    for pool in POOLS:
+    for i, pool in enumerate(POOLS):
+        print("Adding pool {} out of {}...".format(i + 1, len(POOLS)))
         args = list(pool) + [{'from': deployer}]
-        registry.add_pool(*args)
+        while True:
+            try:
+                registry.add_pool(*args)
+            except KeyError:
+                continue
+            break
