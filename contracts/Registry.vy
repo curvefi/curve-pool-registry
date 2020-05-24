@@ -12,6 +12,7 @@ EMPTY_UINT256_ARRAY: constant(uint256[MAX_COINS]) = [ZERO, ZERO, ZERO, ZERO, ZER
 struct PoolArray:
     location: uint256
     decimals: bytes32
+    underlying_decimals: bytes32
     rate_method_id: bytes32
     lp_token: address
     coins: address[MAX_COINS]
@@ -363,30 +364,17 @@ def exchange(
 
 # Admin functions
 
-@public
-def add_pool(
+@private
+def _add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
-    _decimals: uint256[MAX_COINS],
     _rate_method_id: bytes[4],
-    _use_underlying: bool = True,
-    _use_rates: bool[MAX_COINS] = [False, False, False, False, False, False, False, False]
+    _coins: address[MAX_COINS],
+    _ucoins: address[MAX_COINS],
+    _decimals: uint256[MAX_COINS],
+    _udecimals: uint256[MAX_COINS],
 ):
-    """
-    @notice Add a pool to the registry
-    @dev Only callable by admin
-    @param _pool Pool address to add
-    @param _n_coins Number of coins in the pool
-    @param _lp_token Pool deposit token address
-    @param _decimals Underlying coin decimal values
-    @param _rate_method_id Encoded function signature to query coin rates
-    @param _use_underlying Use underlying_coins array when lending is used
-    @param _use_rates If _use_underlying is False, define which coins should get lending rates
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
-
     # add pool to pool_list
     _length: uint256 = self.pool_count
     self.pool_list[_length] = _pool
@@ -396,44 +384,27 @@ def add_pool(
     self.pool_data[_pool].rate_method_id = convert(_rate_method_id, bytes32)
 
     _decimals_packed: uint256 = 0
-
-    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
-    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _udecimals_packed: uint256 = 0
 
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
-
-        # add coin
-        _coins[i] = CurvePool(_pool).coins(i)
-        ERC20(_coins[i]).approve(_pool, MAX_UINT256)
-        self.pool_data[_pool].coins[i] = _coins[i]
-
-        # add underlying coin
-        if _use_underlying:
-            _ucoins[i] = CurvePool(_pool).underlying_coins(i)
-            if _ucoins[i] != _coins[i]:
-                ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
-        else:
-            if not _use_rates[i]:
-                _ucoins[i] = _coins[i]
-
-        self.pool_data[_pool].ul_coins[i] = _ucoins[i]
 
         # add decimals
         _value: uint256 = _decimals[i]
         if _value == 0:
-            if _ucoins[i] == ZERO_ADDRESS:
-                _value = ERC20(_coins[i]).decimals()
-            else:
-                _value = ERC20(_ucoins[i]).decimals()
+            _value = ERC20(_coins[i]).decimals()
 
         assert _value < 256  # dev: decimal overflow
         _decimals_packed += shift(_value, i * 8)
 
-    for i in range(MAX_COINS):
-        if i == _n_coins:
-            break
+        if _ucoins[i] != ZERO_ADDRESS:
+            _value = _udecimals[i]
+            if _value == 0:
+                _value = ERC20(_ucoins[i]).decimals()
+
+            assert _value < 256  # dev: decimal overflow
+            _udecimals_packed += shift(_value, i * 8)
 
         # add pool to markets
         for x in range(i, i + MAX_COINS):
@@ -453,7 +424,11 @@ def add_pool(
             else:
                 self.markets[_first][_second][0] = shift(convert(_pool, uint256), 16) + 1
 
-            if (_ucoins[i] == _coins[i] and _ucoins[x] == _coins[x]) or _ucoins[i] == ZERO_ADDRESS or _ucoins[x] == ZERO_ADDRESS:
+            if _ucoins[i] == ZERO_ADDRESS:
+                continue
+            if _ucoins[x] == ZERO_ADDRESS:
+                continue
+            if _ucoins[i] == _coins[i] and _ucoins[x] == _coins[x]:
                 continue
 
             _first = min(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
@@ -469,7 +444,112 @@ def add_pool(
                 self.markets[_first][_second][0] = shift(convert(_pool, uint256), 16) + 1
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
+    self.pool_data[_pool].underlying_decimals = convert(_udecimals_packed, bytes32)
     log.PoolAdded(_pool, _rate_method_id)
+
+
+@public
+def add_pool(
+    _pool: address,
+    _n_coins: int128,
+    _lp_token: address,
+    _rate_method_id: bytes[4],
+    _decimals: uint256[MAX_COINS],
+    _underlying_decimals: uint256[MAX_COINS],
+):
+    """
+    @notice Add a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to add
+    @param _n_coins Number of coins in the pool
+    @param _lp_token Pool deposit token address
+    @param _rate_method_id Encoded function signature to query coin rates
+    @param _decimals Coin decimal values
+    @param _underlying_decimals Underlying coin decimal values
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+
+    for i in range(MAX_COINS):
+        if i == _n_coins:
+            break
+
+        # add coin
+        _coins[i] = CurvePool(_pool).coins(i)
+        ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+        self.pool_data[_pool].coins[i] = _coins[i]
+
+        # add underlying coin
+        _ucoins[i] = CurvePool(_pool).underlying_coins(i)
+        if _ucoins[i] != _coins[i]:
+            ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
+
+        self.pool_data[_pool].ul_coins[i] = _ucoins[i]
+
+    self._add_pool(
+        _pool,
+        _n_coins,
+        _lp_token,
+        _rate_method_id,
+        _coins,
+        _ucoins,
+        _decimals,
+        _underlying_decimals
+    )
+
+
+@public
+def add_pool_without_underlying(
+    _pool: address,
+    _n_coins: int128,
+    _lp_token: address,
+    _rate_method_id: bytes[4],
+    _decimals: uint256[MAX_COINS],
+    _use_rates: bool[MAX_COINS],
+):
+    """
+    @notice Add a pool to the registry
+    @dev Only callable by admin
+    @param _pool Pool address to add
+    @param _n_coins Number of coins in the pool
+    @param _lp_token Pool deposit token address
+    @param _rate_method_id Encoded function signature to query coin rates
+    @param _decimals Underlying coin decimal values
+    @param _use_rates If _use_underlying is False, define which coins should get lending rates
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+
+    for i in range(MAX_COINS):
+        if i == _n_coins:
+            break
+
+        # add coin
+        _coins[i] = CurvePool(_pool).coins(i)
+        ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+        self.pool_data[_pool].coins[i] = _coins[i]
+
+        # add underlying coin
+        if not _use_rates[i]:
+            _ucoins[i] = _coins[i]
+            self.pool_data[_pool].ul_coins[i] = _ucoins[i]
+
+    self._add_pool(
+        _pool,
+        _n_coins,
+        _lp_token,
+        _rate_method_id,
+        _coins,
+        _ucoins,
+        _decimals,
+        EMPTY_UINT256_ARRAY
+    )
 
 
 @public
