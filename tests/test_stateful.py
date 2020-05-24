@@ -84,13 +84,31 @@ class StateMachine:
 
         if st_pool in self.added_pools:
             with brownie.reverts("dev: pool exists"):
-                self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, st_decimals, b"", {'from': self.accounts[0]})
+                self.registry.add_pool(
+                    st_pool,
+                    n_coins,
+                    ZERO_ADDRESS,
+                    b"",
+                    st_decimals,
+                    st_decimals,
+                    {'from': self.accounts[0]}
+                )
         else:
             decimals = st_decimals[:n_coins] + [0] * (8 - n_coins)
+            udecimals = st_decimals[-n_coins:] + [0] * (8 - n_coins)
 
-            self.registry.add_pool(st_pool, n_coins, ZERO_ADDRESS, decimals, b"", {'from': self.accounts[0]})
+            self.registry.add_pool(
+                st_pool,
+                n_coins,
+                ZERO_ADDRESS,
+                b"",
+                decimals,
+                udecimals,
+                {'from': self.accounts[0]}
+            )
             self.added_pools.add(st_pool)
             self.pool_info[st_pool]['decimals'] = decimals
+            self.pool_info[st_pool]['underlying_decimals'] = udecimals
 
     def rule_remove_pool(self, st_pool):
         """
@@ -183,10 +201,12 @@ class StateMachine:
                 assert coins['coins'] == self.pool_info[pool]['coins']
                 assert coins['underlying_coins'] == self.pool_info[pool]['underlying']
                 assert coins['decimals'] == self.pool_info[pool]['decimals']
+                assert coins['underlying_decimals'] == self.pool_info[pool]['underlying_decimals']
             else:
                 assert coins['coins'] == [ZERO_ADDRESS] * 8
                 assert coins['underlying_coins'] == [ZERO_ADDRESS] * 8
                 assert coins['decimals'] == [0] * 8
+                assert coins['underlying_decimals'] == [0] * 8
 
     def invariant_info(self):
         """

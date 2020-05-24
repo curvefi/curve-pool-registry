@@ -59,7 +59,12 @@ def test_balances(accounts, registry_compound, pool_compound, cUSDC):
 
 def test_decimals(registry_compound, pool_compound):
     pool_info = registry_compound.get_pool_info(pool_compound)
-    assert pool_info['decimals'] == [18, 6, 0, 0, 0, 0, 0, 0]
+    assert pool_info['decimals'] == [8, 8, 0, 0, 0, 0, 0, 0]
+
+
+def test_decimals_underlying(registry_compound, pool_compound):
+    pool_info = registry_compound.get_pool_info(pool_compound)
+    assert pool_info['underlying_decimals'] == [18, 6, 0, 0, 0, 0, 0, 0]
 
 
 def test_balances_no_lending(accounts, registry_susd, pool_susd, DAI):

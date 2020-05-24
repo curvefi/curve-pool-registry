@@ -37,8 +37,9 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         pool_compound,
         2,
         lp_compound,
-        [18, 6, 0, 0, 0, 0, 0, 0],
         "0xdEAdbEEf",
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [18, 6, 0, 0, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
@@ -50,8 +51,9 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         pool_compound,
         2,
         lp_compound,
-        [18, 6, 0, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [18, 6, 0, 0, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
