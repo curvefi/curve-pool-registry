@@ -1,0 +1,5 @@
+Transaction sent: 0x7068cf71810460aa43303f9293af0d278705264f499cf7cf8affef3df199ea6d
+  Gas price: 19.106392476 gwei   Gas limit: 3232567
+Waiting for confirmation...
+  Registry.constructor confirmed - Block: 10125853   Gas used: 3232567 (100.00%)
+  Registry deployed at: 0x6FF57Ec11498E67B0195bE1A93C2E56fCAd4Fa00
