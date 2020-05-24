@@ -1,6 +1,8 @@
 import brownie
 import pytest
 
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 
 def test_get_rates_compound(accounts, registry_compound, pool_compound, cDAI):
     assert registry_compound.get_pool_rates.call(pool_compound) == [10**18, 10**18, 0, 0, 0, 0, 0, 0]
@@ -58,3 +60,22 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
     )
 
     assert registry.get_pool_rates.call(pool_compound) == [10**18, 10**18, 0, 0, 0, 0, 0, 0]
+
+
+def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
+    registry.add_pool_without_underlying(
+        pool_compound,
+        2,
+        ZERO_ADDRESS,
+        cDAI.exchangeRateStored.signature,
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [True] + [False] * 7,
+        {'from': accounts[0]}
+    )
+
+    assert registry.get_pool_rates.call(pool_compound) == [10**18, 10**18, 0, 0, 0, 0, 0, 0]
+
+    cDAI._set_exchange_rate(31337, {'from': accounts[0]})
+    cUSDC._set_exchange_rate(31337, {'from': accounts[0]})
+
+    assert registry.get_pool_rates.call(pool_compound) == [31337, 10**18, 0, 0, 0, 0, 0, 0]

@@ -28,14 +28,14 @@ def test_get_pool_coins(registry_compound, pool_compound):
 def test_admin_only(accounts, registry, pool_compound, lp_compound):
     with brownie.reverts("dev: admin-only function"):
         registry.add_pool(
-        pool_compound,
-        2,
-        lp_compound,
-        b"",
-        [8, 8, 0, 0, 0, 0, 0, 0],
-        [18, 6, 0, 0, 0, 0, 0, 0],
-        {'from': accounts[1]}
-    )
+            pool_compound,
+            2,
+            lp_compound,
+            b"",
+            [8, 8, 0, 0, 0, 0, 0, 0],
+            [18, 6, 0, 0, 0, 0, 0, 0],
+            {'from': accounts[1]}
+        )
 
 
 def test_cannot_add_twice(accounts, registry_compound, pool_compound, lp_compound):
@@ -156,5 +156,48 @@ def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
             b"",
             [0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0],
+            {'from': accounts[0]}
+        )
+
+
+def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
+    registry.add_pool_without_underlying(
+        pool_compound,
+        2,
+        ZERO_ADDRESS,
+        b"",
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [True] + [False] * 7,
+        {'from': accounts[0]}
+    )
+    coin_info = registry.get_pool_coins(pool_compound)
+    assert coin_info['coins'] == [cDAI, cUSDC] + [ZERO_ADDRESS] * 6
+    assert coin_info['underlying_coins'] == [ZERO_ADDRESS, cUSDC] + [ZERO_ADDRESS] * 6
+    assert coin_info['decimals'] == [8, 8, 0, 0, 0, 0, 0, 0]
+    assert coin_info['underlying_decimals'] == [0, 8, 0, 0, 0, 0, 0, 0]
+
+
+def test_without_underlying_admin_only(accounts, registry, pool_compound):
+    with brownie.reverts("dev: admin-only function"):
+        registry.add_pool_without_underlying(
+            pool_compound,
+            2,
+            ZERO_ADDRESS,
+            b"",
+            [8, 8, 0, 0, 0, 0, 0, 0],
+            [True] + [False] * 7,
+            {'from': accounts[1]}
+        )
+
+
+def test_without_underlying_already_exists(accounts, registry_compound, pool_compound):
+    with brownie.reverts("dev: pool exists"):
+        registry_compound.add_pool_without_underlying(
+            pool_compound,
+            2,
+            ZERO_ADDRESS,
+            b"",
+            [8, 8, 0, 0, 0, 0, 0, 0],
+            [True] + [False] * 7,
             {'from': accounts[0]}
         )
