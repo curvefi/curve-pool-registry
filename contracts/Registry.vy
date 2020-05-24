@@ -22,6 +22,7 @@ struct PoolCoins:
     coins: address[MAX_COINS]
     underlying_coins: address[MAX_COINS]
     decimals: uint256[MAX_COINS]
+    underlying_decimals: uint256[MAX_COINS]
 
 struct PoolInfo:
     balances: uint256[MAX_COINS]
@@ -139,16 +140,19 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     _coins: PoolCoins = PoolCoins({
         coins: EMPTY_ADDRESS_ARRAY,
         underlying_coins: EMPTY_ADDRESS_ARRAY,
-        decimals: EMPTY_UINT256_ARRAY
+        decimals: EMPTY_UINT256_ARRAY,
+        underlying_decimals: EMPTY_UINT256_ARRAY,
     })
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
+    _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
 
     for i in range(MAX_COINS):
         _coins.coins[i] = self.pool_data[_pool].coins[i]
         if _coins.coins[i] == ZERO_ADDRESS:
             break
-        _coins.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
         _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
+        _coins.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
+        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, 31 - i, 1), uint256)
 
     return _coins
 
