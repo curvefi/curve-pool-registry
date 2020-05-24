@@ -26,8 +26,9 @@ def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT
         pool_compound,
         2,
         lp_compound,
-        [18, 6, 0, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [18, 6, 0, 0, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
@@ -42,8 +43,9 @@ def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
         pool_y,
         4,
         lp_y,
-        [18, 6, 6, 18, 0, 0, 0, 0],
         yDAI.getPricePerFullShare.signature,
+        [18, 6, 6, 18, 0, 0, 0, 0],
+        [18, 6, 6, 18, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
@@ -58,8 +60,9 @@ def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
         pool_susd,
         4,
         lp_susd,
-        [18, 6, 6, 18, 0, 0, 0, 0],
         b"",
+        [18, 6, 6, 18, 0, 0, 0, 0],
+        [18, 6, 6, 18, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
@@ -80,24 +83,27 @@ def registry_all(
         pool_compound,
         2,
         lp_compound,
-        [18, 6, 0, 0, 0, 0, 0, 0],
         cDAI.exchangeRateStored.signature,
+        [8, 8, 0, 0, 0, 0, 0, 0],
+        [18, 6, 0, 0, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
     registry.add_pool(
         pool_y,
         4,
         lp_y,
-        [18, 6, 6, 18, 0, 0, 0, 0],
         yDAI.getPricePerFullShare.signature,
+        [18, 6, 6, 18, 0, 0, 0, 0],
+        [18, 6, 6, 18, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
     registry.add_pool(
         pool_susd,
         4,
         lp_susd,
-        [18, 6, 6, 18, 0, 0, 0, 0],
         b"",
+        [18, 6, 6, 18, 0, 0, 0, 0],
+        [18, 6, 6, 18, 0, 0, 0, 0],
         {'from': accounts[0]}
     )
 
