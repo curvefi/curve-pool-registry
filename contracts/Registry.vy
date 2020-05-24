@@ -291,7 +291,7 @@ def _get_token_indices(
             break
         else:
             continue
-        if i > -1 and j > -1:
+        if min(i, j) > -1:
             return i, j, True
 
     raise "No available market"
