@@ -773,3 +773,14 @@ def claim_token_balance(_token: address):
 
     _balance: uint256 = ERC20(_token).balanceOf(self)
     ERC20(_token).transfer(msg.sender, _balance)
+
+
+@public
+def claim_eth_balance():
+    """
+    @notice Transfer ether balance held by this contract
+    @dev The entire balance is transferred to `self.admin`
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    send(msg.sender, self.balance)
