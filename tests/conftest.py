@@ -70,6 +70,23 @@ def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
 
 
 @pytest.fixture(scope="module")
+def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
+    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
+    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry.add_pool(
+        pool_eth,
+        3,
+        lp_y,
+        b"",
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        {'from': accounts[0]}
+    )
+
+    yield registry
+
+
+@pytest.fixture(scope="module")
 def registry_all(
     Registry, accounts,
     pool_compound, pool_y, pool_susd,
@@ -133,6 +150,16 @@ def pool_susd(PoolMock, accounts, DAI, USDC, USDT, sUSD):
     coins = [DAI, USDC, USDT, sUSD]
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     yield PoolMock.deploy(4, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def pool_eth(PoolMock, accounts, DAI, USDT, yDAI, yUSDT):
+    coins = [yDAI, yUSDT, "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", ZERO_ADDRESS]
+    underlying = [DAI, USDT, "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", ZERO_ADDRESS]
+    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
+    pool = PoolMock.deploy(3, coins, underlying, returns_none, 70, 4000000, {'from': accounts[0]})
+    accounts[-1].transfer(pool, accounts[-1].balance())
+    yield pool
 
 # lp tokens
 
