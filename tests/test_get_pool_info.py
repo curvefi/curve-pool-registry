@@ -67,6 +67,11 @@ def test_decimals_underlying(registry_compound, pool_compound):
     assert pool_info['underlying_decimals'] == [18, 6, 0, 0, 0, 0, 0, 0]
 
 
+def test_decimals_eth(registry_eth, pool_eth):
+    pool_info = registry_eth.get_pool_info.transact(pool_eth).return_value
+    assert pool_info['decimals'] == [18, 6, 18, 0, 0, 0, 0, 0]
+
+
 def test_balances_no_lending(accounts, registry_susd, pool_susd, DAI):
     pool_info = registry_susd.get_pool_info(pool_susd)
     assert pool_info['balances'] == [0, 0, 0, 0, 0, 0, 0, 0]

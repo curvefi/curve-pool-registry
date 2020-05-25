@@ -31,3 +31,16 @@ def test_claim_return_false(registry, accounts, BAD):
 
     assert BAD.balanceOf(registry) == 0
     assert BAD.balanceOf(accounts[0]) == 10**18
+
+
+def test_ether(registry, accounts):
+    accounts[1].transfer(registry, "1 ether")
+    balance = accounts[0].balance()
+
+    registry.claim_eth_balance({'from': accounts[0]})
+    assert accounts[0].balance() == balance + "1 ether"
+
+
+def test_ether_admin_only(registry, accounts):
+    with brownie.reverts("dev: admin-only function"):
+        registry.claim_eth_balance({'from': accounts[1]})
