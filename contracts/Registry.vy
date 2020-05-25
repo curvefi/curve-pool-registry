@@ -195,10 +195,16 @@ def get_pool_info(_pool: address) -> PoolInfo:
         _pool_info.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
         _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, 31 - i, 1), uint256)
 
-        _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
+        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _pool_info.balances[i] = as_unitless_number(self.balance)
+        else:
+            _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
+
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
             _pool_info.underlying_balances[i] = _pool_info.balances[i]
+        elif _underlying_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _pool_info.underlying_balances[i] = as_unitless_number(self.balance)
         elif _underlying_coin != ZERO_ADDRESS:
             _pool_info.underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
 
@@ -424,7 +430,9 @@ def _add_pool(
 
         # add decimals
         _value: uint256 = _decimals[i]
-        if _value == 0:
+        if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _value = 18
+        elif _value == 0:
             _value = ERC20(_coins[i]).decimals()
 
         assert _value < 256  # dev: decimal overflow
@@ -432,7 +440,9 @@ def _add_pool(
 
         if _ucoins[i] != ZERO_ADDRESS:
             _value = _udecimals[i]
-            if _value == 0:
+            if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                _value = 18
+            elif _value == 0:
                 _value = ERC20(_ucoins[i]).decimals()
 
             assert _value < 256  # dev: decimal overflow
@@ -511,14 +521,15 @@ def add_pool(
 
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
-        ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+        if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            ERC20(_coins[i]).approve(_pool, MAX_UINT256)
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
         _ucoins[i] = CurvePool(_pool).underlying_coins(i)
         if _ucoins[i] != _coins[i]:
-            ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
-
+            if _ucoins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
         self.pool_data[_pool].ul_coins[i] = _ucoins[i]
 
     self._add_pool(
@@ -564,7 +575,8 @@ def add_pool_without_underlying(
 
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
-        ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+        if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            ERC20(_coins[i]).approve(_pool, MAX_UINT256)
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
