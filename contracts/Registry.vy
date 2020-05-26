@@ -407,7 +407,7 @@ def _add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
-    _rate_method_id: bytes[4],
+    _rate_method_id: bytes32,
     _coins: address[MAX_COINS],
     _ucoins: address[MAX_COINS],
     _decimals: bytes32,
@@ -419,7 +419,7 @@ def _add_pool(
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
     self.pool_data[_pool].lp_token = _lp_token
-    self.pool_data[_pool].rate_method_id = convert(_rate_method_id, bytes32)
+    self.pool_data[_pool].rate_method_id = _rate_method_id
 
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
@@ -489,7 +489,7 @@ def _add_pool(
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
     self.pool_data[_pool].underlying_decimals = convert(_udecimals_packed, bytes32)
-    log.PoolAdded(_pool, _rate_method_id)
+    log.PoolAdded(_pool, slice(_rate_method_id, 0, 4))
 
 
 @public
@@ -497,7 +497,7 @@ def add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
-    _rate_method_id: bytes[4],
+    _rate_method_id: bytes32,
     _decimals: bytes32,
     _underlying_decimals: bytes32,
 ):
@@ -551,7 +551,7 @@ def add_pool_without_underlying(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
-    _rate_method_id: bytes[4],
+    _rate_method_id: bytes32,
     _decimals: bytes32,
     _use_rates: bool[MAX_COINS],
 ):
