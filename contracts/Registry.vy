@@ -157,8 +157,8 @@ def get_pool_coins(_pool: address) -> PoolCoins:
         if _coins.coins[i] == ZERO_ADDRESS:
             break
         _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
-        _coins.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
-        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, 31 - i, 1), uint256)
+        _coins.decimals[i] = convert(slice(_decimals_packed, i, 1), uint256)
+        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, i, 1), uint256)
 
     return _coins
 
@@ -192,8 +192,8 @@ def get_pool_info(_pool: address) -> PoolInfo:
             assert i != 0
             break
 
-        _pool_info.decimals[i] = convert(slice(_decimals_packed, 31 - i, 1), uint256)
-        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, 31 - i, 1), uint256)
+        _pool_info.decimals[i] = convert(slice(_decimals_packed, i, 1), uint256)
+        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, i, 1), uint256)
 
         if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _pool_info.balances[i] = as_unitless_number(self.balance)
@@ -410,8 +410,8 @@ def _add_pool(
     _rate_method_id: bytes[4],
     _coins: address[MAX_COINS],
     _ucoins: address[MAX_COINS],
-    _decimals: uint256[MAX_COINS],
-    _udecimals: uint256[MAX_COINS],
+    _decimals: bytes32,
+    _udecimals: bytes32,
 ):
     # add pool to pool_list
     _length: uint256 = self.pool_count
@@ -429,24 +429,24 @@ def _add_pool(
             break
 
         # add decimals
-        _value: uint256 = _decimals[i]
+        _value: uint256 = convert(slice(_decimals, i, 1), uint256)
         if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _value = 18
         elif _value == 0:
             _value = ERC20(_coins[i]).decimals()
 
         assert _value < 256  # dev: decimal overflow
-        _decimals_packed += shift(_value, i * 8)
+        _decimals_packed += shift(_value, (31-i) * 8)
 
         if _ucoins[i] != ZERO_ADDRESS:
-            _value = _udecimals[i]
+            _value = convert(slice(_udecimals, i, 1), uint256)
             if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                 _value = 18
             elif _value == 0:
                 _value = ERC20(_ucoins[i]).decimals()
 
             assert _value < 256  # dev: decimal overflow
-            _udecimals_packed += shift(_value, i * 8)
+            _udecimals_packed += shift(_value, (31-i) * 8)
 
         # add pool to markets
         for x in range(i, i + MAX_COINS):
@@ -496,8 +496,8 @@ def add_pool(
     _n_coins: int128,
     _lp_token: address,
     _rate_method_id: bytes[4],
-    _decimals: uint256[MAX_COINS],
-    _underlying_decimals: uint256[MAX_COINS],
+    _decimals: bytes32,
+    _underlying_decimals: bytes32,
 ):
     """
     @notice Add a pool to the registry
@@ -550,7 +550,7 @@ def add_pool_without_underlying(
     _n_coins: int128,
     _lp_token: address,
     _rate_method_id: bytes[4],
-    _decimals: uint256[MAX_COINS],
+    _decimals: bytes32,
     _use_rates: bool[MAX_COINS],
 ):
     """
@@ -592,7 +592,7 @@ def add_pool_without_underlying(
         _coins,
         _ucoins,
         _decimals,
-        EMPTY_UINT256_ARRAY
+        EMPTY_BYTES32
     )
 
 
