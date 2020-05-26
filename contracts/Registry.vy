@@ -507,9 +507,12 @@ def add_pool(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded function signature to query coin rates
-    @param _decimals Coin decimal values
-    @param _underlying_decimals Underlying coin decimal values
+    @param _rate_method_id Encoded four-byte function signature to query
+                           coin rates, right padded to bytes32
+    @param _decimals Coin decimal values, tightly packed as uint8 and right
+                     padded as bytes32
+    @param _underlying_decimals Underlying coin decimal values, tightly packed
+                                as uint8 and right padded as bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
@@ -561,9 +564,11 @@ def add_pool_without_underlying(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded function signature to query coin rates
-    @param _decimals Underlying coin decimal values
-    @param _use_rates If _use_underlying is False, define which coins should get lending rates
+    @param _rate_method_id Encoded four-byte function signature to query
+                           coin rates, right padded as bytes32
+    @param _decimals Coin decimal values, tightly packed as uint8 and right
+                     padded as bytes32
+    @param _use_rates Define which coins use lending rates
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
