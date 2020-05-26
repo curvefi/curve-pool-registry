@@ -1,10 +1,10 @@
 import json
 from web3 import middleware
 from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
-from brownie import web3, accounts, Registry, yERC20, cERC20
+from brownie import web3, accounts, Registry, yERC20, cERC20, Contract
 
 DEPLOYER = "0xC447FcAF1dEf19A583F97b3620627BF69c05b5fB"
-POA = True
+POA = True  # False
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 TETHERS = ["0xdAC17F958D2ee523a2206206994597C13D831ec7"] + [ZERO_ADDRESS] * 3
 MAX_COINS = 8
@@ -52,26 +52,30 @@ def main(deployment_address=DEPLOYER):
     if POA:
         web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
 
-    while True:
-        try:
-            registry = Registry.deploy(TETHERS, {'from': deployer})
-        except KeyError:
-            continue
-        break
-    with open('registry.abi', 'w') as f:
-        json.dump(registry.abi, f, indent=True)
+    try:
+        registry = Contract("0x2eD8727881A07bB8192C94D1a21ac827d22Fc25C")
+        print("Using saved registry")
+    except Exception:
+        while True:
+            try:
+                registry = Registry.deploy(TETHERS, {'from': deployer})
+            except KeyError:
+                continue
+            break
+        with open('registry.abi', 'w') as f:
+            json.dump(registry.abi, f, indent=True)
 
     for i, pool in enumerate(POOLS):
         print("Adding pool {} out of {}...".format(i + 1, len(POOLS)))
         args = list(pool) + [{'from': deployer}]
         while True:
             try:
-                if isinstance(args[-1][0], bool):
+                if isinstance(args[-2][0], bool):
                     # if the last arg is a bool array, call `add_pool_without_underlying`
                     registry.add_pool_without_underlying(*args)
                 else:
                     # otherwise, call `add_pool`
                     registry.add_pool(*args)
-            except KeyError:
+            except (KeyError, ValueError):
                 continue
             break
