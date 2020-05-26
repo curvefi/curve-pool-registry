@@ -430,22 +430,24 @@ def _add_pool(
 
         # add decimals
         _value: uint256 = convert(slice(_decimals, i, 1), uint256)
-        if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _value = 18
-        elif _value == 0:
-            _value = ERC20(_coins[i]).decimals()
+        if _value == 0:
+            if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                _value = 18
+            else:
+                _value = ERC20(_coins[i]).decimals()
+                assert _value < 256  # dev: decimal overflow
 
-        assert _value < 256  # dev: decimal overflow
         _decimals_packed += shift(_value, (31-i) * 8)
 
         if _ucoins[i] != ZERO_ADDRESS:
             _value = convert(slice(_udecimals, i, 1), uint256)
-            if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-                _value = 18
-            elif _value == 0:
-                _value = ERC20(_ucoins[i]).decimals()
+            if _value == 0:
+                if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                    _value = 18
+                else:
+                    _value = ERC20(_ucoins[i]).decimals()
+                    assert _value < 256  # dev: decimal overflow
 
-            assert _value < 256  # dev: decimal overflow
             _udecimals_packed += shift(_value, (31-i) * 8)
 
         # add pool to markets
