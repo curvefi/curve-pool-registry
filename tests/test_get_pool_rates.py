@@ -71,7 +71,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         ZERO_ADDRESS,
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
-        [True] + [False] * 7,
+        pack_values([True] + [False] * 7),
         {'from': accounts[0]}
     )
 

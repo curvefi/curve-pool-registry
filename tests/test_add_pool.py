@@ -143,7 +143,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         ZERO_ADDRESS,
         "0x00",
         pack_values([8, 8]),
-        [True] + [False] * 7,
+        pack_values([True] + [False] * 7),
         {'from': accounts[0]}
     )
     coin_info = registry.get_pool_coins(pool_compound)
@@ -161,7 +161,7 @@ def test_without_underlying_admin_only(accounts, registry, pool_compound):
             ZERO_ADDRESS,
             "0x00",
             pack_values([8, 8]),
-            [True] + [False] * 7,
+            pack_values([True] + [False] * 7),
             {'from': accounts[1]}
         )
 
@@ -174,6 +174,6 @@ def test_without_underlying_already_exists(accounts, registry_compound, pool_com
             ZERO_ADDRESS,
             "0x00",
             pack_values([8, 8]),
-            [True] + [False] * 7,
+            pack_values([True] + [False] * 7),
             {'from': accounts[0]}
         )
