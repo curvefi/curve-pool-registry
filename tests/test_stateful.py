@@ -3,6 +3,8 @@ from brownie.test import contract_strategy, strategy
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
+from scripts.utils import pack_values
+
 
 class StateMachine:
 
@@ -89,8 +91,8 @@ class StateMachine:
                     n_coins,
                     ZERO_ADDRESS,
                     b"",
-                    st_decimals,
-                    st_decimals,
+                    "0x00",
+                    "0x00",
                     {'from': self.accounts[0]}
                 )
         else:
@@ -102,8 +104,8 @@ class StateMachine:
                 n_coins,
                 ZERO_ADDRESS,
                 b"",
-                decimals,
-                udecimals,
+                pack_values(decimals),
+                pack_values(udecimals),
                 {'from': self.accounts[0]}
             )
             self.added_pools.add(st_pool)

@@ -1,5 +1,7 @@
 import pytest
 
+from scripts.utils import pack_values
+
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -27,8 +29,8 @@ def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT
         2,
         lp_compound,
         cDAI.exchangeRateStored.signature,
-        [8, 8, 0, 0, 0, 0, 0, 0],
-        [18, 6, 0, 0, 0, 0, 0, 0],
+        pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
+        pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
 
@@ -44,8 +46,8 @@ def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
         4,
         lp_y,
         yDAI.getPricePerFullShare.signature,
-        [18, 6, 6, 18, 0, 0, 0, 0],
-        [18, 6, 6, 18, 0, 0, 0, 0],
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
 
@@ -61,8 +63,8 @@ def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
         4,
         lp_susd,
         b"",
-        [18, 6, 6, 18, 0, 0, 0, 0],
-        [18, 6, 6, 18, 0, 0, 0, 0],
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
 
@@ -78,8 +80,8 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
         3,
         lp_y,
         b"",
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
+        "0x00",
+        "0x00",
         {'from': accounts[0]}
     )
 
@@ -101,8 +103,8 @@ def registry_all(
         2,
         lp_compound,
         cDAI.exchangeRateStored.signature,
-        [8, 8, 0, 0, 0, 0, 0, 0],
-        [18, 6, 0, 0, 0, 0, 0, 0],
+        pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
+        pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
     registry.add_pool(
@@ -110,8 +112,8 @@ def registry_all(
         4,
         lp_y,
         yDAI.getPricePerFullShare.signature,
-        [18, 6, 6, 18, 0, 0, 0, 0],
-        [18, 6, 6, 18, 0, 0, 0, 0],
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
     registry.add_pool(
@@ -119,8 +121,8 @@ def registry_all(
         4,
         lp_susd,
         b"",
-        [18, 6, 6, 18, 0, 0, 0, 0],
-        [18, 6, 6, 18, 0, 0, 0, 0],
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
 

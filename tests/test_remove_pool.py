@@ -1,6 +1,8 @@
 import brownie
 import pytest
 
+from scripts.utils import pack_values
+
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -82,8 +84,8 @@ def test_get_pool_info(accounts, registry_all, pool_y, pool_susd, lp_susd):
         4,
         lp_susd,
         b"",
-        [18, 6, 6, 18, 0, 0, 0, 0],
-        [18, 6, 6, 18, 0, 0, 0, 0],
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
         {'from': accounts[0]}
     )
     assert registry_all.get_pool_info(pool_susd) == pool_info

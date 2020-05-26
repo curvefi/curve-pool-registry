@@ -1,6 +1,8 @@
 import brownie
 import pytest
 
+from scripts.utils import pack_values
+
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -32,8 +34,8 @@ def test_admin_only(accounts, registry, pool_compound, lp_compound):
             2,
             lp_compound,
             b"",
-            [8, 8, 0, 0, 0, 0, 0, 0],
-            [18, 6, 0, 0, 0, 0, 0, 0],
+            pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
+            pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
             {'from': accounts[1]}
         )
 
@@ -45,8 +47,8 @@ def test_cannot_add_twice(accounts, registry_compound, pool_compound, lp_compoun
             2,
             lp_compound,
             b"",
-            [8, 8, 0, 0, 0, 0, 0, 0],
-            [18, 6, 0, 0, 0, 0, 0, 0],
+            pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
+            pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
             {'from': accounts[0]}
         )
 
@@ -58,8 +60,8 @@ def test_add_multiple(accounts, registry, pool_y, pool_susd, lp_y):
             4,
             lp_y,
             b"\x4d\x89\x6d\xbd",
-            [18, 6, 6, 18, 0, 0, 0, 0],
-            [1, 2, 3, 4, 0, 0, 0, 0],
+            pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+            pack_values([1, 2, 3, 4, 0, 0, 0, 0]),
             {'from': accounts[0]}
         )
 
@@ -82,8 +84,8 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
         4,
         lp_y,
         b"",
-        [1, 2, 3, 4, 0, 0, 0, 0],
-        [9, 8, 7, 6, 0, 0, 0, 0],
+        pack_values([1, 2, 3, 4, 0, 0, 0, 0]),
+        pack_values([9, 8, 7, 6, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
     y_pool_info = registry.get_pool_info(pool_y)
@@ -93,8 +95,8 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
         4,
         lp_susd,
         b"",
-        [33, 44, 55, 66, 0, 0, 0, 0],
-        [99, 88, 77, 22, 0, 0, 0, 0],
+        pack_values([33, 44, 55, 66, 0, 0, 0, 0]),
+        pack_values([99, 88, 77, 22, 0, 0, 0, 0]),
         {'from': accounts[0]}
     )
     susd_pool_info = registry.get_pool_info(pool_susd)
@@ -108,38 +110,12 @@ def test_fetch_decimals(accounts, registry, pool_y, lp_y):
         4,
         lp_y,
         b"",
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
+        "0x00",
+        "0x00",
         {'from': accounts[0]}
     )
     assert registry.get_pool_coins(pool_y)['underlying_decimals'] == [18, 6, 6, 18, 0, 0, 0, 0]
     assert registry.get_pool_coins(pool_y)['decimals'] == [18, 6, 6, 18, 0, 0, 0, 0]
-
-
-def test_decimal_overflows_via_calldata(accounts, registry, pool_y, lp_y):
-    with brownie.reverts("dev: decimal overflow"):
-        registry.add_pool(
-            pool_y,
-            4,
-            lp_y,
-            b"",
-            [256, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            {'from': accounts[0]}
-        )
-
-
-def test_underlying_decimal_overflows_via_calldata(accounts, registry, pool_y, lp_y):
-    with brownie.reverts("dev: decimal overflow"):
-        registry.add_pool(
-            pool_y,
-            4,
-            lp_y,
-            b"",
-            [18, 0, 0, 0, 0, 0, 0, 0],
-            [256, 0, 0, 0, 0, 0, 0, 0],
-            {'from': accounts[0]}
-        )
 
 
 def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
@@ -154,8 +130,8 @@ def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
             2,
             ZERO_ADDRESS,
             b"",
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
+            "0x00",
+            "0x00",
             {'from': accounts[0]}
         )
 
@@ -166,7 +142,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         2,
         ZERO_ADDRESS,
         b"",
-        [8, 8, 0, 0, 0, 0, 0, 0],
+        pack_values([8, 8]),
         [True] + [False] * 7,
         {'from': accounts[0]}
     )
@@ -184,7 +160,7 @@ def test_without_underlying_admin_only(accounts, registry, pool_compound):
             2,
             ZERO_ADDRESS,
             b"",
-            [8, 8, 0, 0, 0, 0, 0, 0],
+            pack_values([8, 8]),
             [True] + [False] * 7,
             {'from': accounts[1]}
         )
@@ -197,7 +173,7 @@ def test_without_underlying_already_exists(accounts, registry_compound, pool_com
             2,
             ZERO_ADDRESS,
             b"",
-            [8, 8, 0, 0, 0, 0, 0, 0],
+            pack_values([8, 8]),
             [True] + [False] * 7,
             {'from': accounts[0]}
         )

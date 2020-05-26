@@ -1,5 +1,7 @@
 import brownie
 
+from scripts.utils import pack_values
+
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -75,8 +77,8 @@ def test_min_dy(accounts, registry, pool_compound, lp_compound, DAI, USDC):
         2,
         lp_compound,
         b"",
-        [8, 8, 0, 0, 0, 0, 0, 0],
-        [18, 6, 0, 0, 0, 0, 0, 0],
+        pack_values([8, 8]),
+        pack_values([18, 6]),
         {'from': accounts[0]}
     )
     DAI._mint_for_testing(10**18, {'from': accounts[0]})
@@ -110,8 +112,8 @@ def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
         2,
         ZERO_ADDRESS,
         b"",
-        [18, 18, 0, 0, 0, 0, 0, 0],
-        [18, 18, 0, 0, 0, 0, 0, 0],
+        pack_values([18, 18]),
+        pack_values([18, 18]),
         {'from': accounts[0]}
     )
 
@@ -142,8 +144,8 @@ def test_token_returns_false_revert(PoolMock, accounts, BAD, DAI, registry):
         2,
         ZERO_ADDRESS,
         b"",
-        [18, 18, 0, 0, 0, 0, 0, 0],
-        [18, 18, 0, 0, 0, 0, 0, 0],
+        pack_values([18, 18]),
+        pack_values([18, 18]),
         {'from': accounts[0]}
     )
 
