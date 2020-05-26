@@ -556,7 +556,7 @@ def add_pool_without_underlying(
     _lp_token: address,
     _rate_method_id: bytes32,
     _decimals: bytes32,
-    _use_rates: bool[MAX_COINS],
+    _use_rates: bytes32,
 ):
     """
     @notice Add a pool to the registry
@@ -568,13 +568,15 @@ def add_pool_without_underlying(
                            coin rates, right padded as bytes32
     @param _decimals Coin decimal values, tightly packed as uint8 and right
                      padded as bytes32
-    @param _use_rates Define which coins use lending rates
+    @param _use_rates Boolean array indicating which coins use lending rates,
+                      tightly packed and right padded as bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
     _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
     _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _use_rates_mem: bytes32 = _use_rates
 
     for i in range(MAX_COINS):
         if i == _n_coins:
@@ -587,7 +589,7 @@ def add_pool_without_underlying(
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
-        if not _use_rates[i]:
+        if not convert(slice(_use_rates_mem, i, 1), bool):
             _ucoins[i] = _coins[i]
             self.pool_data[_pool].ul_coins[i] = _ucoins[i]
 
