@@ -90,7 +90,7 @@ class StateMachine:
                     st_pool,
                     n_coins,
                     ZERO_ADDRESS,
-                    b"",
+                    "0x00",
                     "0x00",
                     "0x00",
                     {'from': self.accounts[0]}
@@ -103,7 +103,7 @@ class StateMachine:
                 st_pool,
                 n_coins,
                 ZERO_ADDRESS,
-                b"",
+                "0x00",
                 pack_values(decimals),
                 pack_values(udecimals),
                 {'from': self.accounts[0]}

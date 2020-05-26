@@ -33,9 +33,9 @@ def test_admin_only(accounts, registry, pool_compound, lp_compound):
             pool_compound,
             2,
             lp_compound,
-            b"",
-            pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
-            pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
+            "0x00",
+            pack_values([8, 8]),
+            pack_values([18, 6]),
             {'from': accounts[1]}
         )
 
@@ -46,9 +46,9 @@ def test_cannot_add_twice(accounts, registry_compound, pool_compound, lp_compoun
             pool_compound,
             2,
             lp_compound,
-            b"",
-            pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
-            pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
+            "0x00",
+            pack_values([8, 8]),
+            pack_values([18, 6]),
             {'from': accounts[0]}
         )
 
@@ -59,9 +59,9 @@ def test_add_multiple(accounts, registry, pool_y, pool_susd, lp_y):
             pool,
             4,
             lp_y,
-            b"\x4d\x89\x6d\xbd",
-            pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
-            pack_values([1, 2, 3, 4, 0, 0, 0, 0]),
+            "0x00",
+            pack_values([18, 6, 6, 18]),
+            pack_values([1, 2, 3, 4]),
             {'from': accounts[0]}
         )
 
@@ -83,9 +83,9 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
         pool_y,
         4,
         lp_y,
-        b"",
-        pack_values([1, 2, 3, 4, 0, 0, 0, 0]),
-        pack_values([9, 8, 7, 6, 0, 0, 0, 0]),
+        "0x00",
+        pack_values([1, 2, 3, 4]),
+        pack_values([9, 8, 7, 6]),
         {'from': accounts[0]}
     )
     y_pool_info = registry.get_pool_info(pool_y)
@@ -94,9 +94,9 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
         pool_susd,
         4,
         lp_susd,
-        b"",
-        pack_values([33, 44, 55, 66, 0, 0, 0, 0]),
-        pack_values([99, 88, 77, 22, 0, 0, 0, 0]),
+        "0x00",
+        pack_values([33, 44, 55, 66]),
+        pack_values([99, 88, 77, 22]),
         {'from': accounts[0]}
     )
     susd_pool_info = registry.get_pool_info(pool_susd)
@@ -109,7 +109,7 @@ def test_fetch_decimals(accounts, registry, pool_y, lp_y):
         pool_y,
         4,
         lp_y,
-        b"",
+        "0x00",
         "0x00",
         "0x00",
         {'from': accounts[0]}
@@ -129,7 +129,7 @@ def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
             pool,
             2,
             ZERO_ADDRESS,
-            b"",
+            "0x00",
             "0x00",
             "0x00",
             {'from': accounts[0]}
@@ -141,7 +141,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         pool_compound,
         2,
         ZERO_ADDRESS,
-        b"",
+        "0x00",
         pack_values([8, 8]),
         [True] + [False] * 7,
         {'from': accounts[0]}
@@ -159,7 +159,7 @@ def test_without_underlying_admin_only(accounts, registry, pool_compound):
             pool_compound,
             2,
             ZERO_ADDRESS,
-            b"",
+            "0x00",
             pack_values([8, 8]),
             [True] + [False] * 7,
             {'from': accounts[1]}
@@ -172,7 +172,7 @@ def test_without_underlying_already_exists(accounts, registry_compound, pool_com
             pool_compound,
             2,
             ZERO_ADDRESS,
-            b"",
+            "0x00",
             pack_values([8, 8]),
             [True] + [False] * 7,
             {'from': accounts[0]}

@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.utils import pack_values
+from scripts.utils import pack_values, right_pad
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -28,9 +28,9 @@ def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT
         pool_compound,
         2,
         lp_compound,
-        cDAI.exchangeRateStored.signature,
-        pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
-        pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
+        right_pad(cDAI.exchangeRateStored.signature),
+        pack_values([8, 8]),
+        pack_values([18, 6]),
         {'from': accounts[0]}
     )
 
@@ -45,9 +45,9 @@ def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
         pool_y,
         4,
         lp_y,
-        yDAI.getPricePerFullShare.signature,
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        right_pad(yDAI.getPricePerFullShare.signature),
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
         {'from': accounts[0]}
     )
 
@@ -62,9 +62,9 @@ def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
         pool_susd,
         4,
         lp_susd,
-        b"",
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        "0x00",
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
         {'from': accounts[0]}
     )
 
@@ -79,7 +79,7 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
         pool_eth,
         3,
         lp_y,
-        b"",
+        "0x00",
         "0x00",
         "0x00",
         {'from': accounts[0]}
@@ -102,27 +102,27 @@ def registry_all(
         pool_compound,
         2,
         lp_compound,
-        cDAI.exchangeRateStored.signature,
-        pack_values([8, 8, 0, 0, 0, 0, 0, 0]),
-        pack_values([18, 6, 0, 0, 0, 0, 0, 0]),
+        right_pad(cDAI.exchangeRateStored.signature),
+        pack_values([8, 8]),
+        pack_values([18, 6]),
         {'from': accounts[0]}
     )
     registry.add_pool(
         pool_y,
         4,
         lp_y,
-        yDAI.getPricePerFullShare.signature,
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        right_pad(yDAI.getPricePerFullShare.signature),
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
         {'from': accounts[0]}
     )
     registry.add_pool(
         pool_susd,
         4,
         lp_susd,
-        b"",
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
-        pack_values([18, 6, 6, 18, 0, 0, 0, 0]),
+        "0x00",
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
         {'from': accounts[0]}
     )
 

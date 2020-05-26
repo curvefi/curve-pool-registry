@@ -1,7 +1,7 @@
 import brownie
 import pytest
 
-from scripts.utils import pack_values
+from scripts.utils import pack_values, right_pad
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -41,7 +41,7 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         pool_compound,
         2,
         lp_compound,
-        "0xdEAdbEEf",
+        right_pad("0xdEAdbEEf"),
         pack_values([8, 8]),
         pack_values([18, 6]),
         {'from': accounts[0]}
@@ -55,7 +55,7 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         pool_compound,
         2,
         lp_compound,
-        cDAI.exchangeRateStored.signature,
+        right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
         {'from': accounts[0]}
@@ -69,7 +69,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         pool_compound,
         2,
         ZERO_ADDRESS,
-        cDAI.exchangeRateStored.signature,
+        right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         [True] + [False] * 7,
         {'from': accounts[0]}
