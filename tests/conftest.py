@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.utils import pack_values, right_pad
+from .utils import pack_values, right_pad
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -162,6 +162,7 @@ def pool_eth(PoolMock, accounts, DAI, USDT, yDAI, yUSDT):
     pool = PoolMock.deploy(3, coins, underlying, returns_none, 70, 4000000, {'from': accounts[0]})
     accounts[-1].transfer(pool, accounts[-1].balance())
     yield pool
+
 
 # lp tokens
 
