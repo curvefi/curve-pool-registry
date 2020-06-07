@@ -1,7 +1,7 @@
 # (c) Curve.Fi, 2020
 # Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
 
-MAX_COINS: constant(int128) = 5
+MAX_COINS: constant(int128) = 8
 INPUT_SIZE: constant(int128) = 50
 FEE_DENOMINATOR: constant(uint256) = 10 ** 10
 
