@@ -8,6 +8,8 @@ EMPTY_ADDRESS_ARRAY: constant(address[MAX_COINS]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA,
 ZERO: constant(uint256) = convert(0, uint256)
 EMPTY_UINT256_ARRAY: constant(uint256[MAX_COINS]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
 
+CALC_INPUT_SIZE: constant(int128) = 50
+
 
 struct PoolArray:
     location: uint256
@@ -17,6 +19,7 @@ struct PoolArray:
     lp_token: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
+    calculator: address
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -53,6 +56,12 @@ contract CurvePool:
 
 contract GasEstimator:
     def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: constant
+
+contract Calculator:
+    def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
+               rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
+               underlying: bool,
+               i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: constant
 
 
 CommitNewAdmin: event({deadline: indexed(uint256), admin: indexed(address)})
