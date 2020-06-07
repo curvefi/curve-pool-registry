@@ -825,6 +825,12 @@ def set_calculator(_pool: address, _calculator: address):
 
 
 @public
+@constant
+def get_calculator(_pool: address) -> address:
+    return self.pool_data[_pool].calculator
+
+
+@public
 def commit_transfer_ownership(_new_admin: address):
     """
     @notice Initiate a transfer of contract ownership
