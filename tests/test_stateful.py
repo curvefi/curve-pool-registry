@@ -90,6 +90,7 @@ class StateMachine:
                     st_pool,
                     n_coins,
                     ZERO_ADDRESS,
+                    ZERO_ADDRESS,
                     "0x00",
                     "0x00",
                     "0x00",
@@ -102,6 +103,7 @@ class StateMachine:
             self.registry.add_pool(
                 st_pool,
                 n_coins,
+                ZERO_ADDRESS,
                 ZERO_ADDRESS,
                 "0x00",
                 pack_values(decimals),

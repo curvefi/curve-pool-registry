@@ -83,6 +83,7 @@ def test_get_pool_info(accounts, registry_all, pool_y, pool_susd, lp_susd):
         pool_susd,
         4,
         lp_susd,
+        ZERO_ADDRESS,
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),

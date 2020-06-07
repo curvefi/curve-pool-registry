@@ -1,6 +1,6 @@
 import pytest
 
-from .utils import pack_values, right_pad
+from scripts.utils import pack_values, right_pad
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -21,13 +21,14 @@ def registry(Registry, accounts, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT):
+def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound, cDAI, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_compound,
         2,
         lp_compound,
+        calculator,
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
@@ -38,13 +39,14 @@ def registry_compound(accounts, Registry, pool_compound, lp_compound, cDAI, USDT
 
 
 @pytest.fixture(scope="module")
-def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
+def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_y,
         4,
         lp_y,
+        calculator,
         right_pad(yDAI.getPricePerFullShare.signature),
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
@@ -55,13 +57,14 @@ def registry_y(Registry, accounts, pool_y, lp_y, yDAI, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_susd(Registry, accounts, pool_susd, lp_susd, USDT):
+def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
         pool_susd,
         4,
         lp_susd,
+        calculator,
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
@@ -79,6 +82,7 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
         pool_eth,
         3,
         lp_y,
+        ZERO_ADDRESS,
         "0x00",
         "0x00",
         "0x00",
@@ -93,7 +97,7 @@ def registry_all(
     Registry, accounts,
     pool_compound, pool_y, pool_susd,
     cDAI, yDAI, USDT,
-    lp_compound, lp_y, lp_susd
+    calculator, lp_compound, lp_y, lp_susd
 ):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
@@ -102,6 +106,7 @@ def registry_all(
         pool_compound,
         2,
         lp_compound,
+        calculator,
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
@@ -111,6 +116,7 @@ def registry_all(
         pool_y,
         4,
         lp_y,
+        calculator,
         right_pad(yDAI.getPricePerFullShare.signature),
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
@@ -120,6 +126,7 @@ def registry_all(
         pool_susd,
         4,
         lp_susd,
+        calculator,
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
@@ -127,6 +134,13 @@ def registry_all(
     )
 
     yield registry
+
+
+# calculator
+
+@pytest.fixture(scope="module")
+def calculator(CurveCalc, accounts):
+    yield CurveCalc.deploy({'from': accounts[0]})
 
 
 # curve pools
