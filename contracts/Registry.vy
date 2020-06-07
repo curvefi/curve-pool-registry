@@ -475,6 +475,7 @@ def _add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _calculator: address,
     _rate_method_id: bytes32,
     _coins: address[MAX_COINS],
     _ucoins: address[MAX_COINS],
@@ -487,6 +488,7 @@ def _add_pool(
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
     self.pool_data[_pool].lp_token = _lp_token
+    self.pool_data[_pool].calculator = _calculator
     self.pool_data[_pool].rate_method_id = _rate_method_id
 
     _decimals_packed: uint256 = 0
@@ -565,6 +567,7 @@ def add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _calculator: address,
     _rate_method_id: bytes32,
     _decimals: bytes32,
     _underlying_decimals: bytes32,
@@ -609,6 +612,7 @@ def add_pool(
         _pool,
         _n_coins,
         _lp_token,
+        _calculator,
         _rate_method_id,
         _coins,
         _ucoins,
@@ -622,6 +626,7 @@ def add_pool_without_underlying(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _calculator: address,
     _rate_method_id: bytes32,
     _decimals: bytes32,
     _use_rates: bytes32,
@@ -665,6 +670,7 @@ def add_pool_without_underlying(
         _pool,
         _n_coins,
         _lp_token,
+        _calculator,
         _rate_method_id,
         _coins,
         _ucoins,
@@ -803,6 +809,19 @@ def set_gas_estimate_contract(_pool: address, _estimator: address):
     assert msg.sender == self.admin  # dev: admin-only function
 
     self.gas_estimate_contracts[_pool] = _estimator
+
+
+@public
+def set_calculator(_pool: address, _calculator: address):
+    """
+    @notice Set calculator contract
+    @dev Used to calculate `get_dy` for a pool
+    @param _pool Pool address
+    @param _calculator `CurveCalc` address
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    self.pool_data[_pool].calculator = _calculator
 
 
 @public
