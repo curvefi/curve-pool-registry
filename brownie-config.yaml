@@ -1,0 +1,4 @@
+reports:
+  exclude_paths: contracts/testing/*
+
+autofetch_sources: true
