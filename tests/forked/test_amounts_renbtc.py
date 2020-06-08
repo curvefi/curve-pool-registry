@@ -2,8 +2,8 @@ from brownie.test import given, strategy
 from hypothesis import settings
 
 
-@given(st_amounts=strategy("uint[50]", min_value=10**5, max_value=10**9, unique=True))
-@settings(max_examples=1)
+@given(st_amounts=strategy("uint[50]", min_value=10**5, max_value=10**8, unique=True))
+@settings(max_examples=10)
 def test_get_amounts(registry_renbtc, accounts, pool_renbtc, RenBTC, WBTC, st_amounts):
     amounts = registry_renbtc.get_exchange_amounts.call(
         pool_renbtc,
@@ -16,8 +16,8 @@ def test_get_amounts(registry_renbtc, accounts, pool_renbtc, RenBTC, WBTC, st_am
         assert amount == amounts[i]
 
 
-@given(st_amounts=strategy("uint[50]", min_value=10**5, max_value=10**9, unique=True))
-@settings(max_examples=1)
+@given(st_amounts=strategy("uint[50]", min_value=10**5, max_value=10**8, unique=True))
+@settings(max_examples=10)
 def test_get_amounts_reversed(registry_renbtc, accounts, pool_renbtc, RenBTC, WBTC, st_amounts):
     amounts = registry_renbtc.get_exchange_amounts.call(
         pool_renbtc,

@@ -22,7 +22,6 @@ def WBTC(Contract):
     yield Contract("0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599")
 
 
-
 @pytest.fixture(scope="module")
 def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
     registry.add_pool_without_underlying(
@@ -37,4 +36,3 @@ def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
     )
 
     yield registry
-

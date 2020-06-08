@@ -23,19 +23,20 @@ def test_set_does_not_affect_multiple(accounts, registry_all, pool_compound, poo
     assert registry_all.get_calculator(pool_y) == calculator
 
 
-@pytest.mark.skip
-def test_get_exchange_amounts(accounts, registry_y, pool_y, DAI, TUSD, yDAI, yTUSD):
+def test_get_exchange_amounts(accounts, registry_compound, pool_compound, DAI, USDC, cDAI, cUSDC):
     DAI._mint_for_testing(10**24, {'from': accounts[0]})
-    DAI.transfer(pool_y, 10**24, {'from': accounts[0]})
+    DAI.transfer(pool_compound, 10**24, {'from': accounts[0]})
 
-    TUSD._mint_for_testing(10**24, {'from': accounts[0]})
-    TUSD.transfer(pool_y, 10**24, {'from': accounts[0]})
+    USDC._mint_for_testing(10**12, {'from': accounts[0]})
+    USDC.transfer(pool_compound, 10**12, {'from': accounts[0]})
 
-    yDAI._mint_for_testing(10**24, {'from': accounts[0]})
-    yDAI.transfer(pool_y, 10**24, {'from': accounts[0]})
+    cDAI._mint_for_testing(10**16, {'from': accounts[0]})
+    cDAI.transfer(pool_compound, 10**16, {'from': accounts[0]})
 
-    yTUSD._mint_for_testing(10**24, {'from': accounts[0]})
-    yTUSD.transfer(pool_y, 10**24, {'from': accounts[0]})
-    amounts = [10**8] + [0] * 49#, 20000000, 50000000, 1000000000, 1000000] + [0] * 45
-    registry_y.get_exchange_amounts(pool_y, yDAI, yTUSD, amounts, {'from' : accounts[0]})
-    assert False
+    cUSDC._mint_for_testing(10**16, {'from': accounts[0]})
+    cUSDC.transfer(pool_compound, 10**16, {'from': accounts[0]})
+    amounts = [10**18] + [0] * 49#, 20000000, 50000000, 1000000000, 1000000] + [0] * 45
+
+    # we are only verifying that these calls pass - actual values are checked in `forked` tests
+    registry_compound.get_exchange_amounts(pool_compound, DAI, USDC, amounts, {'from' : accounts[0]})
+    registry_compound.get_exchange_amounts(pool_compound, cDAI, cUSDC, amounts, {'from' : accounts[0]})
