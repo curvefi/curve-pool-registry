@@ -416,6 +416,14 @@ def get_exchange_amounts(
     _to: address,
     _amounts: uint256[CALC_INPUT_SIZE]
 ) -> uint256[CALC_INPUT_SIZE]:
+    """
+    @notice Get the current number of coins received in exchanges of varying amounts
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amounts Array of quantities of `_from` to be sent
+    @return Array of quantities of `_to` to be received
+    """
 
     i: int128 = 0
     j: int128 = 0
