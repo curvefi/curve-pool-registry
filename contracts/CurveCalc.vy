@@ -17,6 +17,8 @@ def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
     """
     S: uint256 = 0
     for _x in xp:
+        if _x == 0:
+            break
         S += _x
     if S == 0:
         return 0
@@ -27,6 +29,8 @@ def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
     for _i in range(255):
         D_P: uint256 = D
         for _x in xp:
+            if _x == 0:
+                break
             D_P = D_P * D / (_x * n_coins)  # If division by 0, this will be borked: only withdrawal will work. And that is good
         Dprev = D
         D = (Ann * S + D_P * n_coins) * D / ((Ann - 1) * D + (n_coins + 1) * D_P)
