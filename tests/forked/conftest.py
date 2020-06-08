@@ -38,14 +38,3 @@ def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
 
     yield registry
 
-
-def test_get_amounts(registry_renbtc, accounts, pool_renbtc, RenBTC, WBTC):
-    amount = registry_renbtc.get_exchange_amount(pool_renbtc, RenBTC, WBTC, 10**8)
-    tx = registry_renbtc.get_exchange_amounts(
-        pool_renbtc,
-        RenBTC,
-        WBTC,
-        [10**8] + [0]*49,
-        {'from': accounts[0]}
-    )
-    assert amount == amounts[0]
