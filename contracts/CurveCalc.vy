@@ -6,6 +6,7 @@ INPUT_SIZE: constant(int128) = 50
 FEE_DENOMINATOR: constant(uint256) = 10 ** 10
 
 
+@constant
 @private
 def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
     """
@@ -44,6 +45,7 @@ def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
     return D
 
 
+@constant
 @private
 def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
           i: int128, j: int128, x: uint256) -> uint256:
@@ -95,6 +97,7 @@ def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
     return y
 
 
+@constant
 @public
 def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
            rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
