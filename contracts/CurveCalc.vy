@@ -45,59 +45,54 @@ def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
 
 
 @private
-def get_y(n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
-          i: int128, j: int128, x: uint256[INPUT_SIZE]) -> uint256[INPUT_SIZE]:
+def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
+          i: int128, j: int128, x: uint256) -> uint256:
     """
     @notice Bulk-calculate new balance of coin j given a new value of coin i
+    @param D The Invariant
     @param n_coins Number of coins in the pool
     @param xp Array with coin balances made into the same (1e18) digits
     @param amp Amplification coefficient
     @param i Index of the changed coin (trade in)
     @param j Index of the other changed coin (trade out)
-    @param x Array of values of coin i (trade in)
-    @return Array of values of coin j (trade out)
+    @param x Amount of coin i (trade in)
+    @return Amount of coin j (trade out)
     """
     assert (i != j) and (i >= 0) and (j >= 0) and (i < n_coins) and (j < n_coins)
     n_coins_256: uint256 = convert(n_coins, uint256)
 
-    D: uint256 = self.get_D(n_coins_256, xp, amp)
     Ann: uint256 = amp * n_coins_256
-    y_out: uint256[INPUT_SIZE] = x  # This is a hack: in Vyper 0.2 should be empty(uint256)
 
-    for _input_id in range(INPUT_SIZE):
-        if x[_input_id] == 0:
+    _x: uint256 = 0
+    S_: uint256 = 0
+    c: uint256 = D
+    for _i in range(MAX_COINS):
+        if _i >= n_coins:
             break
-        _x: uint256 = 0
-        S_: uint256 = 0
-        c: uint256 = D
-        for _i in range(MAX_COINS):
-            if _i >= n_coins:
+        if _i == i:
+            _x = x
+        elif _i != j:
+            _x = xp[_i]
+        else:
+            continue
+        S_ += _x
+        c = c * D / (_x * n_coins_256)
+    c = c * D / (Ann * n_coins_256)
+    b: uint256 = S_ + D / Ann  # - D
+    y_prev: uint256 = 0
+    y: uint256 = D
+    for _i in range(255):
+        y_prev = y
+        y = (y*y + c) / (2 * y + b - D)
+        # Equality with the precision of 1
+        if y > y_prev:
+            if y - y_prev <= 1:
                 break
-            if _i == i:
-                _x = x[_input_id]
-            elif _i != j:
-                _x = xp[_i]
-            else:
-                continue
-            S_ += _x
-            c = c * D / (_x * n_coins_256)
-        c = c * D / (Ann * n_coins_256)
-        b: uint256 = S_ + D / Ann  # - D
-        y_prev: uint256 = 0
-        y: uint256 = D
-        for _i in range(255):
-            y_prev = y
-            y = (y*y + c) / (2 * y + b - D)
-            # Equality with the precision of 1
-            if y > y_prev:
-                if y - y_prev <= 1:
-                    break
-            else:
-                if y_prev - y <= 1:
-                    break
-        y_out[_input_id] = y
+        else:
+            if y_prev - y <= 1:
+                break
 
-    return y_out
+    return y
 
 
 @public
@@ -121,25 +116,20 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     """
 
     xp: uint256[MAX_COINS] = balances
+    D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
     ratesp: uint256[MAX_COINS] = precisions
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
         if not underlying:
             ratesp[k] = ratesp[k] * rates[k] / 10 ** 18
 
-    x_after_trade: uint256[INPUT_SIZE] = dx
+    dy: uint256[INPUT_SIZE] = dx
     for k in range(INPUT_SIZE):
         if dx[k] == 0:
             break
-        x_after_trade[k] *= ratesp[i]
-        x_after_trade[k] += xp[i]
-
-    dy: uint256[INPUT_SIZE] = self.get_y(
-        n_coins, xp, amp, i, j, x_after_trade)
-    for k in range(INPUT_SIZE):
-        if dx[k] == 0:
-            dy[k] = 0  # zero the garbage (can do better with Vyper 0.2)
         else:
+            x_after_trade: uint256 = dx[k] * ratesp[i] + xp[i]
+            dy[k] = self.get_y(D, n_coins, xp, amp, i, j, x_after_trade)
             dy[k] = (xp[j] - dy[k] - 1) / ratesp[j]
             dy[k] -= dy[k] * fee / FEE_DENOMINATOR
 
