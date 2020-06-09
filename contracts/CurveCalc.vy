@@ -146,7 +146,7 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
            underlying: bool,
            i: int128, j: int128, dy: uint256) -> uint256:
     """
-    @notice Bulk-calculate amount of of coin j given in exchange for coin i
+    @notice Calculate amount of of coin i taken when exchanging for coin j
     @param n_coins Number of coins in the pool
     @param balances Array with coin balances
     @param amp Amplification coefficient
@@ -170,6 +170,6 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
 
     y_after_trade: uint256 = xp[j] - dy * ratesp[j] * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
     x: uint256 = self.get_y(D, n_coins, xp, amp, j, i, y_after_trade)
-    dx: uint256 = (x - xp[i]) / ratesp[j]
+    dx: uint256 = (x - xp[i]) / ratesp[i]
 
     return dx
