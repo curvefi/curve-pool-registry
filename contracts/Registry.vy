@@ -58,9 +58,11 @@ contract GasEstimator:
     def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: constant
 
 contract Calculator:
+    def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
+               rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS], underlying: bool,
+               i: int128, j: int128, dx: uint256) -> uint256: constant
     def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
-               rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
-               underlying: bool,
+               rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS], underlying: bool,
                i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: constant
 
 
@@ -407,6 +409,67 @@ def exchange(
     log.TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
 
     return True
+
+
+@public
+def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+    """
+    @notice Get the current number of coins required to receive the given amount in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_to` to be received
+    @return Quantity of `_from` to be sent
+    """
+    i: int128 = 0
+    j: int128 = 0
+    _is_underlying: bool = False
+    i, j, _is_underlying = self._get_token_indices(_pool, _from, _to)
+
+    _amp: uint256 = CurvePool(_pool).A()
+    _fee: uint256 = CurvePool(_pool).fee()
+
+    _decimals_packed: bytes32 = EMPTY_BYTES32
+    if _is_underlying:
+        _decimals_packed = self.pool_data[_pool].underlying_decimals
+    else:
+        _decimals_packed = self.pool_data[_pool].decimals
+
+    _rates: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
+    _balances: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
+    _precisions: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
+    _n_coins: int128 = 0
+    _coin: address = ZERO_ADDRESS
+    for x in range(MAX_COINS):
+        if _is_underlying:
+            _coin = self.pool_data[_pool].ul_coins[x]
+        else:
+            _coin = self.pool_data[_pool].coins[x]
+
+        if _coin == ZERO_ADDRESS:
+            _n_coins = x
+            break
+
+        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _balances[x] = as_unitless_number(self.balance)
+        else:
+            _balances[x] = ERC20(_coin).balanceOf(_pool)
+
+        _decimals: uint256 = convert(slice(_decimals_packed, x, 1), uint256)
+        _precisions[x] = 10 ** (18 - _decimals)
+
+        if _is_underlying:
+            _rates[x] = 10 ** 18
+        elif _coin == self.pool_data[_pool].ul_coins[x]:
+            _rates[x] = 10 ** 18
+        else:
+            _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _rates[x] = convert(_response, uint256)
+
+    return Calculator(self.pool_data[_pool].calculator).get_dx(
+        _n_coins, _balances, _amp, _fee, _rates, _precisions, _is_underlying, i, j, _amount
+    )
 
 
 @public
