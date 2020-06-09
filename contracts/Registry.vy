@@ -8,7 +8,7 @@ EMPTY_ADDRESS_ARRAY: constant(address[MAX_COINS]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA,
 ZERO: constant(uint256) = convert(0, uint256)
 EMPTY_UINT256_ARRAY: constant(uint256[MAX_COINS]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
 
-CALC_INPUT_SIZE: constant(int128) = 50
+CALC_INPUT_SIZE: constant(int128) = 100
 
 
 struct PoolArray:

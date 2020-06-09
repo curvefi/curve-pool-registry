@@ -2,7 +2,7 @@
 # Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
 
 MAX_COINS: constant(int128) = 8
-INPUT_SIZE: constant(int128) = 50
+INPUT_SIZE: constant(int128) = 100
 FEE_DENOMINATOR: constant(uint256) = 10 ** 10
 
 
