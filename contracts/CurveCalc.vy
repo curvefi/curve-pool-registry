@@ -137,3 +137,39 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
             dy[k] -= dy[k] * fee / FEE_DENOMINATOR
 
     return dy
+
+
+@constant
+@public
+def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
+           rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
+           underlying: bool,
+           i: int128, j: int128, dy: uint256) -> uint256:
+    """
+    @notice Bulk-calculate amount of of coin j given in exchange for coin i
+    @param n_coins Number of coins in the pool
+    @param balances Array with coin balances
+    @param amp Amplification coefficient
+    @param fee Pool's fee at 1e10 basis
+    @param rates Array with rates for "lent out" tokens
+    @param precisions Precision multipliers to get the coin to 1e18 basis
+    @param underlying Whether the coin is in raw or lent-out form
+    @param i Index of the changed coin (trade in)
+    @param j Index of the other changed coin (trade out)
+    @param dy Amount of coin j (trade out)
+    @return Amount of coin i (trade in)
+    """
+
+    xp: uint256[MAX_COINS] = balances
+    D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
+    ratesp: uint256[MAX_COINS] = precisions
+    for k in range(MAX_COINS):
+        xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
+        if not underlying:
+            ratesp[k] = ratesp[k] * rates[k] / 10 ** 18
+
+    y_after_trade: uint256 = xp[j] - dy * ratesp[j] * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
+    x: uint256 = self.get_y(D, n_coins, xp, amp, j, i, y_after_trade)
+    dx: uint256 = (x - xp[i]) / ratesp[j]
+
+    return dx
