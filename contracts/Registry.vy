@@ -860,10 +860,10 @@ def set_returns_none(_addr: address, _is_returns_none: bool):
 
 
 @public
-def set_gas_estimates(_addr: address[10], _amount: uint256[2][10]):
+def set_pool_gas_estimates(_addr: address[10], _amount: uint256[2][10]):
     """
     @notice Set gas estimate amounts
-    @param _addr Array of pool or coin addresses
+    @param _addr Array of pool addresses
     @param _amount Array of gas estimate amounts as `[(wrapped, underlying), ..]`
     """
     assert msg.sender == self.admin  # dev: admin-only function
@@ -872,6 +872,21 @@ def set_gas_estimates(_addr: address[10], _amount: uint256[2][10]):
         if _addr[i] == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_addr[i]] = _amount[i]
+
+
+@public
+def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
+    """
+    @notice Set gas estimate amounts
+    @param _addr Array of coin addresses
+    @param _amount Array of gas estimate amounts
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    for i in range(10):
+        if _addr[i] == ZERO_ADDRESS:
+            break
+        self.gas_estimate_values[_addr[i]][0] = _amount[i]
 
 
 @public
