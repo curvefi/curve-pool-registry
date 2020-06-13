@@ -318,7 +318,7 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
 
     for _addr in [_from, _to]:
         _gas: uint256 = self.gas_estimate_values[_addr][0]
-        assert _gas != 0  # dev: value not set
+        assert _gas != 0  # dev: coin value not set
         _total += _gas
 
     return _total
@@ -860,7 +860,7 @@ def set_returns_none(_addr: address, _is_returns_none: bool):
 
 
 @public
-def set_pool_gas_estimates(_addr: address[10], _amount: uint256[2][10]):
+def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
     """
     @notice Set gas estimate amounts
     @param _addr Array of pool addresses
@@ -868,7 +868,7 @@ def set_pool_gas_estimates(_addr: address[10], _amount: uint256[2][10]):
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
-    for i in range(10):
+    for i in range(5):
         if _addr[i] == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_addr[i]] = _amount[i]
