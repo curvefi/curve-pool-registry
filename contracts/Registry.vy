@@ -90,7 +90,14 @@ pool_count: public(uint256)         # actual length of pool_list
 pool_data: map(address, PoolArray)
 returns_none: map(address, bool)
 
+# mapping of estimated gas costs for pools and coins
+# for a pool the values are [wrapped exchange, underlying exchange]
+# for a coin the values are [transfer cost, 0]
 gas_estimate_values: map(address, uint256[2])
+
+# pool -> gas estimation contract
+# used when gas costs for a pool are too complex to be handled by summing
+# values in `gas_estimate_values`
 gas_estimate_contracts: map(address, address)
 
 # mapping of coin -> coin -> pools for trading
@@ -311,8 +318,16 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     if _estimator != ZERO_ADDRESS:
         return GasEstimator(_estimator).estimate_gas_used(_pool, _from, _to)
 
-    _idx: int128 = convert(self._get_token_indices(_pool, _from, _to)[2], int128)
-    _total: uint256 = self.gas_estimate_values[_pool][_idx]
+    # here we call `_get_token_indices` to find out if the exchange involves
+    # wrapped or underlying coins, and convert the result to an integer that we
+    # use as an index for `gas_estimate_values`
+    # 0 == wrapped   1 == underlying
+    _idx_underlying: int128 = convert(
+        self._get_token_indices(_pool, _from, _to)[2],
+        int128
+    )
+
+    _total: uint256 = self.gas_estimate_values[_pool][_idx_underlying]
     assert _total != 0  # dev: pool value not set
 
     for _addr in [_from, _to]:
