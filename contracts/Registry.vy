@@ -307,13 +307,12 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     @param _to Address of coin to be received
     @return Upper-bound gas estimate, in wei
     """
-    _total: uint256 = 0
     _estimator: address = self.gas_estimate_contracts[_pool]
     if _estimator != ZERO_ADDRESS:
         return GasEstimator(_estimator).estimate_gas_used(_pool, _from, _to)
 
     _idx: int128 = convert(self._get_token_indices(_pool, _from, _to)[2], int128)
-    _total = self.gas_estimate_values[_pool][_idx]
+    _total: uint256 = self.gas_estimate_values[_pool][_idx]
     assert _total != 0  # dev: pool value not set
 
     for _addr in [_from, _to]:
