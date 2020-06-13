@@ -90,7 +90,14 @@ pool_count: public(uint256)         # actual length of pool_list
 pool_data: map(address, PoolArray)
 returns_none: map(address, bool)
 
-gas_estimate_values: map(address, uint256)
+# mapping of estimated gas costs for pools and coins
+# for a pool the values are [wrapped exchange, underlying exchange]
+# for a coin the values are [transfer cost, 0]
+gas_estimate_values: map(address, uint256[2])
+
+# pool -> gas estimation contract
+# used when gas costs for a pool are too complex to be handled by summing
+# values in `gas_estimate_values`
 gas_estimate_contracts: map(address, address)
 
 # mapping of coin -> coin -> pools for trading
@@ -247,29 +254,6 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     return _rates
 
 
-@public
-@constant
-def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
-    """
-    @notice Estimate the gas used in an exchange.
-    @param _pool Pool address
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @return Upper-bound gas estimate, in wei
-    """
-    _total: uint256 = 0
-    _estimator: address = self.gas_estimate_contracts[_pool]
-    if _estimator != ZERO_ADDRESS:
-        return GasEstimator(_estimator).estimate_gas_used(_pool, _from, _to)
-
-    for _addr in [_from, _pool, _to]:
-        _gas: uint256 = self.gas_estimate_values[_addr]
-        assert _gas != 0  # dev: value not set
-        _total += _gas
-
-    return _total
-
-
 @private
 @constant
 def _get_token_indices(
@@ -318,6 +302,40 @@ def _get_token_indices(
             return i, j, True
 
     raise "No available market"
+
+
+@public
+@constant
+def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
+    """
+    @notice Estimate the gas used in an exchange.
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @return Upper-bound gas estimate, in wei
+    """
+    _estimator: address = self.gas_estimate_contracts[_pool]
+    if _estimator != ZERO_ADDRESS:
+        return GasEstimator(_estimator).estimate_gas_used(_pool, _from, _to)
+
+    # here we call `_get_token_indices` to find out if the exchange involves
+    # wrapped or underlying coins, and convert the result to an integer that we
+    # use as an index for `gas_estimate_values`
+    # 0 == wrapped   1 == underlying
+    _idx_underlying: int128 = convert(
+        self._get_token_indices(_pool, _from, _to)[2],
+        int128
+    )
+
+    _total: uint256 = self.gas_estimate_values[_pool][_idx_underlying]
+    assert _total != 0  # dev: pool value not set
+
+    for _addr in [_from, _to]:
+        _gas: uint256 = self.gas_estimate_values[_addr][0]
+        assert _gas != 0  # dev: coin value not set
+        _total += _gas
+
+    return _total
 
 
 @public
@@ -856,10 +874,25 @@ def set_returns_none(_addr: address, _is_returns_none: bool):
 
 
 @public
-def set_gas_estimates(_addr: address[10], _amount: uint256[10]):
+def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
     """
     @notice Set gas estimate amounts
-    @param _addr Array of pool or coin addresses
+    @param _addr Array of pool addresses
+    @param _amount Array of gas estimate amounts as `[(wrapped, underlying), ..]`
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    for i in range(5):
+        if _addr[i] == ZERO_ADDRESS:
+            break
+        self.gas_estimate_values[_addr[i]] = _amount[i]
+
+
+@public
+def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
+    """
+    @notice Set gas estimate amounts
+    @param _addr Array of coin addresses
     @param _amount Array of gas estimate amounts
     """
     assert msg.sender == self.admin  # dev: admin-only function
@@ -867,7 +900,7 @@ def set_gas_estimates(_addr: address[10], _amount: uint256[10]):
     for i in range(10):
         if _addr[i] == ZERO_ADDRESS:
             break
-        self.gas_estimate_values[_addr[i]] = _amount[i]
+        self.gas_estimate_values[_addr[i]][0] = _amount[i]
 
 
 @public
