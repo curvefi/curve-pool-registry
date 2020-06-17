@@ -359,7 +359,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 136066,
   "inputs": [
    {
@@ -390,7 +390,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 139365,
   "inputs": [
    {
