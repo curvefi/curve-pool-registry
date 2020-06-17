@@ -158,7 +158,7 @@ def main(deployment_address=DEPLOYER):
         registry.set_coin_gas_estimates(addrs, gas, {'from': deployer})
 
     for i in range(0, len(gas_prices_pools), 5):
-        chunk = gas_prices_coins[i:(i + 5)]
+        chunk = gas_prices_pools[i:(i + 5)]
         chunk += [(ZERO_ADDRESS, (0, 0))] * (5 - len(chunk))
         addrs, gas = list(zip(*chunk))
         registry.set_pool_gas_estimates(addrs, gas, {'from': deployer})
