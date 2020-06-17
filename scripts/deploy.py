@@ -1,7 +1,8 @@
 import json
+from time import sleep
 from web3 import middleware
-from web3.gas_strategies.time_based import medium_gas_price_strategy as gas_strategy
-from brownie import web3, accounts, Registry, yERC20, cERC20, CurveCalc
+from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
+from brownie import web3, accounts, Registry, yERC20, cERC20, CurveCalc, Contract
 from .config_admin import INITIAL_ADMIN_KEY
 
 from scripts.utils import pack_values, right_pad
@@ -14,6 +15,8 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 TETHERS = ["0xdAC17F958D2ee523a2206206994597C13D831ec7"] + [ZERO_ADDRESS] * 3
 MAX_COINS = 8
 EMPTY_DECIMALS = pack_values([0] * MAX_COINS)
+
+CONTRACT = "0x06Ce8086965234400FDecAb190B115C2C0717047"
 
 
 def insert_calculator(params, calculator):
@@ -105,49 +108,51 @@ def main(deployment_address=DEPLOYER):
     if POA:
         web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
 
-    # try:
-    #     registry = Contract("0x2eD8727881A07bB8192C94D1a21ac827d22Fc25C")
-    #     print("Using saved registry")
-    # except Exception:
-    while True:
-        try:
-            registry = Registry.deploy(TETHERS, {'from': deployer})
-        except KeyError:
-            continue
-        break
-    with open('registry.abi', 'w') as f:
-        json.dump(registry.abi, f, indent=True)
-
-    while True:
-        try:
-            calculator = CurveCalc.deploy({'from': deployer})
-        except KeyError:
-            continue
-        break
-    with open('calculator.abi', 'w') as f:
-        json.dump(calculator.abi, f, indent=True)
-
-    pools = POOLS
-    pools = [insert_calculator(p, calculator) for p in pools]
-
-    pools_no_underlying = POOLS_NO_UNDERLYING
-    pools_no_underlying = [insert_calculator(p, calculator) for p in pools_no_underlying]
-
-    length = len(pools) + len(pools_no_underlying)
-    for i, pool in enumerate(pools + pools_no_underlying, start=1):
-        print(f"Adding pool {i} out of {length}...")
-        args = list(pool) + [{'from': deployer}]
+    try:
+        registry = Contract(CONTRACT)
+        print("Using saved registry")
+    except Exception:
+        print("Deploying...")
+        sleep(5)
         while True:
             try:
-                if pool in pools:
-                    registry.add_pool(*args)
-                elif pool in pools_no_underlying:
-                    registry.add_pool_without_underlying(*args)
-                else:
-                    raise RuntimeError("Something weird happened.")
-            except (KeyError, ValueError):
+                registry = Registry.deploy(TETHERS, {'from': deployer})
+            except KeyError:
                 continue
             break
+        with open('registry.abi', 'w') as f:
+            json.dump(registry.abi, f, indent=True)
+
+        while True:
+            try:
+                calculator = CurveCalc.deploy({'from': deployer})
+            except KeyError:
+                continue
+            break
+        with open('calculator.abi', 'w') as f:
+            json.dump(calculator.abi, f, indent=True)
+
+        pools = POOLS
+        pools = [insert_calculator(p, calculator) for p in pools]
+
+        pools_no_underlying = POOLS_NO_UNDERLYING
+        pools_no_underlying = [insert_calculator(p, calculator) for p in pools_no_underlying]
+
+        length = len(pools) + len(pools_no_underlying)
+        for i, pool in enumerate(pools + pools_no_underlying, start=1):
+            print(f"Adding pool {i} out of {length}...")
+            args = list(pool) + [{'from': deployer}]
+            while True:
+                try:
+                    if pool in pools:
+                        registry.add_pool(*args)
+                    elif pool in pools_no_underlying:
+                        registry.add_pool_without_underlying(*args)
+                    else:
+                        raise RuntimeError("Something weird happened.")
+                except (KeyError, ValueError):
+                    continue
+                break
 
     gas_prices_coins = list(GAS_PRICES_COINS.items())
     gas_prices_pools = list(GAS_PRICES_POOLS.items())
@@ -156,12 +161,12 @@ def main(deployment_address=DEPLOYER):
         chunk = gas_prices_coins[i:(i + 10)]
         chunk += [(ZERO_ADDRESS, 0)] * (10 - len(chunk))
         addrs, gas = list(zip(*chunk))
-        registry.set_coin_gas_estimates(addrs, gas, {'from': deployer})
+        registry.set_coin_gas_estimates(addrs, gas, {'from': deployer, 'required_confs': 10})
 
     for i in range(0, len(gas_prices_pools), 5):
         chunk = gas_prices_pools[i:(i + 5)]
         chunk += [(ZERO_ADDRESS, (0, 0))] * (5 - len(chunk))
         addrs, gas = list(zip(*chunk))
-        registry.set_pool_gas_estimates(addrs, gas, {'from': deployer})
+        registry.set_pool_gas_estimates(addrs, gas, {'from': deployer, 'required_confs': 10})
 
-    registry.commit_transfer_ownership(DEPLOYER_DEST)
+    registry.commit_transfer_ownership(DEPLOYER_DEST, {'from': deployer, 'required_confs': 10})
