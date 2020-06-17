@@ -247,7 +247,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 44706,
   "inputs": [
    {
