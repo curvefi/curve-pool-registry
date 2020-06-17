@@ -1,6 +1,6 @@
 import json
 from web3 import middleware
-from web3.gas_strategies.time_based import medim_gas_price_strategy as gas_strategy
+from web3.gas_strategies.time_based import medium_gas_price_strategy as gas_strategy
 from brownie import web3, accounts, Registry, yERC20, cERC20, CurveCalc
 from .config_admin import INITIAL_ADMIN_KEY
 
