@@ -1,0 +1,112 @@
+[
+ {
+  "constant": true,
+  "gas": 44277431,
+  "inputs": [
+   {
+    "name": "n_coins",
+    "type": "int128"
+   },
+   {
+    "name": "balances",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "amp",
+    "type": "uint256"
+   },
+   {
+    "name": "fee",
+    "type": "uint256"
+   },
+   {
+    "name": "rates",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "precisions",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "underlying",
+    "type": "bool"
+   },
+   {
+    "name": "i",
+    "type": "int128"
+   },
+   {
+    "name": "j",
+    "type": "int128"
+   },
+   {
+    "name": "dx",
+    "type": "uint256[100]"
+   }
+  ],
+  "name": "get_dy",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256[100]"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 2663047,
+  "inputs": [
+   {
+    "name": "n_coins",
+    "type": "int128"
+   },
+   {
+    "name": "balances",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "amp",
+    "type": "uint256"
+   },
+   {
+    "name": "fee",
+    "type": "uint256"
+   },
+   {
+    "name": "rates",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "precisions",
+    "type": "uint256[8]"
+   },
+   {
+    "name": "underlying",
+    "type": "bool"
+   },
+   {
+    "name": "i",
+    "type": "int128"
+   },
+   {
+    "name": "j",
+    "type": "int128"
+   },
+   {
+    "name": "dy",
+    "type": "uint256"
+   }
+  ],
+  "name": "get_dx",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ }
+]
