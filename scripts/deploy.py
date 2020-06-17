@@ -1,15 +1,15 @@
 import json
 from web3 import middleware
-from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
+from web3.gas_strategies.time_based import medim_gas_price_strategy as gas_strategy
 from brownie import web3, accounts, Registry, yERC20, cERC20, CurveCalc
-# from brownie import Contract
+from .config_admin import INITIAL_ADMIN_KEY
 
 from scripts.utils import pack_values, right_pad
 
-DEPLOYER = accounts[0]  # TEST
-# DEPLOYER = "0xC447FcAF1dEf19A583F97b3620627BF69c05b5fB"
+DEPLOYER = accounts.add(bytes.fromhex(INITIAL_ADMIN_KEY))
+DEPLOYER_DEST = "0xC447FcAF1dEf19A583F97b3620627BF69c05b5fB"
 POA = False
-USE_MIDDLEWARE = False
+USE_MIDDLEWARE = True
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 TETHERS = ["0xdAC17F958D2ee523a2206206994597C13D831ec7"] + [ZERO_ADDRESS] * 3
 MAX_COINS = 8
@@ -95,6 +95,7 @@ GAS_PRICES_POOLS = {
 
 def main(deployment_address=DEPLOYER):
     deployer = accounts.at(deployment_address) if deployment_address else accounts[1]
+    print("Deploying from:", deployer)
 
     if USE_MIDDLEWARE:
         web3.eth.setGasPriceStrategy(gas_strategy)
@@ -162,3 +163,5 @@ def main(deployment_address=DEPLOYER):
         chunk += [(ZERO_ADDRESS, (0, 0))] * (5 - len(chunk))
         addrs, gas = list(zip(*chunk))
         registry.set_pool_gas_estimates(addrs, gas, {'from': deployer})
+
+    registry.commit_transfer_ownership(DEPLOYER_DEST)
