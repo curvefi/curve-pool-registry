@@ -83,13 +83,13 @@ GAS_PRICES_COINS = {
     '0x1bE5d71F2dA660BFdee8012dDc58D024448A0A59': 24000,  # ycUSDT
 }
 GAS_PRICES_POOLS = {
-    '0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56': [260000, 655000],  # Compound
-    '0x06364f10B501e868329afBc005b3492902d6C763': [337000, 706000],  # PAX
-    '0x45F783CCE6B7FF23B2ab2D70e416cdb7D6055f51': [337000, 756000],  # Y
-    '0x79a8C46DeA5aDa233ABaFFD40F3A0A2B1e5A4F27': [337000, 706000],  # BUSD
-    '0xA5407eAE9Ba41422680e2e00537571bcC53efBfD': [83000, 83000],  # SUSD
-    '0x93054188d876f558f4a66B2EF1d97d16eDf0895B': [79000, 79000],  # Ren
-    '0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714': [79000, 79000],  # sRen
+    '0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56': (260000, 655000),  # Compound
+    '0x06364f10B501e868329afBc005b3492902d6C763': (337000, 706000),  # PAX
+    '0x45F783CCE6B7FF23B2ab2D70e416cdb7D6055f51': (337000, 756000),  # Y
+    '0x79a8C46DeA5aDa233ABaFFD40F3A0A2B1e5A4F27': (337000, 706000),  # BUSD
+    '0xA5407eAE9Ba41422680e2e00537571bcC53efBfD': (83000, 83000),  # SUSD
+    '0x93054188d876f558f4a66B2EF1d97d16eDf0895B': (79000, 79000),  # Ren
+    '0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714': (79000, 79000),  # sRen
 }
 
 
@@ -147,3 +147,18 @@ def main(deployment_address=DEPLOYER):
             except (KeyError, ValueError):
                 continue
             break
+
+    gas_prices_coins = list(GAS_PRICES_COINS.items())
+    gas_prices_pools = list(GAS_PRICES_POOLS.items())
+
+    for i in range(0, len(gas_prices_coins), 10):
+        chunk = gas_prices_coins[i:(i + 10)]
+        chunk += [(ZERO_ADDRESS, 0)] * (10 - len(chunk))
+        addrs, gas = list(zip(*chunk))
+        registry.set_coin_gas_estimates(addrs, gas, {'from': deployer})
+
+    for i in range(0, len(gas_prices_pools), 5):
+        chunk = gas_prices_coins[i:(i + 5)]
+        chunk += [(ZERO_ADDRESS, (0, 0))] * (5 - len(chunk))
+        addrs, gas = list(zip(*chunk))
+        registry.set_pool_gas_estimates(addrs, gas, {'from': deployer})
