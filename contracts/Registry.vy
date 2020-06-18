@@ -482,9 +482,6 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
             _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
             _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
-            if _is_underlying:
-                _balances[x] = _balances[x] * _rates[x] / 10 ** 18
-                _rates[x] = 10 ** 18
 
     return Calculator(self.pool_data[_pool].calculator).get_dx(
         _n_coins, _balances, _amp, _fee, _rates, _precisions, _is_underlying, i, j, _amount
@@ -547,9 +544,6 @@ def get_exchange_amounts(
             _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
             _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
-            if _is_underlying:
-                _balances[x] = _balances[x] * _rates[x] / 10 ** 18
-                _rates[x] = 10 ** 18
 
     return Calculator(self.pool_data[_pool].calculator).get_dy(
         _n_coins, _balances, _amp, _fee, _rates, _precisions, _is_underlying, i, j, _amounts
