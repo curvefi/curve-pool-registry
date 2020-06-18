@@ -182,7 +182,6 @@ def get_pool_coins(_pool: address) -> PoolCoins:
 
 
 @public
-@constant
 def get_pool_info(_pool: address) -> PoolInfo:
     """
     @notice Get information on a pool
@@ -201,6 +200,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         fee: CurvePool(_pool).fee()
     })
 
+    _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
     _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
 
@@ -224,7 +224,9 @@ def get_pool_info(_pool: address) -> PoolInfo:
         elif _underlying_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _pool_info.underlying_balances[i] = as_unitless_number(self.balance)
         elif _underlying_coin != ZERO_ADDRESS:
-            _pool_info.underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
+            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _rate: uint256 = convert(_response, uint256)
+            _pool_info.underlying_balances[i] = _pool_info.balances[i] * _rate / 10 ** 18
 
     return _pool_info
 
@@ -459,10 +461,7 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
     for x in range(MAX_COINS):
-        if _is_underlying:
-            _coin = self.pool_data[_pool].ul_coins[x]
-        else:
-            _coin = self.pool_data[_pool].coins[x]
+        _coin = self.pool_data[_pool].coins[x]
 
         if _coin == ZERO_ADDRESS:
             _n_coins = x
@@ -473,17 +472,19 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
         else:
             _balances[x] = ERC20(_coin).balanceOf(_pool)
 
+
         _decimals: uint256 = convert(slice(_decimals_packed, x, 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
 
-        if _is_underlying:
-            _rates[x] = 10 ** 18
-        elif _coin == self.pool_data[_pool].ul_coins[x]:
+        if _coin == self.pool_data[_pool].ul_coins[x]:
             _rates[x] = 10 ** 18
         else:
             _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
             _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
+            if _is_underlying:
+                _balances[x] = _balances[x] * _rates[x] / 10 ** 18
+                _rates[x] = 10 ** 18
 
     return Calculator(self.pool_data[_pool].calculator).get_dx(
         _n_coins, _balances, _amp, _fee, _rates, _precisions, _is_underlying, i, j, _amount
@@ -526,10 +527,7 @@ def get_exchange_amounts(
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
     for x in range(MAX_COINS):
-        if _is_underlying:
-            _coin = self.pool_data[_pool].ul_coins[x]
-        else:
-            _coin = self.pool_data[_pool].coins[x]
+        _coin = self.pool_data[_pool].coins[x]
 
         if _coin == ZERO_ADDRESS:
             _n_coins = x
@@ -543,14 +541,15 @@ def get_exchange_amounts(
         _decimals: uint256 = convert(slice(_decimals_packed, x, 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
 
-        if _is_underlying:
-            _rates[x] = 10 ** 18
-        elif _coin == self.pool_data[_pool].ul_coins[x]:
+        if _coin == self.pool_data[_pool].ul_coins[x]:
             _rates[x] = 10 ** 18
         else:
             _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
             _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
+            if _is_underlying:
+                _balances[x] = _balances[x] * _rates[x] / 10 ** 18
+                _rates[x] = 10 ** 18
 
     return Calculator(self.pool_data[_pool].calculator).get_dy(
         _n_coins, _balances, _amp, _fee, _rates, _precisions, _is_underlying, i, j, _amounts
