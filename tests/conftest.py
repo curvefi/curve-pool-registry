@@ -75,7 +75,7 @@ def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
+def registry_eth(Registry, accounts, pool_eth, lp_y, USDT, yDAI):
     returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
     registry = Registry.deploy(returns_none, {'from': accounts[0]})
     registry.add_pool(
@@ -83,7 +83,7 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT):
         3,
         lp_y,
         ZERO_ADDRESS,
-        "0x00",
+        right_pad(yDAI.getPricePerFullShare.signature),
         "0x00",
         "0x00",
         {'from': accounts[0]}

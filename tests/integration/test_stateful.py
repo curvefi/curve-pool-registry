@@ -212,21 +212,6 @@ class StateMachine:
                 assert coins['decimals'] == [0] * 8
                 assert coins['underlying_decimals'] == [0] * 8
 
-    def invariant_info(self):
-        """
-        Invariant for `get_pool_info`
-
-        Checks
-        ------
-        * Added pools should not raise
-        * Pools that were not added, or were removed, should raise
-        """
-        for pool in [i for i in self.pool_info if i in self.added_pools]:
-            self.registry.get_pool_info(pool)
-        for pool in [i for i in self.pool_info if i not in self.added_pools]:
-            with brownie.reverts():
-                self.registry.get_pool_info(pool)
-
 
 def test_state_machine(
     PoolMock, accounts, registry, state_machine,

@@ -1,7 +1,7 @@
 import brownie
 import pytest
 
-from scripts.utils import pack_values
+from scripts.utils import pack_values, right_pad
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -81,18 +81,18 @@ def test_add_multiple(accounts, registry, pool_y, pool_susd, lp_y):
             assert coin_info['underlying_coins'][i] == pool.underlying_coins(i)
 
 
-def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
+def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDAI):
     registry.add_pool(
         pool_y,
         4,
         lp_y,
         ZERO_ADDRESS,
-        "0x00",
+        right_pad(yDAI.getPricePerFullShare.signature),
         pack_values([1, 2, 3, 4]),
         pack_values([9, 8, 7, 6]),
         {'from': accounts[0]}
     )
-    y_pool_info = registry.get_pool_info(pool_y)
+    y_pool_info = registry.get_pool_info.call(pool_y)
 
     registry.add_pool(
         pool_susd,
@@ -104,7 +104,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd):
         pack_values([99, 88, 77, 22]),
         {'from': accounts[0]}
     )
-    susd_pool_info = registry.get_pool_info(pool_susd)
+    susd_pool_info = registry.get_pool_info.call(pool_susd)
 
     assert y_pool_info != susd_pool_info
 
