@@ -122,8 +122,10 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     ratesp: uint256[MAX_COINS] = precisions
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
-        if not underlying:
-            ratesp[k] = ratesp[k] * rates[k] / 10 ** 18
+        if underlying:
+            ratesp[k] *= 10 ** 18
+        else:
+            ratesp[k] = ratesp[k] * rates[k]
     D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
 
     dy: uint256[INPUT_SIZE] = dx
@@ -131,9 +133,9 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
         if dx[k] == 0:
             break
         else:
-            x_after_trade: uint256 = dx[k] * ratesp[i] + xp[i]
+            x_after_trade: uint256 = dx[k] * ratesp[i] / 10 ** 18 + xp[i]
             dy[k] = self.get_y(D, n_coins, xp, amp, i, j, x_after_trade)
-            dy[k] = (xp[j] - dy[k] - 1) / ratesp[j]
+            dy[k] = (xp[j] - dy[k] - 1) * 10 ** 18 / ratesp[j]
             dy[k] -= dy[k] * fee / FEE_DENOMINATOR
 
     return dy
@@ -164,12 +166,14 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     ratesp: uint256[MAX_COINS] = precisions
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
-        if not underlying:
-            ratesp[k] = ratesp[k] * rates[k] / 10 ** 18
+        if underlying:
+            ratesp[k] *= 10 ** 18
+        else:
+            ratesp[k] = ratesp[k] * rates[k]
     D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
 
-    y_after_trade: uint256 = xp[j] - dy * ratesp[j] * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
+    y_after_trade: uint256 = xp[j] - dy * ratesp[j] / 10 ** 18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
     x: uint256 = self.get_y(D, n_coins, xp, amp, j, i, y_after_trade)
-    dx: uint256 = (x - xp[i]) / ratesp[i]
+    dx: uint256 = (x - xp[i]) * 10 ** 18 / ratesp[i]
 
     return dx
