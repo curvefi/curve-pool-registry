@@ -15,8 +15,9 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 TETHERS = ["0xdAC17F958D2ee523a2206206994597C13D831ec7"] + [ZERO_ADDRESS] * 3
 MAX_COINS = 8
 EMPTY_DECIMALS = pack_values([0] * MAX_COINS)
+CONFS = 10
 
-CONTRACT = "0x06Ce8086965234400FDecAb190B115C2C0717047"
+CONTRACT = None  # "0x06Ce8086965234400FDecAb190B115C2C0717047"
 
 
 def insert_calculator(params, calculator):
@@ -100,6 +101,11 @@ def main(deployment_address=DEPLOYER):
     deployer = accounts.at(deployment_address) if deployment_address else accounts[1]
     print("Deploying from:", deployer)
 
+    if CONFS:
+        deployer_kwargs = {'from': deployer, 'required_confs': CONFS}
+    else:
+        deployer_kwargs = {'from': deployer}
+
     if USE_MIDDLEWARE:
         web3.eth.setGasPriceStrategy(gas_strategy)
         web3.middleware_onion.add(middleware.time_based_cache_middleware)
@@ -116,7 +122,7 @@ def main(deployment_address=DEPLOYER):
         sleep(5)
         while True:
             try:
-                registry = Registry.deploy(TETHERS, {'from': deployer})
+                registry = Registry.deploy(TETHERS, deployer_kwargs)
             except KeyError:
                 continue
             break
@@ -125,7 +131,7 @@ def main(deployment_address=DEPLOYER):
 
         while True:
             try:
-                calculator = CurveCalc.deploy({'from': deployer})
+                calculator = CurveCalc.deploy(deployer_kwargs)
             except KeyError:
                 continue
             break
@@ -141,7 +147,7 @@ def main(deployment_address=DEPLOYER):
         length = len(pools) + len(pools_no_underlying)
         for i, pool in enumerate(pools + pools_no_underlying, start=1):
             print(f"Adding pool {i} out of {length}...")
-            args = list(pool) + [{'from': deployer}]
+            args = list(pool) + [deployer_kwargs]
             while True:
                 try:
                     if pool in pools:
@@ -161,12 +167,12 @@ def main(deployment_address=DEPLOYER):
         chunk = gas_prices_coins[i:(i + 10)]
         chunk += [(ZERO_ADDRESS, 0)] * (10 - len(chunk))
         addrs, gas = list(zip(*chunk))
-        registry.set_coin_gas_estimates(addrs, gas, {'from': deployer, 'required_confs': 10})
+        registry.set_coin_gas_estimates(addrs, gas, deployer_kwargs)
 
     for i in range(0, len(gas_prices_pools), 5):
         chunk = gas_prices_pools[i:(i + 5)]
         chunk += [(ZERO_ADDRESS, (0, 0))] * (5 - len(chunk))
         addrs, gas = list(zip(*chunk))
-        registry.set_pool_gas_estimates(addrs, gas, {'from': deployer, 'required_confs': 10})
+        registry.set_pool_gas_estimates(addrs, gas, deployer_kwargs)
 
-    registry.commit_transfer_ownership(DEPLOYER_DEST, {'from': deployer, 'required_confs': 10})
+    registry.commit_transfer_ownership(DEPLOYER_DEST, deployer_kwargs)
