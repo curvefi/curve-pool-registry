@@ -198,7 +198,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 87733,
   "inputs": [
    {
@@ -247,7 +247,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 44706,
   "inputs": [
    {
@@ -359,7 +359,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 135410,
   "inputs": [
    {
@@ -390,7 +390,7 @@
   "type": "function"
  },
  {
-  "constant": false,
+  "constant": true,
   "gas": 138709,
   "inputs": [
    {
