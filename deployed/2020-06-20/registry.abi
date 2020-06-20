@@ -1,0 +1,724 @@
+[
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "name": "deadline",
+    "type": "uint256"
+   },
+   {
+    "indexed": true,
+    "name": "admin",
+    "type": "address"
+   }
+  ],
+  "name": "CommitNewAdmin",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "name": "admin",
+    "type": "address"
+   }
+  ],
+  "name": "NewAdmin",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "name": "buyer",
+    "type": "address"
+   },
+   {
+    "indexed": true,
+    "name": "pool",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "name": "token_sold",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "name": "token_bought",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "name": "amount_sold",
+    "type": "uint256"
+   },
+   {
+    "indexed": false,
+    "name": "amount_bought",
+    "type": "uint256"
+   }
+  ],
+  "name": "TokenExchange",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "name": "pool",
+    "type": "address"
+   },
+   {
+    "indexed": false,
+    "name": "rate_method_id",
+    "type": "bytes"
+   }
+  ],
+  "name": "PoolAdded",
+  "type": "event"
+ },
+ {
+  "anonymous": false,
+  "inputs": [
+   {
+    "indexed": true,
+    "name": "pool",
+    "type": "address"
+   }
+  ],
+  "name": "PoolRemoved",
+  "type": "event"
+ },
+ {
+  "constant": false,
+  "inputs": [
+   {
+    "name": "_returns_none",
+    "type": "address[4]"
+   }
+  ],
+  "outputs": [],
+  "payable": false,
+  "type": "constructor",
+  "name": "constructor"
+ },
+ {
+  "constant": false,
+  "payable": true,
+  "type": "fallback"
+ },
+ {
+  "constant": true,
+  "inputs": [
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   }
+  ],
+  "name": "find_pool_for_coins",
+  "outputs": [
+   {
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "inputs": [
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   },
+   {
+    "name": "i",
+    "type": "uint256"
+   }
+  ],
+  "name": "find_pool_for_coins",
+  "outputs": [
+   {
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 45681,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   }
+  ],
+  "name": "get_pool_coins",
+  "outputs": [
+   {
+    "components": [
+     {
+      "name": "coins",
+      "type": "address[8]"
+     },
+     {
+      "name": "underlying_coins",
+      "type": "address[8]"
+     },
+     {
+      "name": "decimals",
+      "type": "uint256[8]"
+     },
+     {
+      "name": "underlying_decimals",
+      "type": "uint256[8]"
+     }
+    ],
+    "name": "",
+    "type": "tuple"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 87733,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   }
+  ],
+  "name": "get_pool_info",
+  "outputs": [
+   {
+    "components": [
+     {
+      "name": "balances",
+      "type": "uint256[8]"
+     },
+     {
+      "name": "underlying_balances",
+      "type": "uint256[8]"
+     },
+     {
+      "name": "decimals",
+      "type": "uint256[8]"
+     },
+     {
+      "name": "underlying_decimals",
+      "type": "uint256[8]"
+     },
+     {
+      "name": "lp_token",
+      "type": "address"
+     },
+     {
+      "name": "A",
+      "type": "uint256"
+     },
+     {
+      "name": "fee",
+      "type": "uint256"
+     }
+    ],
+    "name": "",
+    "type": "tuple"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 44706,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   }
+  ],
+  "name": "get_pool_rates",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256[8]"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 50163,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   }
+  ],
+  "name": "estimate_gas_used",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 45192,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   },
+   {
+    "name": "_amount",
+    "type": "uint256"
+   }
+  ],
+  "name": "get_exchange_amount",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 198813,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   },
+   {
+    "name": "_amount",
+    "type": "uint256"
+   },
+   {
+    "name": "_expected",
+    "type": "uint256"
+   }
+  ],
+  "name": "exchange",
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool"
+   }
+  ],
+  "payable": true,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 135410,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   },
+   {
+    "name": "_amount",
+    "type": "uint256"
+   }
+  ],
+  "name": "get_input_amount",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 138709,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_from",
+    "type": "address"
+   },
+   {
+    "name": "_to",
+    "type": "address"
+   },
+   {
+    "name": "_amounts",
+    "type": "uint256[100]"
+   }
+  ],
+  "name": "get_exchange_amounts",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256[100]"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 10290194,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_n_coins",
+    "type": "int128"
+   },
+   {
+    "name": "_lp_token",
+    "type": "address"
+   },
+   {
+    "name": "_calculator",
+    "type": "address"
+   },
+   {
+    "name": "_rate_method_id",
+    "type": "bytes32"
+   },
+   {
+    "name": "_decimals",
+    "type": "bytes32"
+   },
+   {
+    "name": "_underlying_decimals",
+    "type": "bytes32"
+   }
+  ],
+  "name": "add_pool",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 10273690,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_n_coins",
+    "type": "int128"
+   },
+   {
+    "name": "_lp_token",
+    "type": "address"
+   },
+   {
+    "name": "_calculator",
+    "type": "address"
+   },
+   {
+    "name": "_rate_method_id",
+    "type": "bytes32"
+   },
+   {
+    "name": "_decimals",
+    "type": "bytes32"
+   },
+   {
+    "name": "_use_rates",
+    "type": "bytes32"
+   }
+  ],
+  "name": "add_pool_without_underlying",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 317792223500,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   }
+  ],
+  "name": "remove_pool",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 36818,
+  "inputs": [
+   {
+    "name": "_addr",
+    "type": "address"
+   },
+   {
+    "name": "_is_returns_none",
+    "type": "bool"
+   }
+  ],
+  "name": "set_returns_none",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 354727,
+  "inputs": [
+   {
+    "name": "_addr",
+    "type": "address[5]"
+   },
+   {
+    "name": "_amount",
+    "type": "uint256[2][5]"
+   }
+  ],
+  "name": "set_pool_gas_estimates",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 356796,
+  "inputs": [
+   {
+    "name": "_addr",
+    "type": "address[10]"
+   },
+   {
+    "name": "_amount",
+    "type": "uint256[10]"
+   }
+  ],
+  "name": "set_coin_gas_estimates",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 36911,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_estimator",
+    "type": "address"
+   }
+  ],
+  "name": "set_gas_estimate_contract",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 37019,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   },
+   {
+    "name": "_calculator",
+    "type": "address"
+   }
+  ],
+  "name": "set_calculator",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 1953,
+  "inputs": [
+   {
+    "name": "_pool",
+    "type": "address"
+   }
+  ],
+  "name": "get_calculator",
+  "outputs": [
+   {
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 74452,
+  "inputs": [
+   {
+    "name": "_new_admin",
+    "type": "address"
+   }
+  ],
+  "name": "commit_transfer_ownership",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 60590,
+  "inputs": [],
+  "name": "apply_transfer_ownership",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 21865,
+  "inputs": [],
+  "name": "revert_transfer_ownership",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 4854,
+  "inputs": [
+   {
+    "name": "_token",
+    "type": "address"
+   }
+  ],
+  "name": "claim_token_balance",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": false,
+  "gas": 36726,
+  "inputs": [],
+  "name": "claim_eth_balance",
+  "outputs": [],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 1901,
+  "inputs": [],
+  "name": "admin",
+  "outputs": [
+   {
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 2130,
+  "inputs": [
+   {
+    "name": "arg0",
+    "type": "int128"
+   }
+  ],
+  "name": "pool_list",
+  "outputs": [
+   {
+    "name": "",
+    "type": "address"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ },
+ {
+  "constant": true,
+  "gas": 1961,
+  "inputs": [],
+  "name": "pool_count",
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256"
+   }
+  ],
+  "payable": false,
+  "type": "function"
+ }
+]
