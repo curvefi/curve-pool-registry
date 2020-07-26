@@ -49,6 +49,7 @@ contract CurvePool:
     def fee() -> uint256: constant
     def coins(i: int128) -> address: constant
     def underlying_coins(i: int128) -> address: constant
+    def balances(i: int128) -> uint256: constant
     def get_dy(i: int128, j: int128, dx: uint256) -> uint256: constant
     def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256: constant
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
@@ -212,11 +213,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
         _pool_info.decimals[i] = convert(slice(_decimals_packed, i, 1), uint256)
         _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, i, 1), uint256)
-
-        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _pool_info.balances[i] = as_unitless_number(self.balance)
-        else:
-            _pool_info.balances[i] = ERC20(_coin).balanceOf(_pool)
+        _pool_info.balances[i] = CurvePool(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
