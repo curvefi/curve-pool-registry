@@ -42,7 +42,7 @@ def test_get_exchange_amounts(accounts, registry_compound, pool_compound, DAI, U
     registry_compound.get_exchange_amounts(pool_compound, cDAI, cUSDC, amounts, {'from' : accounts[0]})
 
 
-def test_calculator(accounts, calculator):
+def test_calculator(accounts, calculator, no_call_coverage):
     expected = [89743074, 100065, 37501871, 90394938, 114182]
     actual = calculator.get_dy.call(
         2,
@@ -60,8 +60,8 @@ def test_calculator(accounts, calculator):
     assert actual[:5] == expected
 
 
-def test_dy_dx(accounts, calculator):
-    dx = calculator.get_dx.call(
+def test_dy_dx(accounts, calculator, no_call_coverage):
+    dx = calculator.get_dx(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
         100,
@@ -73,7 +73,7 @@ def test_dy_dx(accounts, calculator):
         1,
         89970746,
     )
-    assert calculator.get_dy.call(
+    assert calculator.get_dy(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
         100,
@@ -87,8 +87,8 @@ def test_dy_dx(accounts, calculator):
     )[0] == 89970746
 
 
-def test_dx_dy(accounts, calculator):
-    dy = calculator.get_dy.call(
+def test_dx_dy(accounts, calculator, no_call_coverage):
+    dy = calculator.get_dy(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
         100,
@@ -100,7 +100,7 @@ def test_dx_dy(accounts, calculator):
         1,
         [89970746] + [0]*99,
     )[0]
-    assert calculator.get_dx.call(
+    assert calculator.get_dx(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
         100,

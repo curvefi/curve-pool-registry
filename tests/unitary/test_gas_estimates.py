@@ -41,7 +41,7 @@ def test_modify_estimates(accounts, registry_y, pool_y, DAI, USDC, USDT, set_est
 def test_estimator_contract(accounts, registry_y, pool_y, DAI, USDC, set_estimates):
 
     estimator = brownie.compile_source("""
-@public
+@external
 def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     return 31337
     """).Vyper.deploy({'from': accounts[0]})

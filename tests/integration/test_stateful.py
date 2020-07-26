@@ -58,7 +58,6 @@ class StateMachine:
             n_coins,
             coins[:4],
             underlying[:4],
-            [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
             70,
             4000000,
             {'from': cls.accounts[0]}

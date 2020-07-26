@@ -92,7 +92,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         pack_values([9, 8, 7, 6]),
         {'from': accounts[0]}
     )
-    y_pool_info = registry.get_pool_info.call(pool_y)
+    y_pool_info = registry.get_pool_info(pool_y)
 
     registry.add_pool(
         pool_susd,
@@ -104,7 +104,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         pack_values([99, 88, 77, 22]),
         {'from': accounts[0]}
     )
-    susd_pool_info = registry.get_pool_info.call(pool_susd)
+    susd_pool_info = registry.get_pool_info(pool_susd)
 
     assert y_pool_info != susd_pool_info
 
