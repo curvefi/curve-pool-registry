@@ -91,7 +91,6 @@ pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
-returns_none: HashMap[address, bool]
 
 # mapping of estimated gas costs for pools and coins
 # for a pool the values are [wrapped exchange, underlying exchange]
@@ -112,16 +111,11 @@ markets: HashMap[uint256, HashMap[uint256, uint256[65536]]]
 
 
 @external
-def __init__(_returns_none: address[4]):
+def __init__():
     """
     @notice Constructor function
-    @param _returns_none Token addresses that return None on a successful transfer
     """
     self.admin = msg.sender
-    for _addr in _returns_none:
-        if _addr == ZERO_ADDRESS:
-            break
-        self.returns_none[_addr] = True
 
 
 @external
@@ -216,7 +210,10 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
         _pool_info.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
         _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
-        _pool_info.balances[i] = CurvePool(_pool).balances(i)
+        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _pool_info.balances[i] = self.balance
+        else:
+            _pool_info.balances[i] = CurvePool(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
@@ -901,18 +898,6 @@ def remove_pool(_pool: address):
                 self.markets[_first][_second][_length] = 0
 
     log PoolRemoved(_pool)
-
-
-@external
-def set_returns_none(_addr: address, _is_returns_none: bool):
-    """
-    @notice Set `returns_none` value for a coin
-    @param _addr Coin address
-    @param _is_returns_none if True, coin returns None on a successful transfer
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-
-    self.returns_none[_addr] = _is_returns_none
 
 
 @external

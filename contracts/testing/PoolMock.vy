@@ -14,7 +14,6 @@ interface ERC20Mock:
 n_coins: public(int128)
 coin_list: address[4]
 underlying_coin_list: address[4]
-returns_none: HashMap[address, bool]
 
 A: public(uint256)
 fee: public(uint256)
@@ -25,7 +24,6 @@ def __init__(
     _n_coins: int128,
     _coin_list: address[4],
     _underlying_coin_list: address[4],
-    _returns_none: address[4],
     _A: uint256,
     _fee: uint256,
 ):
@@ -34,10 +32,6 @@ def __init__(
     self.underlying_coin_list = _underlying_coin_list
     self.A = _A
     self.fee = _fee
-    for _addr in _returns_none:
-        if _addr == ZERO_ADDRESS:
-            break
-        self.returns_none[_addr] = True
 
 
 @external
