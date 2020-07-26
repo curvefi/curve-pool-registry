@@ -185,6 +185,7 @@ def get_pool_coins(_pool: address) -> PoolCoins:
 
 
 @external
+@view
 def get_pool_info(_pool: address) -> PoolInfo:
     """
     @notice Get information on a pool
@@ -223,7 +224,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         elif _underlying_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _pool_info.underlying_balances[i] = self.balance
         elif _underlying_coin != ZERO_ADDRESS:
-            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32, is_static_call=True)  # dev: bad response
             _rate: uint256 = convert(_response, uint256)
             _pool_info.underlying_balances[i] = _pool_info.balances[i] * _rate / 10 ** 18
 
@@ -231,6 +232,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
 
 @external
+@view
 def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     """
     @notice Get rates between coins and underlying coins
@@ -249,7 +251,7 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 10 ** 18
         else:
-            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32, is_static_call=True)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
