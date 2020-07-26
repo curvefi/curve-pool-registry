@@ -4,24 +4,32 @@
 
 from vyper.interfaces import ERC20
 
-Transfer: event({_from: indexed(address), _to: indexed(address), _value: uint256})
-Approval: event({_owner: indexed(address), _spender: indexed(address), _value: uint256})
+event Transfer:
+    _from: indexed(address)
+    _to: indexed(address)
+    _value: uint256
 
-name: public(string[64])
-symbol: public(string[32])
+event Approval:
+    _owner: indexed(address)
+    _spender: indexed(address)
+    _value: uint256
+
+
+name: public(String[64])
+symbol: public(String[32])
 decimals: public(uint256)
-balanceOf: public(map(address, uint256))
-allowances: map(address, map(address, uint256))
+balanceOf: public(HashMap[address, uint256])
+allowances: HashMap[address, HashMap[address, uint256]]
 total_supply: uint256
 
 underlying_token: ERC20
 getPricePerFullShare: public(uint256)
 
 
-@public
+@external
 def __init__(
-    _name: string[64],
-    _symbol: string[32],
+    _name: String[64],
+    _symbol: String[32],
     _decimals: uint256,
     _underlying_token: address,
     _exchange_rate: uint256
@@ -33,44 +41,44 @@ def __init__(
     self.getPricePerFullShare = _exchange_rate
 
 
-@public
-@constant
+@external
+@view
 def totalSupply() -> uint256:
     return self.total_supply
 
 
-@public
-@constant
+@external
+@view
 def allowance(_owner : address, _spender : address) -> uint256:
     return self.allowances[_owner][_spender]
 
 
-@public
+@external
 def transfer(_to : address, _value : uint256) -> bool:
     self.balanceOf[msg.sender] -= _value
     self.balanceOf[_to] += _value
-    log.Transfer(msg.sender, _to, _value)
+    log Transfer(msg.sender, _to, _value)
     return True
 
 
-@public
+@external
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     self.balanceOf[_from] -= _value
     self.balanceOf[_to] += _value
     self.allowances[_from][msg.sender] -= _value
-    log.Transfer(_from, _to, _value)
+    log Transfer(_from, _to, _value)
     return True
 
 
-@public
+@external
 def approve(_spender : address, _value : uint256) -> bool:
     self.allowances[msg.sender][_spender] = _value
-    log.Approval(msg.sender, _spender, _value)
+    log Approval(msg.sender, _spender, _value)
     return True
 
 
 # yERC20-specific functions
-@public
+@external
 def deposit(depositAmount: uint256):
     """
      @notice Sender supplies assets into the market and receives yTokens in exchange
@@ -83,7 +91,7 @@ def deposit(depositAmount: uint256):
     self.balanceOf[msg.sender] += value
 
 
-@public
+@external
 def withdraw(withdrawTokens: uint256):
     """
      @notice Sender redeems yTokens in exchange for the underlying asset
@@ -97,13 +105,13 @@ def withdraw(withdrawTokens: uint256):
 
 
 # testing functions
-@public
+@external
 def _set_exchange_rate(_rate: uint256):
     self.getPricePerFullShare = _rate
 
 
-@public
+@external
 def _mint_for_testing(_value: uint256):
     self.total_supply += _value
     self.balanceOf[msg.sender] += _value
-    log.Transfer(ZERO_ADDRESS, msg.sender, _value)
+    log Transfer(ZERO_ADDRESS, msg.sender, _value)
