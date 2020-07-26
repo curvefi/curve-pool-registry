@@ -4,11 +4,10 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 def test_admin_is_deployer(Registry, accounts):
-    returns_none = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
     assert registry.admin() == accounts[0]
 
-    registry = Registry.deploy(returns_none, {'from': accounts[1]})
+    registry = Registry.deploy({'from': accounts[1]})
     assert registry.admin() == accounts[1]
 
 
