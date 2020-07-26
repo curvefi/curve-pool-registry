@@ -1,13 +1,6 @@
-# @version 0.1.0
+# @version ^0.2.0
 
 MAX_COINS: constant(int128) = 8
-
-ZA: constant(address) = ZERO_ADDRESS
-EMPTY_ADDRESS_ARRAY: constant(address[MAX_COINS]) = [ZA, ZA, ZA, ZA, ZA, ZA, ZA, ZA]
-
-ZERO: constant(uint256) = convert(0, uint256)
-EMPTY_UINT256_ARRAY: constant(uint256[MAX_COINS]) = [ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO]
-
 CALC_INPUT_SIZE: constant(int128) = 100
 
 
@@ -37,48 +30,57 @@ struct PoolInfo:
     fee: uint256
 
 
-contract ERC20:
-    def decimals() -> uint256: constant
-    def balanceOf(addr: address) -> uint256: constant
-    def approve(spender: address, amount: uint256) -> bool: modifying
-    def transfer(to: address, amount: uint256) -> bool: modifying
-    def transferFrom(spender: address, to: address, amount: uint256) -> bool: modifying
+interface ERC20:
+    def decimals() -> uint256: view
+    def balanceOf(addr: address) -> uint256: view
+    def approve(spender: address, amount: uint256) -> bool: nonpayable
+    def transfer(to: address, amount: uint256) -> bool: nonpayable
+    def transferFrom(spender: address, to: address, amount: uint256) -> bool: nonpayable
 
-contract CurvePool:
-    def A() -> uint256: constant
-    def fee() -> uint256: constant
-    def coins(i: int128) -> address: constant
-    def underlying_coins(i: int128) -> address: constant
-    def balances(i: int128) -> uint256: constant
-    def get_dy(i: int128, j: int128, dx: uint256) -> uint256: constant
-    def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256: constant
-    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
-    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): modifying
+interface CurvePool:
+    def A() -> uint256: view
+    def fee() -> uint256: view
+    def coins(i: int128) -> address: view
+    def underlying_coins(i: int128) -> address: view
+    def balances(i: int128) -> uint256: view
+    def get_dy(i: int128, j: int128, dx: uint256) -> uint256: view
+    def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256: view
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
 
-contract GasEstimator:
-    def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: constant
+interface GasEstimator:
+    def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: view
 
-contract Calculator:
+interface Calculator:
     def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
                rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS], underlying: bool,
-               i: int128, j: int128, dx: uint256) -> uint256: constant
+               i: int128, j: int128, dx: uint256) -> uint256: view
     def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
                rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS], underlying: bool,
-               i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: constant
+               i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: view
 
 
-CommitNewAdmin: event({deadline: indexed(uint256), admin: indexed(address)})
-NewAdmin: event({admin: indexed(address)})
-TokenExchange: event({
-    buyer: indexed(address),
-    pool: indexed(address),
-    token_sold: address,
-    token_bought: address,
-    amount_sold: uint256,
+event CommitNewAdmin:
+    deadline: indexed(uint256)
+    admin: indexed(address)
+
+event NewAdmin:
+    admin: indexed(address)
+
+event TokenExchange:
+    buyer: indexed(address)
+    pool: indexed(address)
+    token_sold: address
+    token_bought: address
+    amount_sold: uint256
     amount_bought: uint256
-})
-PoolAdded: event({pool: indexed(address), rate_method_id: bytes[4]})
-PoolRemoved: event({pool: indexed(address)})
+
+event PoolAdded:
+    pool: indexed(address)
+    rate_method_id: Bytes[4]
+
+event PoolRemoved:
+    pool: indexed(address)
 
 
 admin: public(address)
@@ -88,28 +90,28 @@ future_admin: address
 pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
-pool_data: map(address, PoolArray)
-returns_none: map(address, bool)
+pool_data: HashMap[address, PoolArray]
+returns_none: HashMap[address, bool]
 
 # mapping of estimated gas costs for pools and coins
 # for a pool the values are [wrapped exchange, underlying exchange]
 # for a coin the values are [transfer cost, 0]
-gas_estimate_values: map(address, uint256[2])
+gas_estimate_values: HashMap[address, uint256[2]]
 
 # pool -> gas estimation contract
 # used when gas costs for a pool are too complex to be handled by summing
 # values in `gas_estimate_values`
-gas_estimate_contracts: map(address, address)
+gas_estimate_contracts: HashMap[address, address]
 
 # mapping of coin -> coin -> pools for trading
 # all addresses are converted to uint256 prior to storage. coin addresses are stored
 # using the smaller value first. within each pool address array, the first value
 # is shifted 16 bits to the left, and these 16 bits are used to store the array length.
 
-markets: map(uint256, map(uint256, uint256[65536]))
+markets: HashMap[uint256, HashMap[uint256, uint256[65536]]]
 
 
-@public
+@external
 def __init__(_returns_none: address[4]):
     """
     @notice Constructor function
@@ -122,14 +124,14 @@ def __init__(_returns_none: address[4]):
         self.returns_none[_addr] = True
 
 
-@public
+@external
 @payable
 def __default__():
     pass
 
 
-@public
-@constant
+@external
+@view
 def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
     """
     @notice Find an available pool for exchanging two coins
@@ -153,8 +155,8 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
     return convert(convert(self.markets[_first][_second][i], bytes32), address)
 
 
-@public
-@constant
+@external
+@view
 def get_pool_coins(_pool: address) -> PoolCoins:
     """
     @notice Get information on coins in a pool
@@ -163,10 +165,10 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     @return Coin addresses, underlying coin addresses, underlying coin decimals
     """
     _coins: PoolCoins = PoolCoins({
-        coins: EMPTY_ADDRESS_ARRAY,
-        underlying_coins: EMPTY_ADDRESS_ARRAY,
-        decimals: EMPTY_UINT256_ARRAY,
-        underlying_decimals: EMPTY_UINT256_ARRAY,
+        coins: empty(address[MAX_COINS]),
+        underlying_coins: empty(address[MAX_COINS]),
+        decimals: empty(uint256[MAX_COINS]),
+        underlying_decimals: empty(uint256[MAX_COINS]),
     })
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
     _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
@@ -176,13 +178,13 @@ def get_pool_coins(_pool: address) -> PoolCoins:
         if _coins.coins[i] == ZERO_ADDRESS:
             break
         _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
-        _coins.decimals[i] = convert(slice(_decimals_packed, i, 1), uint256)
-        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, i, 1), uint256)
+        _coins.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
+        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
 
     return _coins
 
 
-@public
+@external
 def get_pool_info(_pool: address) -> PoolInfo:
     """
     @notice Get information on a pool
@@ -192,16 +194,16 @@ def get_pool_info(_pool: address) -> PoolInfo:
             lp token, amplification coefficient, fees
     """
     _pool_info: PoolInfo = PoolInfo({
-        balances: EMPTY_UINT256_ARRAY,
-        underlying_balances: EMPTY_UINT256_ARRAY,
-        decimals: EMPTY_UINT256_ARRAY,
-        underlying_decimals: EMPTY_UINT256_ARRAY,
+        balances: empty(uint256[MAX_COINS]),
+        underlying_balances: empty(uint256[MAX_COINS]),
+        decimals: empty(uint256[MAX_COINS]),
+        underlying_decimals: empty(uint256[MAX_COINS]),
         lp_token: self.pool_data[_pool].lp_token,
         A: CurvePool(_pool).A(),
         fee: CurvePool(_pool).fee()
     })
 
-    _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+    _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
     _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
 
@@ -211,24 +213,24 @@ def get_pool_info(_pool: address) -> PoolInfo:
             assert i != 0
             break
 
-        _pool_info.decimals[i] = convert(slice(_decimals_packed, i, 1), uint256)
-        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, i, 1), uint256)
+        _pool_info.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
+        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
         _pool_info.balances[i] = CurvePool(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
             _pool_info.underlying_balances[i] = _pool_info.balances[i]
         elif _underlying_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _pool_info.underlying_balances[i] = as_unitless_number(self.balance)
+            _pool_info.underlying_balances[i] = self.balance
         elif _underlying_coin != ZERO_ADDRESS:
-            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
             _rate: uint256 = convert(_response, uint256)
             _pool_info.underlying_balances[i] = _pool_info.balances[i] * _rate / 10 ** 18
 
     return _pool_info
 
 
-@public
+@external
 def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     """
     @notice Get rates between coins and underlying coins
@@ -238,8 +240,8 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
     @param _pool Pool address
     @return Rates between coins and underlying coins
     """
-    _rates: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
-    _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+    _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
         if _coin == ZERO_ADDRESS:
@@ -247,14 +249,14 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
         if _coin == self.pool_data[_pool].ul_coins[i]:
             _rates[i] = 10 ** 18
         else:
-            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
             _rates[i] = convert(_response, uint256)
 
     return _rates
 
 
-@private
-@constant
+@internal
+@view
 def _get_token_indices(
     _pool: address,
     _from: address,
@@ -303,8 +305,8 @@ def _get_token_indices(
     raise "No available market"
 
 
-@public
-@constant
+@external
+@view
 def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     """
     @notice Estimate the gas used in an exchange.
@@ -337,8 +339,8 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     return _total
 
 
-@public
-@constant
+@external
+@view
 def get_exchange_amount(
     _pool: address,
     _from: address,
@@ -364,7 +366,7 @@ def get_exchange_amount(
         return CurvePool(_pool).get_dy(i, j, _amount)
 
 
-@public
+@external
 @payable
 @nonreentrant("lock")
 def exchange(
@@ -393,7 +395,7 @@ def exchange(
     # record initial balance
     _initial_balance: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        _initial_balance = as_unitless_number(self.balance - msg.value)
+        _initial_balance = self.balance - msg.value
     else:
         _initial_balance = ERC20(_to).balanceOf(self)
 
@@ -403,7 +405,7 @@ def exchange(
     elif self.returns_none[_from]:
         ERC20(_from).transferFrom(msg.sender, self, _amount)
     else:
-        assert_modifiable(ERC20(_from).transferFrom(msg.sender, self, _amount))
+        ERC20(_from).transferFrom(msg.sender, self, _amount)
 
     # perform coin exchange
     if _is_underlying:
@@ -414,21 +416,21 @@ def exchange(
     # perform output transfer
     _received: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        _received = as_unitless_number(self.balance) - _initial_balance
+        _received = self.balance - _initial_balance
         send(msg.sender, _received)
     else:
         _received = ERC20(_to).balanceOf(self) - _initial_balance
         if self.returns_none[_to]:
             ERC20(_to).transfer(msg.sender, _received)
         else:
-            assert_modifiable(ERC20(_to).transfer(msg.sender, _received))
+            ERC20(_to).transfer(msg.sender, _received)
 
-    log.TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
+    log TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
 
     return True
 
 
-@public
+@external
 def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
     """
     @notice Get the current number of coins required to receive the given amount in an exchange
@@ -452,9 +454,9 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
     else:
         _decimals_packed = self.pool_data[_pool].decimals
 
-    _rates: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
-    _balances: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
-    _precisions: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
+    _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _precisions: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
     for x in range(MAX_COINS):
@@ -465,19 +467,19 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
             break
 
         if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _balances[x] = as_unitless_number(self.balance)
+            _balances[x] = self.balance
         else:
             _balances[x] = ERC20(_coin).balanceOf(_pool)
 
 
-        _decimals: uint256 = convert(slice(_decimals_packed, x, 1), uint256)
+        _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
 
         if _coin == self.pool_data[_pool].ul_coins[x]:
             _rates[x] = 10 ** 18
         else:
-            _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
-            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
 
     return Calculator(self.pool_data[_pool].calculator).get_dx(
@@ -485,7 +487,7 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
     )
 
 
-@public
+@external
 def get_exchange_amounts(
     _pool: address,
     _from: address,
@@ -515,9 +517,9 @@ def get_exchange_amounts(
     else:
         _decimals_packed = self.pool_data[_pool].decimals
 
-    _rates: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
-    _balances: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
-    _precisions: uint256[MAX_COINS] = EMPTY_UINT256_ARRAY
+    _rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    _precisions: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
     for x in range(MAX_COINS):
@@ -528,18 +530,18 @@ def get_exchange_amounts(
             break
 
         if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _balances[x] = as_unitless_number(self.balance)
+            _balances[x] = self.balance
         else:
             _balances[x] = ERC20(_coin).balanceOf(_pool)
 
-        _decimals: uint256 = convert(slice(_decimals_packed, x, 1), uint256)
+        _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
 
         if _coin == self.pool_data[_pool].ul_coins[x]:
             _rates[x] = 10 ** 18
         else:
-            _rate_method_id: bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
-            _response: bytes[32] = raw_call(_coin, _rate_method_id, outsize=32)  # dev: bad response
+            _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+            _response: Bytes[32] = raw_call(_coin, _rate_method_id, max_outsize=32)  # dev: bad response
             _rates[x] = convert(_response, uint256)
 
     return Calculator(self.pool_data[_pool].calculator).get_dy(
@@ -549,7 +551,7 @@ def get_exchange_amounts(
 
 # Admin functions
 
-@private
+@internal
 def _add_pool(
     _pool: address,
     _n_coins: int128,
@@ -578,7 +580,7 @@ def _add_pool(
             break
 
         # add decimals
-        _value: uint256 = convert(slice(_decimals, i, 1), uint256)
+        _value: uint256 = convert(slice(_decimals, convert(i, uint256), 1), uint256)
         if _value == 0:
             if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                 _value = 18
@@ -589,7 +591,7 @@ def _add_pool(
         _decimals_packed += shift(_value, (31-i) * 8)
 
         if _ucoins[i] != ZERO_ADDRESS:
-            _value = convert(slice(_udecimals, i, 1), uint256)
+            _value = convert(slice(_udecimals, convert(i, uint256), 1), uint256)
             if _value == 0:
                 if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                     _value = 18
@@ -638,10 +640,12 @@ def _add_pool(
 
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
     self.pool_data[_pool].underlying_decimals = convert(_udecimals_packed, bytes32)
-    log.PoolAdded(_pool, slice(_rate_method_id, 0, 4))
+
+    _method_id: Bytes[4] = slice(_rate_method_id, 0, 4)
+    log PoolAdded(_pool, _method_id)
 
 
-@public
+@external
 def add_pool(
     _pool: address,
     _n_coins: int128,
@@ -667,8 +671,8 @@ def add_pool(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
-    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    _ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
 
     for i in range(MAX_COINS):
         if i == _n_coins:
@@ -700,7 +704,7 @@ def add_pool(
     )
 
 
-@public
+@external
 def add_pool_without_underlying(
     _pool: address,
     _n_coins: int128,
@@ -726,8 +730,8 @@ def add_pool_without_underlying(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
-    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    _ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
     _use_rates_mem: bytes32 = _use_rates
 
     for i in range(MAX_COINS):
@@ -741,7 +745,7 @@ def add_pool_without_underlying(
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
-        if not convert(slice(_use_rates_mem, i, 1), bool):
+        if not convert(slice(_use_rates_mem, convert(i, uint256), 1), bool):
             _ucoins[i] = _coins[i]
             self.pool_data[_pool].ul_coins[i] = _ucoins[i]
 
@@ -758,7 +762,7 @@ def add_pool_without_underlying(
     )
 
 
-@public
+@external
 def remove_pool(_pool: address):
     """
     @notice Remove a pool to the registry
@@ -782,8 +786,8 @@ def remove_pool(_pool: address):
     self.pool_list[_length] = ZERO_ADDRESS
     self.pool_count = _length
 
-    _coins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
-    _ucoins: address[MAX_COINS] = EMPTY_ADDRESS_ARRAY
+    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    _ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
 
     for i in range(MAX_COINS):
         _coins[i] = self.pool_data[_pool].coins[i]
@@ -848,10 +852,10 @@ def remove_pool(_pool: address):
                         self.markets[_first][_second][n] = self.markets[_first][_second][_length]
                 self.markets[_first][_second][_length] = 0
 
-    log.PoolRemoved(_pool)
+    log PoolRemoved(_pool)
 
 
-@public
+@external
 def set_returns_none(_addr: address, _is_returns_none: bool):
     """
     @notice Set `returns_none` value for a coin
@@ -863,7 +867,7 @@ def set_returns_none(_addr: address, _is_returns_none: bool):
     self.returns_none[_addr] = _is_returns_none
 
 
-@public
+@external
 def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
     """
     @notice Set gas estimate amounts
@@ -878,7 +882,7 @@ def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
         self.gas_estimate_values[_addr[i]] = _amount[i]
 
 
-@public
+@external
 def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
     """
     @notice Set gas estimate amounts
@@ -893,7 +897,7 @@ def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
         self.gas_estimate_values[_addr[i]][0] = _amount[i]
 
 
-@public
+@external
 def set_gas_estimate_contract(_pool: address, _estimator: address):
     """
     @notice Set gas estimate contract
@@ -905,7 +909,7 @@ def set_gas_estimate_contract(_pool: address, _estimator: address):
     self.gas_estimate_contracts[_pool] = _estimator
 
 
-@public
+@external
 def set_calculator(_pool: address, _calculator: address):
     """
     @notice Set calculator contract
@@ -918,13 +922,13 @@ def set_calculator(_pool: address, _calculator: address):
     self.pool_data[_pool].calculator = _calculator
 
 
-@public
-@constant
+@external
+@view
 def get_calculator(_pool: address) -> address:
     return self.pool_data[_pool].calculator
 
 
-@public
+@external
 def commit_transfer_ownership(_new_admin: address):
     """
     @notice Initiate a transfer of contract ownership
@@ -934,14 +938,14 @@ def commit_transfer_ownership(_new_admin: address):
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline == 0  # dev: transfer already active
 
-    _deadline: uint256 = as_unitless_number(block.timestamp) + 3*86400
+    _deadline: uint256 = block.timestamp + 3*86400
     self.transfer_ownership_deadline = _deadline
     self.future_admin = _new_admin
 
-    log.CommitNewAdmin(_deadline, _new_admin)
+    log CommitNewAdmin(_deadline, _new_admin)
 
 
-@public
+@external
 def apply_transfer_ownership():
     """
     @notice Finalize a transfer of contract ownership
@@ -956,10 +960,10 @@ def apply_transfer_ownership():
     self.admin = _new_admin
     self.transfer_ownership_deadline = 0
 
-    log.NewAdmin(_new_admin)
+    log NewAdmin(_new_admin)
 
 
-@public
+@external
 def revert_transfer_ownership():
     """
     @notice Revert a transfer of contract ownership
@@ -970,7 +974,7 @@ def revert_transfer_ownership():
     self.transfer_ownership_deadline = 0
 
 
-@public
+@external
 def claim_token_balance(_token: address):
     """
     @notice Transfer any ERC20 balance held by this contract
@@ -983,7 +987,7 @@ def claim_token_balance(_token: address):
     ERC20(_token).transfer(msg.sender, _balance)
 
 
-@public
+@external
 def claim_eth_balance():
     """
     @notice Transfer ether balance held by this contract
