@@ -404,10 +404,19 @@ def exchange(
     # perform / verify input transfer
     if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         assert _amount == msg.value, "Incorrect ETH amount"
-    elif self.returns_none[_from]:
-        ERC20(_from).transferFrom(msg.sender, self, _amount)
     else:
-        ERC20(_from).transferFrom(msg.sender, self, _amount)
+        _response: Bytes[32] = raw_call(
+            _from,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
+                convert(_amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(_response) > 0:
+            assert convert(_response, bool)
 
     # perform coin exchange
     if _is_underlying:
@@ -422,10 +431,17 @@ def exchange(
         send(msg.sender, _received)
     else:
         _received = ERC20(_to).balanceOf(self) - _initial_balance
-        if self.returns_none[_to]:
-            ERC20(_to).transfer(msg.sender, _received)
-        else:
-            ERC20(_to).transfer(msg.sender, _received)
+        _response: Bytes[32] = raw_call(
+            _to,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(_received, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(_response) > 0:
+            assert convert(_response, bool)
 
     log TokenExchange(msg.sender, _pool, _from, _to, _amount, _received)
 
@@ -683,14 +699,34 @@ def add_pool(
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
         if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+            _response: Bytes[32] = raw_call(
+                _coins[i],
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(_pool, bytes32),
+                    convert(MAX_UINT256, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(_response) > 0:
+                assert convert(_response, bool)
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
         _ucoins[i] = CurvePool(_pool).underlying_coins(i)
         if _ucoins[i] != _coins[i]:
             if _ucoins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-                ERC20(_ucoins[i]).approve(_pool, MAX_UINT256)
+                _response: Bytes[32] = raw_call(
+                    _ucoins[i],
+                    concat(
+                        method_id("approve(address,uint256)"),
+                        convert(_pool, bytes32),
+                        convert(MAX_UINT256, bytes32),
+                    ),
+                    max_outsize=32,
+                )
+                if len(_response) > 0:
+                    assert convert(_response, bool)
         self.pool_data[_pool].ul_coins[i] = _ucoins[i]
 
     self._add_pool(
@@ -743,7 +779,17 @@ def add_pool_without_underlying(
         # add coin
         _coins[i] = CurvePool(_pool).coins(i)
         if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            ERC20(_coins[i]).approve(_pool, MAX_UINT256)
+            _response: Bytes[32] = raw_call(
+                _coins[i],
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(_pool, bytes32),
+                    convert(MAX_UINT256, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(_response) > 0:
+                assert convert(_response, bool)
         self.pool_data[_pool].coins[i] = _coins[i]
 
         # add underlying coin
@@ -986,7 +1032,17 @@ def claim_token_balance(_token: address):
     assert msg.sender == self.admin  # dev: admin-only function
 
     _balance: uint256 = ERC20(_token).balanceOf(self)
-    ERC20(_token).transfer(msg.sender, _balance)
+    _response: Bytes[32] = raw_call(
+        _token,
+        concat(
+            method_id("transfer(address,uint256)"),
+            convert(msg.sender, bytes32),
+            convert(_balance, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(_response) > 0:
+        assert convert(_response, bool)
 
 
 @external
