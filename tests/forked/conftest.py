@@ -32,6 +32,7 @@ def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
         right_pad("0xbd6d894d"),
         pack_values([8, 8]),
         pack_values([True] + [False] * 7),
+        True,
         {'from': accounts[0]}
     )
 

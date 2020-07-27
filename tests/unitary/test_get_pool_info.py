@@ -1,6 +1,8 @@
 import brownie
 import pytest
 
+from scripts.utils import pack_values, right_pad
+
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
@@ -17,16 +19,25 @@ def test_fee(accounts, registry_compound, pool_compound, DAI, cUSDC):
     pool_info = registry_compound.get_pool_info(pool_compound)
     assert pool_info['fee'] == pool_compound.fee()
 
-    pool_compound._set_fee(31337, {'from': accounts[0]})
-    assert registry_compound.get_pool_info(pool_compound)['fee'] == 31337
+    pool_compound._set_fees_and_owner(31337, 42, 23, accounts[3], {'from': accounts[0]})
+    pool_info = registry_compound.get_pool_info(pool_compound)
+    assert pool_info['fee'] == 31337
+    assert pool_info['future_fee'] == 42
+    assert pool_info['future_admin_fee'] == 23
+    assert pool_info['future_owner'] == accounts[3]
 
 
 def test_A(accounts, registry_compound, pool_compound, DAI, cUSDC):
     pool_info = registry_compound.get_pool_info(pool_compound)
     assert pool_info['A'] == pool_compound.A()
 
-    pool_compound._set_A(31337, {'from': accounts[0]})
-    assert registry_compound.get_pool_info(pool_compound)['A'] == 31337
+    pool_compound._set_A(1000, 2000, 3000, 4000, 5000, {'from': accounts[0]})
+    pool_info = registry_compound.get_pool_info(pool_compound)
+    assert pool_info['A'] == 1000
+    assert pool_info['initial_A'] == 2000
+    assert pool_info['initial_A_time'] == 3000
+    assert pool_info['future_A'] == 4000
+    assert pool_info['future_A_time'] == 5000
 
 
 def test_balance(accounts, registry_compound, pool_compound, cUSDC):
@@ -93,3 +104,24 @@ def test_balances_no_lending(accounts, registry_susd, pool_susd, DAI):
     pool_info = registry_susd.get_pool_info(pool_susd)
     assert pool_info['balances'] == [1000000, 0, 0, 0, 0, 0, 0, 0]
     assert pool_info['underlying_balances'] == [1000000, 0, 0, 0, 0, 0, 0, 0]
+
+
+def test_no_initial_A(accounts, yDAI, registry, pool_y, lp_y):
+    registry.add_pool(
+        pool_y,
+        4,
+        lp_y,
+        ZERO_ADDRESS,
+        right_pad(yDAI.getPricePerFullShare.signature),
+        pack_values([18, 6, 6, 18]),
+        pack_values([18, 6, 6, 18]),
+        False,
+        {'from': accounts[0]}
+    )
+    pool_y._set_A(1000, 2000, 3000, 4000, 5000, {'from': accounts[0]})
+    pool_info = registry.get_pool_info(pool_y)
+    assert pool_info['A'] == 1000
+    assert pool_info['initial_A'] == 0
+    assert pool_info['initial_A_time'] == 0
+    assert pool_info['future_A'] == 4000
+    assert pool_info['future_A_time'] == 0
