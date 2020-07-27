@@ -16,7 +16,15 @@ coin_list: address[4]
 underlying_coin_list: address[4]
 
 A: public(uint256)
+initial_A: public(uint256)
+initial_A_time: public(uint256)
+future_A: public(uint256)
+future_A_time: public(uint256)
+
 fee: public(uint256)
+future_fee: public(uint256)
+future_admin_fee: public(uint256)
+future_owner: public(address)
 
 
 @external
@@ -152,14 +160,31 @@ def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
 # testing functions
 
 @external
-def _set_A(_value: uint256):
-    self.A = _value
+def _set_A(
+    _A: uint256,
+    _initial_A: uint256,
+    _initial_A_time: uint256,
+    _future_A: uint256,
+    _future_A_time: uint256
+):
+    self.A = _A
+    self.initial_A = _initial_A
+    self.initial_A_time = _initial_A_time
+    self.future_A = _future_A
+    self.future_A_time = _future_A_time
 
 
 @external
-def _set_fee(_value: uint256):
-    self.fee = _value
-
+def _set_fees_and_owner(
+    _fee: uint256,
+    _future_fee: uint256,
+    _future_admin_fee: uint256,
+    _future_owner: address
+):
+    self.fee = _fee
+    self.future_fee = _future_fee
+    self.future_admin_fee = _future_admin_fee
+    self.future_owner = _future_owner
 
 @external
 @payable
