@@ -9,8 +9,8 @@ Use the following functions to interact with this contract.
 ### Finding Curve Pools
 
 ```python
-def pool_count() -> int128: constant
-def pool_list(i: int128) -> address: constant
+def pool_count() -> int128: view
+def pool_list(i: int128) -> address: view
 ```
 
 * `pool_count` provides the number of pools currently included in the registry.
@@ -19,7 +19,7 @@ def pool_list(i: int128) -> address: constant
 Calling with a value greater than `pool_count` will return a zero value.
 
 ```python
-def find_pool_for_coins(from: address, to: address, i: uint256 = 0) -> address: constant
+def find_pool_for_coins(from: address, to: address, i: uint256 = 0) -> address: view
 ```
 
 Locate a pool based on the tokens you wish to trade.
@@ -35,7 +35,7 @@ Returns a zero value if no pool is available, or `i` exceeds the number of avail
 Arrays will always have a length of 7. Trailing zero values should be ignored.
 
 ```python
-def get_pool_coins(pool: address) -> (address[7], address[7], uint256[7]): constant
+def get_pool_coins(pool: address) -> (address[8], address[8], uint256[8]): view
 ```
 
 Get information on tradeable tokens in a pool.
@@ -43,7 +43,7 @@ Get information on tradeable tokens in a pool.
 Returns arrays of token addresses, underlying token addresses, and underlying token decimals.
 
 ```python
-def get_pool_info(pool: address) -> (uint256[7], uint256[7], uint256[7], uint256, uint256): constant
+def get_pool_info(pool: address) -> (uint256[8], uint256[8], uint256[8], uint256, uint256): view
 ```
 
 Get information on a pool.
@@ -53,7 +53,7 @@ Returns token balances, underlying token balances, underlying token decimals, po
 If the pool does not exist the call will revert.
 
 ```python
-def get_pool_rates(pool: address) -> uint256[7]: constant
+def get_pool_rates(pool: address) -> uint256[8]: view
 ```
 
 Get rates between tokens and underlying tokens.
@@ -63,7 +63,7 @@ For tokens where there is no underlying tokens, or where the underlying token ca
 ### Making Trades
 
 ```python
-def get_exchange_amount(pool: address, from: address, to: address, amount: uint256) -> uint256: modifying
+def get_exchange_amount(pool: address, from: address, to: address, amount: uint256) -> uint256: view
 ```
 
 Get the number of tokens that will be received in an exchange.
@@ -76,7 +76,7 @@ Get the number of tokens that will be received in an exchange.
 Returns the expected amount of `to` to be received in the exchange, after fees.
 
 ```python
-def exchange(pool: address, from: address, to: address, amount: uint256, expected: uint256) -> bool: modifying
+def exchange(pool: address, from: address, to: address, amount: uint256, expected: uint256) -> bool: payable
 ```
 
 Perform a token exchange.
@@ -91,11 +91,11 @@ Prior to calling this function you must call the `approve` method in `from`, aut
 
 ## Testing and Development
 
-This project is written for compilation with Vyper [`0.1.0-beta17`](https://github.com/vyperlang/vyper/releases/tag/v0.1.0-beta.17).
+This project is written for compilation with Vyper [`0.2.3`](https://github.com/vyperlang/vyper/releases/tag/v0.2.3).
 
 Unit testing and development of this project is performed using [Brownie](https://github.com/iamdefinitelyahuman/brownie).
 
-To get started, first create and initialize a python [virtual environment](https://docs.python.org/3/library/venv.html). Next, install the requirements:
+To get started, first create and initialize a Python [virtual environment](https://docs.python.org/3/library/venv.html). Next, install the requirements:
 
 ```bash
 pip install -r requirements

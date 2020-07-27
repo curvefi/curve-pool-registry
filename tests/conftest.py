@@ -16,14 +16,12 @@ def isolation_setup(fn_isolation):
 
 @pytest.fixture(scope="module")
 def registry(Registry, accounts, USDT):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    yield Registry.deploy(returns_none, {'from': accounts[0]})
+    yield Registry.deploy({'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound, cDAI, USDT):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
     registry.add_pool(
         pool_compound,
         2,
@@ -40,8 +38,7 @@ def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound
 
 @pytest.fixture(scope="module")
 def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
     registry.add_pool(
         pool_y,
         4,
@@ -58,8 +55,7 @@ def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
 
 @pytest.fixture(scope="module")
 def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
     registry.add_pool(
         pool_susd,
         4,
@@ -76,8 +72,7 @@ def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
 
 @pytest.fixture(scope="module")
 def registry_eth(Registry, accounts, pool_eth, lp_y, USDT, yDAI):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
     registry.add_pool(
         pool_eth,
         3,
@@ -99,8 +94,7 @@ def registry_all(
     cDAI, yDAI, USDT,
     calculator, lp_compound, lp_y, lp_susd
 ):
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    registry = Registry.deploy(returns_none, {'from': accounts[0]})
+    registry = Registry.deploy({'from': accounts[0]})
 
     registry.add_pool(
         pool_compound,
@@ -149,31 +143,27 @@ def calculator(CurveCalc, accounts):
 def pool_compound(PoolMock, accounts, DAI, USDC, cDAI, cUSDC):
     coins = [cDAI, cUSDC, ZERO_ADDRESS, ZERO_ADDRESS]
     underlying = [DAI, USDC, ZERO_ADDRESS, ZERO_ADDRESS]
-    returns_none = [ZERO_ADDRESS] * 4
-    yield PoolMock.deploy(2, coins, underlying, returns_none, 70, 4000000, {'from': accounts[0]})
+    yield PoolMock.deploy(2, coins, underlying, 70, 4000000, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def pool_y(PoolMock, accounts, DAI, USDC, USDT, TUSD, yDAI, yUSDC, yUSDT, yTUSD):
     coins = [yDAI, yUSDC, yUSDT, yTUSD]
     underlying = [DAI, USDC, USDT, TUSD]
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    yield PoolMock.deploy(4, coins, underlying, returns_none, 70, 4000000, {'from': accounts[0]})
+    yield PoolMock.deploy(4, coins, underlying, 70, 4000000, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def pool_susd(PoolMock, accounts, DAI, USDC, USDT, sUSD):
     coins = [DAI, USDC, USDT, sUSD]
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    yield PoolMock.deploy(4, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
+    yield PoolMock.deploy(4, coins, coins, 70, 4000000, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def pool_eth(PoolMock, accounts, DAI, USDT, yDAI, yUSDT):
     coins = [yDAI, yUSDT, "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", ZERO_ADDRESS]
     underlying = [DAI, USDT, "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", ZERO_ADDRESS]
-    returns_none = [USDT, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
-    pool = PoolMock.deploy(3, coins, underlying, returns_none, 70, 4000000, {'from': accounts[0]})
+    pool = PoolMock.deploy(3, coins, underlying, 70, 4000000, {'from': accounts[0]})
     accounts[-1].transfer(pool, accounts[-1].balance())
     yield pool
 

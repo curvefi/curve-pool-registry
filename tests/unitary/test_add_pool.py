@@ -92,7 +92,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         pack_values([9, 8, 7, 6]),
         {'from': accounts[0]}
     )
-    y_pool_info = registry.get_pool_info.call(pool_y)
+    y_pool_info = registry.get_pool_info(pool_y)
 
     registry.add_pool(
         pool_susd,
@@ -104,7 +104,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         pack_values([99, 88, 77, 22]),
         {'from': accounts[0]}
     )
-    susd_pool_info = registry.get_pool_info.call(pool_susd)
+    susd_pool_info = registry.get_pool_info(pool_susd)
 
     assert y_pool_info != susd_pool_info
 
@@ -127,8 +127,7 @@ def test_fetch_decimals(accounts, registry, pool_y, lp_y):
 def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
     token = ERC20.deploy("DEC", "Decimals", 256, {"from": accounts[0]})
     coins = [DAI, token, ZERO_ADDRESS, ZERO_ADDRESS]
-    returns_none = [ZERO_ADDRESS] * 4
-    pool = PoolMock.deploy(2, coins, coins, returns_none, 70, 4000000, {'from': accounts[0]})
+    pool = PoolMock.deploy(2, coins, coins, 70, 4000000, {'from': accounts[0]})
 
     with brownie.reverts("dev: decimal overflow"):
         registry.add_pool(

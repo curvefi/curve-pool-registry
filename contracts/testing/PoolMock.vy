@@ -4,27 +4,26 @@
 
 FEE_PRECISION: constant(uint256) = 10**10
 
-contract ERC20Mock:
-    def decimals() -> uint256: constant
-    def transfer(_to: address, _amount: uint256) -> bool: modifying
-    def transferFrom(_from: address, _to: address, _amount: uint256) -> bool: modifying
-    def _mint_for_testing(_amount: uint256) -> bool: modifying
+interface ERC20Mock:
+    def decimals() -> uint256: view
+    def balanceOf(_addr: address) -> uint256: view
+    def transfer(_to: address, _amount: uint256) -> bool: nonpayable
+    def transferFrom(_from: address, _to: address, _amount: uint256) -> bool: nonpayable
+    def _mint_for_testing(_amount: uint256): nonpayable
 
 n_coins: public(int128)
 coin_list: address[4]
 underlying_coin_list: address[4]
-returns_none: map(address, bool)
 
 A: public(uint256)
 fee: public(uint256)
 
 
-@public
+@external
 def __init__(
     _n_coins: int128,
     _coin_list: address[4],
     _underlying_coin_list: address[4],
-    _returns_none: address[4],
     _A: uint256,
     _fee: uint256,
 ):
@@ -33,28 +32,30 @@ def __init__(
     self.underlying_coin_list = _underlying_coin_list
     self.A = _A
     self.fee = _fee
-    for _addr in _returns_none:
-        if _addr == ZERO_ADDRESS:
-            break
-        self.returns_none[_addr] = True
 
 
-@public
-@constant
+@external
+@view
 def coins(i: int128) -> address:
     assert i < self.n_coins  # dev: exceeds n_coins
     return self.coin_list[i]
 
 
-@public
-@constant
+@external
+@view
 def underlying_coins(i: int128) -> address:
     assert i < self.n_coins  # dev: exceeds n_coins
     return self.underlying_coin_list[i]
 
 
-@private
-@constant
+@external
+@view
+def balances(i: int128) -> uint256:
+    return ERC20Mock(self.coin_list[i]).balanceOf(self)
+
+
+@internal
+@view
 def _get_dy(_from: address, _to: address, _dx: uint256) -> uint256:
     _from_precision: uint256 = 0
     _to_precision: uint256 = 0
@@ -74,40 +75,55 @@ def _get_dy(_from: address, _to: address, _dx: uint256) -> uint256:
     return _dy - _fee
 
 
-@public
-@constant
+@external
+@view
 def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
     return self._get_dy(self.coin_list[i], self.coin_list[j], dx)
 
 
-@public
-@constant
+@external
+@view
 def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
     return self._get_dy(self.underlying_coin_list[i], self.underlying_coin_list[j], dx)
 
 
-@private
+@internal
 def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_dy: uint256):
     dy: uint256 = self._get_dy(_from, _to, dx)
     assert dy >= min_dy, "Exchange resulted in fewer coins than expected"
 
-    if self.returns_none[_from]:
-        ERC20Mock(_from).transferFrom(_sender, self, dx)
-    elif _from != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        assert_modifiable(ERC20Mock(_from).transferFrom(_sender, self, dx))
-
+    if _from != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        _response: Bytes[32] = raw_call(
+            _from,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(_sender, bytes32),
+                convert(self, bytes32),
+                convert(dx, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(_response) > 0:
+            assert convert(_response, bool)
 
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         send(_sender, dy)
     else:
         ERC20Mock(_to)._mint_for_testing(dy)
-        if self.returns_none[_to]:
-            ERC20Mock(_to).transfer(_sender, dy)
-        else:
-            assert_modifiable(ERC20Mock(_to).transfer(_sender, dy))
+        _response: Bytes[32] = raw_call(
+            _to,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(_sender, bytes32),
+                convert(dy, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(_response) > 0:
+            assert convert(_response, bool)
 
 
-@public
+@external
 @payable
 @nonreentrant('lock')
 def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256):
@@ -120,7 +136,7 @@ def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256):
     self._exchange(msg.sender, _from, self.coin_list[j], dx, min_dy)
 
 
-@public
+@external
 @payable
 @nonreentrant('lock')
 def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
@@ -135,17 +151,17 @@ def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
 
 # testing functions
 
-@public
+@external
 def _set_A(_value: uint256):
     self.A = _value
 
 
-@public
+@external
 def _set_fee(_value: uint256):
     self.fee = _value
 
 
-@public
+@external
 @payable
 def __default__():
     pass
