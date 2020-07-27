@@ -12,7 +12,6 @@ DEPLOYER_DEST = "0xC447FcAF1dEf19A583F97b3620627BF69c05b5fB"
 POA = False
 USE_MIDDLEWARE = True
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-TETHERS = ["0xdAC17F958D2ee523a2206206994597C13D831ec7"] + [ZERO_ADDRESS] * 3
 MAX_COINS = 8
 EMPTY_DECIMALS = pack_values([0] * MAX_COINS)
 CONFS = 10
@@ -27,38 +26,40 @@ def insert_calculator(params, calculator):
 POOLS = [
     (  # Compound
         '0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56', 2, '0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2',
-        right_pad(cERC20.signatures['exchangeRateStored']), EMPTY_DECIMALS, EMPTY_DECIMALS,
+        right_pad(cERC20.signatures['exchangeRateStored']), EMPTY_DECIMALS, EMPTY_DECIMALS, False,
     ),
     (  # USDT
         '0x52EA46506B9CC5Ef470C5bf89f17Dc28bB35D85C', 3, '0x9fC689CCaDa600B6DF723D9E47D84d76664a1F23',
-        right_pad(cERC20.signatures['exchangeRateStored']), EMPTY_DECIMALS, EMPTY_DECIMALS,
+        right_pad(cERC20.signatures['exchangeRateStored']), EMPTY_DECIMALS, EMPTY_DECIMALS, False,
     ),
     (  # Y
         '0x45F783CCE6B7FF23B2ab2D70e416cdb7D6055f51', 4, '0xdF5e0e81Dff6FAF3A7e52BA697820c5e32D806A8',
-        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS,
+        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS, False,
     ),
     (  # BUSD
         '0x79a8C46DeA5aDa233ABaFFD40F3A0A2B1e5A4F27', 4, '0x3B3Ac5386837Dc563660FB6a0937DFAa5924333B',
-        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS,
+        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS, False,
     ),
     (  # SUSD
         '0xA5407eAE9Ba41422680e2e00537571bcC53efBfD', 4, '0xC25a3A3b969415c80451098fa907EC722572917F',
-        "0x00", EMPTY_DECIMALS, EMPTY_DECIMALS,
+        "0x00", EMPTY_DECIMALS, EMPTY_DECIMALS, False,
     ),
     (  # PAX
         '0x06364f10B501e868329afBc005b3492902d6C763', 4, '0xD905e2eaeBe188fc92179b6350807D8bd91Db0D8',
-        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS
+        right_pad(yERC20.signatures['getPricePerFullShare']), EMPTY_DECIMALS, EMPTY_DECIMALS, True,
     ),
 ]
 
 POOLS_NO_UNDERLYING = [
     (  # RenBTC
         '0x93054188d876f558f4a66B2EF1d97d16eDf0895B', 2, '0x49849C98ae39Fff122806C06791Fa73784FB3675',
-        right_pad(cERC20.signatures['exchangeRateCurrent']), EMPTY_DECIMALS, pack_values([True] + [False] * 7)
+        right_pad(cERC20.signatures['exchangeRateCurrent']), EMPTY_DECIMALS, pack_values([True] + [False] * 7),
+        True,
     ),
     (  # SBTC
         '0x7fC77b5c7614E1533320Ea6DDc2Eb61fa00A9714', 3, '0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3',
-        right_pad(cERC20.signatures['exchangeRateCurrent']), EMPTY_DECIMALS, pack_values([True] + [False] * 7)
+        right_pad(cERC20.signatures['exchangeRateCurrent']), EMPTY_DECIMALS, pack_values([True] + [False] * 7),
+        True,
     ),
 ]
 
@@ -122,7 +123,7 @@ def main(deployment_address=DEPLOYER):
         sleep(5)
         while True:
             try:
-                registry = Registry.deploy(TETHERS, deployer_kwargs)
+                registry = Registry.deploy(deployer_kwargs)
             except KeyError:
                 continue
             break
