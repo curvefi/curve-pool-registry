@@ -13,6 +13,7 @@ struct PoolArray:
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
     calculator: address
+    has_initial_A: bool
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -27,7 +28,14 @@ struct PoolInfo:
     underlying_decimals: uint256[MAX_COINS]
     lp_token: address
     A: uint256
+    future_A: uint256
     fee: uint256
+    future_fee: uint256
+    future_admin_fee: uint256
+    future_owner: address
+    initial_A: uint256
+    initial_A_time: uint256
+    future_A_time: uint256
 
 
 interface ERC20:
@@ -39,7 +47,14 @@ interface ERC20:
 
 interface CurvePool:
     def A() -> uint256: view
+    def future_A() -> uint256: view
     def fee() -> uint256: view
+    def future_fee() -> uint256: view
+    def future_admin_fee() -> uint256: view
+    def future_owner() -> address: view
+    def initial_A() -> uint256: view
+    def initial_A_time() -> uint256: view
+    def future_A_time() -> uint256: view
     def coins(i: int128) -> address: view
     def underlying_coins(i: int128) -> address: view
     def balances(i: int128) -> uint256: view
@@ -195,8 +210,20 @@ def get_pool_info(_pool: address) -> PoolInfo:
         underlying_decimals: empty(uint256[MAX_COINS]),
         lp_token: self.pool_data[_pool].lp_token,
         A: CurvePool(_pool).A(),
-        fee: CurvePool(_pool).fee()
+        future_A: CurvePool(_pool).future_A(),
+        fee: CurvePool(_pool).fee(),
+        future_fee: CurvePool(_pool).future_fee(),
+        future_admin_fee: CurvePool(_pool).future_admin_fee(),
+        future_owner: CurvePool(_pool).future_owner(),
+        initial_A: 0,
+        initial_A_time: 0,
+        future_A_time: 0,
     })
+
+    if self.pool_data[_pool].has_initial_A:
+        _pool_info.initial_A = CurvePool(_pool).initial_A()
+        _pool_info.initial_A_time = CurvePool(_pool).initial_A_time()
+        _pool_info.future_A_time = CurvePool(_pool).future_A_time()
 
     _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
@@ -577,6 +604,7 @@ def _add_pool(
     _ucoins: address[MAX_COINS],
     _decimals: bytes32,
     _udecimals: bytes32,
+    _has_initial_A: bool,
 ):
     # add pool to pool_list
     _length: uint256 = self.pool_count
@@ -586,6 +614,7 @@ def _add_pool(
     self.pool_data[_pool].lp_token = _lp_token
     self.pool_data[_pool].calculator = _calculator
     self.pool_data[_pool].rate_method_id = _rate_method_id
+    self.pool_data[_pool].has_initial_A = _has_initial_A
 
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
@@ -669,6 +698,7 @@ def add_pool(
     _rate_method_id: bytes32,
     _decimals: bytes32,
     _underlying_decimals: bytes32,
+    _has_initial_A: bool,
 ):
     """
     @notice Add a pool to the registry
@@ -735,7 +765,8 @@ def add_pool(
         _coins,
         _ucoins,
         _decimals,
-        _underlying_decimals
+        _underlying_decimals,
+        _has_initial_A,
     )
 
 
@@ -748,6 +779,7 @@ def add_pool_without_underlying(
     _rate_method_id: bytes32,
     _decimals: bytes32,
     _use_rates: bytes32,
+    _has_initial_A: bool,
 ):
     """
     @notice Add a pool to the registry
@@ -803,7 +835,8 @@ def add_pool_without_underlying(
         _coins,
         _ucoins,
         _decimals,
-        EMPTY_BYTES32
+        EMPTY_BYTES32,
+        _has_initial_A,
     )
 
 
