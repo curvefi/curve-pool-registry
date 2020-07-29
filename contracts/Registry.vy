@@ -508,11 +508,7 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
             _n_coins = x
             break
 
-        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _balances[x] = self.balance
-        else:
-            _balances[x] = ERC20(_coin).balanceOf(_pool)
-
+        _balances[x] = CurvePool(_pool).balances(x)
 
         _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
@@ -571,10 +567,7 @@ def get_exchange_amounts(
             _n_coins = x
             break
 
-        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _balances[x] = self.balance
-        else:
-            _balances[x] = ERC20(_coin).balanceOf(_pool)
+        _balances[x] = CurvePool(_pool).balances(x)
 
         _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
         _precisions[x] = 10 ** (18 - _decimals)
