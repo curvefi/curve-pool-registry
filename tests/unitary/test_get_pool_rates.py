@@ -45,6 +45,7 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         right_pad("0xdEAdbEEf"),
         pack_values([8, 8]),
         pack_values([18, 6]),
+        True,
         {'from': accounts[0]}
     )
 
@@ -60,6 +61,7 @@ def test_fix_incorrect_calldata(accounts, registry, pool_compound, lp_compound, 
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
+        True,
         {'from': accounts[0]}
     )
 
@@ -75,6 +77,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([True] + [False] * 7),
+        True,
         {'from': accounts[0]}
     )
 

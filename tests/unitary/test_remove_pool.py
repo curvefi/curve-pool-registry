@@ -87,6 +87,7 @@ def test_get_pool_info(accounts, registry_all, pool_y, pool_susd, lp_susd):
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
+        True,
         {'from': accounts[0]}
     )
     assert registry_all.get_pool_info(pool_susd) == pool_info

@@ -30,6 +30,7 @@ def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
+        True,
         {'from': accounts[0]}
     )
 
@@ -47,6 +48,7 @@ def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
         right_pad(yDAI.getPricePerFullShare.signature),
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
+        True,
         {'from': accounts[0]}
     )
 
@@ -64,6 +66,7 @@ def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
+        True,
         {'from': accounts[0]}
     )
 
@@ -81,6 +84,7 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT, yDAI):
         right_pad(yDAI.getPricePerFullShare.signature),
         "0x00",
         "0x00",
+        True,
         {'from': accounts[0]}
     )
 
@@ -104,6 +108,7 @@ def registry_all(
         right_pad(cDAI.exchangeRateStored.signature),
         pack_values([8, 8]),
         pack_values([18, 6]),
+        True,
         {'from': accounts[0]}
     )
     registry.add_pool(
@@ -114,6 +119,7 @@ def registry_all(
         right_pad(yDAI.getPricePerFullShare.signature),
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
+        True,
         {'from': accounts[0]}
     )
     registry.add_pool(
@@ -124,6 +130,7 @@ def registry_all(
         "0x00",
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
+        True,
         {'from': accounts[0]}
     )
 
