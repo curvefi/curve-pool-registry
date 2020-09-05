@@ -29,6 +29,7 @@ struct PoolInfo:
     underlying_decimals: uint256[MAX_COINS]
     lp_token: address
     liquidity_gauge: address
+    gauge_type: int128
     A: uint256
     future_A: uint256
     fee: uint256
@@ -220,6 +221,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
     _pool_info.lp_token = self.pool_data[_pool].lp_token
     _pool_info.liquidity_gauge = self.pool_data[_pool].liquidity_gauge
+    _pool_info.gauge_type = self.gauge_controller.gauge_types(_pool_info.liquidity_gauge)
     _pool_info.A = CurvePool(_pool).A()
     _pool_info.future_A = CurvePool(_pool).future_A()
     _pool_info.fee = CurvePool(_pool).fee()
