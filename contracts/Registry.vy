@@ -10,6 +10,7 @@ struct PoolArray:
     underlying_decimals: bytes32
     rate_method_id: bytes32
     lp_token: address
+    liquidity_gauge: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
     calculator: address
@@ -27,6 +28,7 @@ struct PoolInfo:
     decimals: uint256[MAX_COINS]
     underlying_decimals: uint256[MAX_COINS]
     lp_token: address
+    liquidity_gauge: address
     A: uint256
     future_A: uint256
     fee: uint256
@@ -74,6 +76,11 @@ interface Calculator:
                rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS], underlying: bool,
                i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: view
 
+interface LiquidityGauge:
+    def lp_token() -> address: view
+
+interface GaugeController:
+    def gauge_types(gauge: address) -> int128: view
 
 event CommitNewAdmin:
     deadline: indexed(uint256)
@@ -102,6 +109,7 @@ admin: public(address)
 transfer_ownership_deadline: uint256
 future_admin: address
 
+gauge_controller: public(GaugeController)
 pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
@@ -126,11 +134,12 @@ markets: HashMap[uint256, HashMap[uint256, uint256[65536]]]
 
 
 @external
-def __init__():
+def __init__(_gauge_controller: address):
     """
     @notice Constructor function
     """
     self.admin = msg.sender
+    self.gauge_controller = GaugeController(_gauge_controller)
 
 
 @external
@@ -201,7 +210,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     @dev Reverts if the pool address is unknown
     @param _pool Pool address
     @return balances, underlying balances, decimals, underlying decimals,
-            lp token, amplification coefficient, fees
+            lp token, liquidity gauge, amplification coefficient, fees
     """
     _pool_info: PoolInfo = PoolInfo({
         balances: empty(uint256[MAX_COINS]),
@@ -209,6 +218,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         decimals: empty(uint256[MAX_COINS]),
         underlying_decimals: empty(uint256[MAX_COINS]),
         lp_token: self.pool_data[_pool].lp_token,
+        liquidity_gauge: self.pool_data[_pool].liquidity_gauge,
         A: CurvePool(_pool).A(),
         future_A: CurvePool(_pool).future_A(),
         fee: CurvePool(_pool).fee(),
@@ -591,6 +601,7 @@ def _add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _liquidity_gauge: address,
     _calculator: address,
     _rate_method_id: bytes32,
     _coins: address[MAX_COINS],
@@ -599,12 +610,16 @@ def _add_pool(
     _udecimals: bytes32,
     _has_initial_A: bool,
 ):
+    assert LiquidityGauge(_liquidity_gauge).lp_token() == _lp_token
+    assert self.gauge_controller.gauge_types(_liquidity_gauge) >= 0
+
     # add pool to pool_list
     _length: uint256 = self.pool_count
     self.pool_list[_length] = _pool
     self.pool_count = _length + 1
     self.pool_data[_pool].location = _length
     self.pool_data[_pool].lp_token = _lp_token
+    self.pool_data[_pool].liquidity_gauge = _liquidity_gauge
     self.pool_data[_pool].calculator = _calculator
     self.pool_data[_pool].rate_method_id = _rate_method_id
     self.pool_data[_pool].has_initial_A = _has_initial_A
@@ -687,6 +702,7 @@ def add_pool(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _liquidity_gauge: address,
     _calculator: address,
     _rate_method_id: bytes32,
     _decimals: bytes32,
@@ -753,6 +769,7 @@ def add_pool(
         _pool,
         _n_coins,
         _lp_token,
+        _liquidity_gauge,
         _calculator,
         _rate_method_id,
         _coins,
@@ -768,6 +785,7 @@ def add_pool_without_underlying(
     _pool: address,
     _n_coins: int128,
     _lp_token: address,
+    _liquidity_gauge: address,
     _calculator: address,
     _rate_method_id: bytes32,
     _decimals: bytes32,
@@ -823,6 +841,7 @@ def add_pool_without_underlying(
         _pool,
         _n_coins,
         _lp_token,
+        _liquidity_gauge,
         _calculator,
         _rate_method_id,
         _coins,
@@ -979,6 +998,20 @@ def set_calculator(_pool: address, _calculator: address):
     assert msg.sender == self.admin  # dev: admin-only function
 
     self.pool_data[_pool].calculator = _calculator
+
+
+@external
+def set_liquidity_gauge(_pool: address, _liquidity_gauge: address):
+    """
+    @notice Set liquidity gauge contract
+    @param _pool Pool address
+    @param _liquidity_gauge Liquidity gauge address
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert LiquidityGauge(_liquidity_gauge).lp_token() == self.pool_data[_pool].lp_token
+    assert self.gauge_controller.gauge_types(_liquidity_gauge) >= 0
+
+    self.pool_data[_pool].liquidity_gauge = _liquidity_gauge
 
 
 @external
