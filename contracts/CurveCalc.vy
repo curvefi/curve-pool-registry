@@ -1,3 +1,5 @@
+# @version ^0.2.0
+
 # (c) Curve.Fi, 2020
 # Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
 

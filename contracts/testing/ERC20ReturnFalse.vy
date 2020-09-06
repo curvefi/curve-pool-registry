@@ -1,3 +1,5 @@
+# @version ^0.2.0
+
 """
 @notice Mock non-standard ERC20 for testing
 @dev failed transfers return False instead of reverting
