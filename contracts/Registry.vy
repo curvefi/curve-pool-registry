@@ -691,8 +691,8 @@ def _add_pool(
             _second: uint256 = max(convert(_coins[i], uint256), convert(_coins[x], uint256))
 
             _pool_zero: uint256 = self.markets[_first][_second][0]
+            _length = _pool_zero % 65536
             if _pool_zero != 0:
-                _length = _pool_zero % 65536
                 self.markets[_first][_second][_length] = convert(_pool, uint256)
                 self.markets[_first][_second][0] = _pool_zero + 1
             else:
@@ -711,7 +711,6 @@ def _add_pool(
             _pool_zero = self.markets[_first][_second][0]
 
             if _pool_zero != 0:
-                _length = _pool_zero % 65536
                 self.markets[_first][_second][_length] = convert(_pool, uint256)
                 self.markets[_first][_second][0] = _pool_zero + 1
             else:
@@ -720,8 +719,34 @@ def _add_pool(
     self.pool_data[_pool].decimals = convert(_decimals_packed, bytes32)
     self.pool_data[_pool].underlying_decimals = convert(_udecimals_packed, bytes32)
 
-    _method_id: Bytes[4] = slice(_rate_method_id, 0, 4)
-    log PoolAdded(_pool, _method_id)
+    log PoolAdded(_pool, slice(_rate_method_id, 0, 4))
+
+
+@internal
+def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: bool) -> address[MAX_COINS]:
+    _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    for i in range(MAX_COINS):
+        if i == _n_coins:
+            break
+        if _is_underlying:
+            _coins[i] = CurvePool(_pool).underlying_coins(i)
+        else:
+            _coins[i] = CurvePool(_pool).coins(i)
+        if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _response: Bytes[32] = raw_call(
+                _coins[i],
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(_pool, bytes32),
+                    convert(MAX_UINT256, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(_response) != 0:
+                assert convert(_response, bool)
+
+    return _coins
+
 
 
 @external
@@ -753,42 +778,8 @@ def add_pool(
 
     _coins: CoinList = empty(CoinList)
 
-    for i in range(MAX_COINS):
-        if i == _n_coins:
-            break
-
-        # add coin
-        _coins.coins[i] = CurvePool(_pool).coins(i)
-        if _coins.coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _response: Bytes[32] = raw_call(
-                _coins.coins[i],
-                concat(
-                    method_id("approve(address,uint256)"),
-                    convert(_pool, bytes32),
-                    convert(MAX_UINT256, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(_response) != 0:
-                assert convert(_response, bool)
-        self.pool_data[_pool].coins[i] = _coins.coins[i]
-
-        # add underlying coin
-        _coins.ucoins[i] = CurvePool(_pool).underlying_coins(i)
-        if _coins.ucoins[i] != _coins.coins[i]:
-            if _coins.ucoins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-                _response: Bytes[32] = raw_call(
-                    _coins.ucoins[i],
-                    concat(
-                        method_id("approve(address,uint256)"),
-                        convert(_pool, bytes32),
-                        convert(MAX_UINT256, bytes32),
-                    ),
-                    max_outsize=32,
-                )
-                if len(_response) != 0:
-                    assert convert(_response, bool)
-        self.pool_data[_pool].ul_coins[i] = _coins.ucoins[i]
+    _coins.coins = self._get_and_approve_coins(_pool, _n_coins, False)
+    _coins.ucoins = self._get_and_approve_coins(_pool, _n_coins, True)
 
     self._add_pool(
         _pool,
@@ -834,26 +825,11 @@ def add_pool_without_underlying(
     _coins: CoinList = empty(CoinList)
     _use_rates_mem: bytes32 = _use_rates
 
+    _coins.coins = self._get_and_approve_coins(_pool, _n_coins, False)
+
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
-
-        # add coin
-        _coins.coins[i] = CurvePool(_pool).coins(i)
-        if _coins.coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _response: Bytes[32] = raw_call(
-                _coins.coins[i],
-                concat(
-                    method_id("approve(address,uint256)"),
-                    convert(_pool, bytes32),
-                    convert(MAX_UINT256, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(_response) != 0:
-                assert convert(_response, bool)
-        self.pool_data[_pool].coins[i] = _coins.coins[i]
-
         # add underlying coin
         if not convert(slice(_use_rates_mem, convert(i, uint256), 1), bool):
             _coins.ucoins[i] = _coins.coins[i]
