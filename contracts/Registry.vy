@@ -245,16 +245,11 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
         _pool_info.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
         _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
-        if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _pool_info.balances[i] = self.balance
-        else:
-            _pool_info.balances[i] = CurvePool(_pool).balances(i)
+        _pool_info.balances[i] = CurvePool(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
             _pool_info.underlying_balances[i] = _pool_info.balances[i]
-        elif _underlying_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _pool_info.underlying_balances[i] = self.balance
         elif _underlying_coin != ZERO_ADDRESS:
             _rate: uint256 = convert(
                 raw_call(_coin, _rate_method_id, max_outsize=32, is_static_call=True),  # dev: bad response
