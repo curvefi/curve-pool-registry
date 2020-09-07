@@ -60,6 +60,8 @@ def underlying_coins(i: int128) -> address:
 @external
 @view
 def balances(i: int128) -> uint256:
+    if self.coin_list[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        return self.balance
     return ERC20Mock(self.coin_list[i]).balanceOf(self)
 
 
