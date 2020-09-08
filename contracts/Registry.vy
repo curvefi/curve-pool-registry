@@ -653,24 +653,27 @@ def _add_pool(
         if i == _n_coins:
             break
 
+        _coin: address = _coins[i]
+        _ul_coin: address = _ucoins[i]
+
         # add decimals
         _value: uint256 = convert(slice(_decimals, convert(i, uint256), 1), uint256)
         if _value == 0:
-            if _coins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                 _value = 18
             else:
-                _value = ERC20(_coins[i]).decimals()
+                _value = ERC20(_coin).decimals()
                 assert _value < 256  # dev: decimal overflow
 
         _decimals_packed += shift(_value, (31-i) * 8)
 
-        if _ucoins[i] != ZERO_ADDRESS:
+        if _ul_coin != ZERO_ADDRESS:
             _value = convert(slice(_udecimals, convert(i, uint256), 1), uint256)
             if _value == 0:
-                if _ucoins[i] == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                if _ul_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                     _value = 18
                 else:
-                    _value = ERC20(_ucoins[i]).decimals()
+                    _value = ERC20(_ul_coin).decimals()
                     assert _value < 256  # dev: decimal overflow
 
             _udecimals_packed += shift(_value, (31-i) * 8)
@@ -682,8 +685,8 @@ def _add_pool(
             if x == _n_coins:
                 break
 
-            _first: uint256 = min(convert(_coins[i], uint256), convert(_coins[x], uint256))
-            _second: uint256 = max(convert(_coins[i], uint256), convert(_coins[x], uint256))
+            _first: uint256 = min(convert(_coin, uint256), convert(_coins[x], uint256))
+            _second: uint256 = max(convert(_coin, uint256), convert(_coins[x], uint256))
 
             _pool_zero: uint256 = self.markets[_first][_second][0]
             _length = _pool_zero % 65536
@@ -693,17 +696,18 @@ def _add_pool(
             else:
                 self.markets[_first][_second][0] = shift(convert(_pool, uint256), 16) + 1
 
-            if _ucoins[i] == ZERO_ADDRESS:
+            if _ul_coin == ZERO_ADDRESS:
                 continue
             if _ucoins[x] == ZERO_ADDRESS:
                 continue
-            if _ucoins[i] == _coins[i] and _ucoins[x] == _coins[x]:
+            if _ul_coin == _coin and _ucoins[x] == _coins[x]:
                 continue
 
-            _first = min(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
-            _second = max(convert(_ucoins[i], uint256), convert(_ucoins[x], uint256))
+            _first = min(convert(_ul_coin, uint256), convert(_ucoins[x], uint256))
+            _second = max(convert(_ul_coin, uint256), convert(_ucoins[x], uint256))
 
             _pool_zero = self.markets[_first][_second][0]
+            _length = _pool_zero % 65536
 
             if _pool_zero != 0:
                 self.markets[_first][_second][_length] = convert(_pool, uint256)
@@ -725,8 +729,10 @@ def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: boo
             break
         if _is_underlying:
             _coins[i] = CurvePool(_pool).underlying_coins(i)
+            self.pool_data[_pool].ul_coins[i] = _coins[i]
         else:
             _coins[i] = CurvePool(_pool).coins(i)
+            self.pool_data[_pool].coins[i] = _coins[i]
         if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _response: Bytes[32] = raw_call(
                 _coins[i],
@@ -771,10 +777,8 @@ def add_pool(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    _coins: CoinList = empty(CoinList)
-
-    _coins.coins = self._get_and_approve_coins(_pool, _n_coins, False)
-    _coins.ucoins = self._get_and_approve_coins(_pool, _n_coins, True)
+    _coins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, False)
+    _ucoins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, True)
 
     self._add_pool(
         _pool,
@@ -782,8 +786,8 @@ def add_pool(
         _lp_token,
         _calculator,
         _rate_method_id,
-        _coins.coins,
-        _coins.ucoins,
+        _coins,
+        _ucoins,
         _decimals,
         _underlying_decimals,
         _has_initial_A,
