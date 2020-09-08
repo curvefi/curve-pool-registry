@@ -3,11 +3,11 @@ import brownie
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-def test_admin_is_deployer(Registry, accounts):
-    registry = Registry.deploy({'from': accounts[0]})
+def test_admin_is_deployer(Registry, accounts, gauge_controller):
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
     assert registry.admin() == accounts[0]
 
-    registry = Registry.deploy({'from': accounts[1]})
+    registry = Registry.deploy(gauge_controller, {'from': accounts[1]})
     assert registry.admin() == accounts[1]
 
 

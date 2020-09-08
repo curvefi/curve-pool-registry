@@ -33,12 +33,11 @@ def WBTC(Contract):
 
 
 @pytest.fixture(scope="module")
-def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc, gauge_renbtc):
+def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
     registry.add_pool_without_underlying(
         pool_renbtc,
         2,
         lp_renbtc,
-        gauge_renbtc,
         calculator,
         right_pad("0xbd6d894d"),
         pack_values([8, 8]),
