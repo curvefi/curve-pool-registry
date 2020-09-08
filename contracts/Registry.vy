@@ -291,6 +291,11 @@ def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
 @view
 @external
 def get_pool_gauges(_pool: address) -> PoolGauges:
+    """
+    @notice Get a list of LiquidityGauge contracts associated with a pool
+    @param _pool Pool address
+    @return address[10] of gauge addresses, int128[10] of gauge types
+    """
     _gauge_info: PoolGauges = empty(PoolGauges)
     _gauge_controller: address = self.gauge_controller
     for i in range(10):
@@ -997,7 +1002,7 @@ def set_calculator(_pool: address, _calculator: address):
 @external
 def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     """
-    @notice Set liquidity gauge contract
+    @notice Set liquidity gauge contracts``
     @param _pool Pool address
     @param _liquidity_gauges Liquidity gauge address
     """
@@ -1019,6 +1024,11 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
 @external
 @view
 def get_calculator(_pool: address) -> address:
+    """
+    @notice Get the calculator contract address for a pool
+    @param _pool Pool address
+    @return Calculator address
+    """
     return self.pool_data[_pool].calculator
 
 
