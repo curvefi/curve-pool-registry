@@ -1012,7 +1012,7 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     _gauge_controller: address = self.gauge_controller
     for i in range(10):
         if _liquidity_gauges[i] != ZERO_ADDRESS:
-            assert LiquidityGauge(_liquidity_gauges[i]).lp_token() == _lp_token
+            assert LiquidityGauge(_liquidity_gauges[i]).lp_token() == _lp_token  # dev: wrong token
             GaugeController(_gauge_controller).gauge_types(_liquidity_gauges[i])
             self.liquidity_gauges[_pool][i] = _liquidity_gauges[i]
         elif self.liquidity_gauges[_pool][i] != ZERO_ADDRESS:

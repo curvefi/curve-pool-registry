@@ -12,4 +12,4 @@ def gauge_types(_gauge: address) -> int128:
 
 @external
 def _set_gauge_type(_gauge: address, _type: int128):
-    self.gauge_types_[_gauge] = _type
+    self.gauge_types_[_gauge] = _type + 1
