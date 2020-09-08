@@ -3,6 +3,11 @@ import pytest
 from scripts.utils import pack_values, right_pad
 
 @pytest.fixture(scope="module")
+def registry(Registry, accounts):
+    yield Registry.deploy("0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB", {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
 def pool_renbtc(Contract):
     yield Contract("0x93054188d876f558f4a66B2EF1d97d16eDf0895B")
 
@@ -10,6 +15,11 @@ def pool_renbtc(Contract):
 @pytest.fixture(scope="module")
 def lp_renbtc(Contract):
     yield Contract("0x49849C98ae39Fff122806C06791Fa73784FB3675")
+
+
+@pytest.fixture(scope="module")
+def gauge_renbtc(Contract):
+    yield Contract("0xB1F2cdeC61db658F091671F5f199635aEF202CAC")
 
 
 @pytest.fixture(scope="module")

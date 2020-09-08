@@ -1,3 +1,2 @@
-eth-brownie>=1.10.3,<2.0.0
-vyper==0.2.3
+eth-brownie>=1.11.0,<2.0.0
 jupyter

@@ -15,13 +15,13 @@ def isolation_setup(fn_isolation):
 # registries
 
 @pytest.fixture(scope="module")
-def registry(Registry, accounts, USDT):
-    yield Registry.deploy({'from': accounts[0]})
+def registry(Registry, accounts, gauge_controller):
+    yield Registry.deploy(gauge_controller, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
-def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound, cDAI, USDT):
-    registry = Registry.deploy({'from': accounts[0]})
+def registry_compound(accounts, Registry, gauge_controller, pool_compound, calculator, lp_compound, cDAI, USDT):
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
     registry.add_pool(
         pool_compound,
         2,
@@ -38,8 +38,8 @@ def registry_compound(accounts, Registry, pool_compound, calculator, lp_compound
 
 
 @pytest.fixture(scope="module")
-def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
-    registry = Registry.deploy({'from': accounts[0]})
+def registry_y(Registry, accounts, gauge_controller, pool_y, calculator, lp_y, yDAI, USDT):
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
     registry.add_pool(
         pool_y,
         4,
@@ -56,8 +56,8 @@ def registry_y(Registry, accounts, pool_y, calculator, lp_y, yDAI, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
-    registry = Registry.deploy({'from': accounts[0]})
+def registry_susd(Registry, accounts, gauge_controller, pool_susd, calculator, lp_susd, USDT):
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
     registry.add_pool(
         pool_susd,
         4,
@@ -74,8 +74,8 @@ def registry_susd(Registry, accounts, pool_susd, calculator, lp_susd, USDT):
 
 
 @pytest.fixture(scope="module")
-def registry_eth(Registry, accounts, pool_eth, lp_y, USDT, yDAI):
-    registry = Registry.deploy({'from': accounts[0]})
+def registry_eth(Registry, accounts, gauge_controller, pool_eth, lp_y, USDT, yDAI):
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
     registry.add_pool(
         pool_eth,
         3,
@@ -93,12 +93,12 @@ def registry_eth(Registry, accounts, pool_eth, lp_y, USDT, yDAI):
 
 @pytest.fixture(scope="module")
 def registry_all(
-    Registry, accounts,
+    Registry, accounts, gauge_controller,
     pool_compound, pool_y, pool_susd,
     cDAI, yDAI, USDT,
     calculator, lp_compound, lp_y, lp_susd
 ):
-    registry = Registry.deploy({'from': accounts[0]})
+    registry = Registry.deploy(gauge_controller, {'from': accounts[0]})
 
     registry.add_pool(
         pool_compound,
@@ -190,6 +190,34 @@ def lp_y(ERC20, accounts):
 @pytest.fixture(scope="module")
 def lp_susd(ERC20, accounts):
     yield ERC20.deploy("Curve sUSD LP Token", "lpSUSD", 18, {"from": accounts[0]})
+
+
+# liquidity gauges
+
+@pytest.fixture(scope="module")
+def gauge_controller(GaugeControllerMock, accounts):
+    yield GaugeControllerMock.deploy({'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def gauge_compound(LiquidityGaugeMock, accounts, gauge_controller, lp_compound):
+    gauge = LiquidityGaugeMock.deploy(lp_compound, {'from': accounts[0]})
+    gauge_controller._set_gauge_type(gauge, 1, {'from': accounts[0]})
+    yield gauge
+
+
+@pytest.fixture(scope="module")
+def gauge_y(LiquidityGaugeMock, accounts, gauge_controller, lp_y):
+    gauge = LiquidityGaugeMock.deploy(lp_y, {'from': accounts[0]})
+    gauge_controller._set_gauge_type(gauge, 2, {'from': accounts[0]})
+    yield gauge
+
+
+@pytest.fixture(scope="module")
+def gauge_susd(LiquidityGaugeMock, accounts, gauge_controller, lp_susd):
+    gauge = LiquidityGaugeMock.deploy(lp_susd, {'from': accounts[0]})
+    gauge_controller._set_gauge_type(gauge, 3, {'from': accounts[0]})
+    yield gauge
 
 
 # base stablecoins
