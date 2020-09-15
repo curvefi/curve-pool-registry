@@ -177,11 +177,10 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
     _first: uint256 = min(convert(_from, uint256), convert(_to, uint256))
     _second: uint256 = max(convert(_from, uint256), convert(_to, uint256))
 
+    _addr: uint256 = self.markets[_first][_second][i]
     if i == 0:
-        _addr: uint256 = shift(self.markets[_first][_second][0], -16)
-        return convert(convert(_addr, bytes32), address)
-
-    return convert(convert(self.markets[_first][_second][i], bytes32), address)
+        _addr = shift(_addr, -16)
+    return convert(convert(_addr, bytes32), address)
 
 
 @external
@@ -198,12 +197,13 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
 
     for i in range(MAX_COINS):
+        ui: uint256 = convert(i, uint256)
         _coins.coins[i] = self.pool_data[_pool].coins[i]
         if _coins.coins[i] == ZERO_ADDRESS:
             break
         _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
-        _coins.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
-        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
+        _coins.decimals[i] = convert(slice(_decimals_packed, ui, 1), uint256)
+        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, ui, 1), uint256)
 
     return _coins
 
@@ -243,8 +243,9 @@ def get_pool_info(_pool: address) -> PoolInfo:
             assert i != 0
             break
 
-        _pool_info.decimals[i] = convert(slice(_decimals_packed, convert(i, uint256), 1), uint256)
-        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, convert(i, uint256), 1), uint256)
+        ui: uint256 = convert(i, uint256)
+        _pool_info.decimals[i] = convert(slice(_decimals_packed, ui, 1), uint256)
+        _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, ui, 1), uint256)
         _pool_info.balances[i] = CurvePool(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
@@ -654,15 +655,18 @@ def _add_pool(
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
 
+    _offset: int128 = 248
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
 
+        ui: uint256 = convert(i, uint256)
         _coin: address = _coins[i]
         _ul_coin: address = _ucoins[i]
+        _offset -= 8
 
         # add decimals
-        _value: uint256 = convert(slice(_decimals, convert(i, uint256), 1), uint256)
+        _value: uint256 = convert(slice(_decimals, ui, 1), uint256)
         if _value == 0:
             if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                 _value = 18
@@ -670,10 +674,10 @@ def _add_pool(
                 _value = ERC20(_coin).decimals()
                 assert _value < 256  # dev: decimal overflow
 
-        _decimals_packed += shift(_value, (31-i) * 8)
+        _decimals_packed += shift(_value, _offset)
 
         if _ul_coin != ZERO_ADDRESS:
-            _value = convert(slice(_udecimals, convert(i, uint256), 1), uint256)
+            _value = convert(slice(_udecimals, ui, 1), uint256)
             if _value == 0:
                 if _ul_coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
                     _value = 18
@@ -681,7 +685,7 @@ def _add_pool(
                     _value = ERC20(_ul_coin).decimals()
                     assert _value < 256  # dev: decimal overflow
 
-            _udecimals_packed += shift(_value, (31-i) * 8)
+            _udecimals_packed += shift(_value, _offset)
 
         # add pool to markets
         for x in range(i, i + MAX_COINS):
@@ -729,18 +733,19 @@ def _add_pool(
 @internal
 def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: bool) -> address[MAX_COINS]:
     _coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    _coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
         if _is_underlying:
-            _coins[i] = CurvePool(_pool).underlying_coins(i)
-            self.pool_data[_pool].ul_coins[i] = _coins[i]
+            _coin = CurvePool(_pool).underlying_coins(i)
+            self.pool_data[_pool].ul_coins[i] =_coin
         else:
-            _coins[i] = CurvePool(_pool).coins(i)
-            self.pool_data[_pool].coins[i] = _coins[i]
-        if _coins[i] != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _coin = CurvePool(_pool).coins(i)
+            self.pool_data[_pool].coins[i] = _coin
+        if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _response: Bytes[32] = raw_call(
-                _coins[i],
+                _coin,
                 concat(
                     method_id("approve(address,uint256)"),
                     convert(_pool, bytes32),
@@ -750,6 +755,7 @@ def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: boo
             )
             if len(_response) != 0:
                 assert convert(_response, bool)
+        _coins[i] = _coin
 
     return _coins
 
@@ -1011,10 +1017,11 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     _lp_token: address = self.pool_data[_pool].lp_token
     _gauge_controller: address = self.gauge_controller
     for i in range(10):
-        if _liquidity_gauges[i] != ZERO_ADDRESS:
-            assert LiquidityGauge(_liquidity_gauges[i]).lp_token() == _lp_token  # dev: wrong token
-            GaugeController(_gauge_controller).gauge_types(_liquidity_gauges[i])
-            self.liquidity_gauges[_pool][i] = _liquidity_gauges[i]
+        _gauge: address = _liquidity_gauges[i]
+        if _gauge != ZERO_ADDRESS:
+            assert LiquidityGauge(_gauge).lp_token() == _lp_token  # dev: wrong token
+            GaugeController(_gauge_controller).gauge_types(_gauge)
+            self.liquidity_gauges[_pool][i] = _gauge
         elif self.liquidity_gauges[_pool][i] != ZERO_ADDRESS:
             self.liquidity_gauges[_pool][i] = ZERO_ADDRESS
         else:
@@ -1079,34 +1086,26 @@ def revert_transfer_ownership():
 
 
 @external
-def claim_token_balance(_token: address):
+def claim_balance(_token: address):
     """
-    @notice Transfer any ERC20 balance held by this contract
+    @notice Transfer an ERC20 or ETH balance held by this contract
     @dev The entire balance is transferred to `self.admin`
     @param _token Token address
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
-    _balance: uint256 = ERC20(_token).balanceOf(self)
-    _response: Bytes[32] = raw_call(
-        _token,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(_balance, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(_response) != 0:
-        assert convert(_response, bool)
-
-
-@external
-def claim_eth_balance():
-    """
-    @notice Transfer ether balance held by this contract
-    @dev The entire balance is transferred to `self.admin`
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-
-    send(msg.sender, self.balance)
+    if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        send(msg.sender, self.balance)
+    else:
+        _balance: uint256 = ERC20(_token).balanceOf(self)
+        _response: Bytes[32] = raw_call(
+            _token,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(_balance, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(_response) != 0:
+            assert convert(_response, bool)
