@@ -116,6 +116,7 @@ def test_no_initial_A(accounts, yDAI, registry, pool_y, lp_y):
         pack_values([18, 6, 6, 18]),
         pack_values([18, 6, 6, 18]),
         False,
+        True,
         {'from': accounts[0]}
     )
     pool_y._set_A(1000, 2000, 3000, 4000, 5000, {'from': accounts[0]})

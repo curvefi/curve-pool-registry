@@ -38,6 +38,7 @@ def test_admin_only(accounts, registry, pool_compound, lp_compound):
             pack_values([8, 8]),
             pack_values([18, 6]),
             True,
+            True,
             {'from': accounts[1]}
         )
 
@@ -53,6 +54,7 @@ def test_cannot_add_twice(accounts, registry_compound, pool_compound, lp_compoun
             pack_values([8, 8]),
             pack_values([18, 6]),
             True,
+            True,
             {'from': accounts[0]}
         )
 
@@ -67,6 +69,7 @@ def test_add_multiple(accounts, registry, pool_y, pool_susd, lp_y):
             "0x00",
             pack_values([18, 6, 6, 18]),
             pack_values([1, 2, 3, 4]),
+            True,
             True,
             {'from': accounts[0]}
         )
@@ -94,6 +97,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         pack_values([1, 2, 3, 4]),
         pack_values([9, 8, 7, 6]),
         True,
+        True,
         {'from': accounts[0]}
     )
     y_pool_info = registry.get_pool_info(pool_y)
@@ -106,6 +110,7 @@ def test_get_pool_info(accounts, registry, pool_y, pool_susd, lp_y, lp_susd, yDA
         "0x00",
         pack_values([33, 44, 55, 66]),
         pack_values([99, 88, 77, 22]),
+        True,
         True,
         {'from': accounts[0]}
     )
@@ -123,6 +128,7 @@ def test_fetch_decimals(accounts, registry, pool_y, lp_y):
         "0x00",
         "0x00",
         "0x00",
+        True,
         True,
         {'from': accounts[0]}
     )
@@ -145,6 +151,7 @@ def test_decimal_overflows_via_fetch(accounts, registry, DAI, ERC20, PoolMock):
             "0x00",
             "0x00",
             True,
+            True,
             {'from': accounts[0]}
         )
 
@@ -158,6 +165,7 @@ def test_without_underlying(accounts, registry, pool_compound, cDAI, cUSDC):
         "0x00",
         pack_values([8, 8]),
         pack_values([True] + [False] * 7),
+        True,
         True,
         {'from': accounts[0]}
     )
@@ -179,6 +187,7 @@ def test_without_underlying_admin_only(accounts, registry, pool_compound):
             pack_values([8, 8]),
             pack_values([True] + [False] * 7),
             True,
+            True,
             {'from': accounts[1]}
         )
 
@@ -193,6 +202,7 @@ def test_without_underlying_already_exists(accounts, registry_compound, pool_com
             "0x00",
             pack_values([8, 8]),
             pack_values([True] + [False] * 7),
+            True,
             True,
             {'from': accounts[0]}
         )
