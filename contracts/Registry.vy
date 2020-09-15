@@ -655,7 +655,7 @@ def _add_pool(
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
 
-    _offset: int128 = 248
+    _offset: int128 = 256
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
