@@ -43,6 +43,7 @@ def registry_renbtc(accounts, registry, calculator, pool_renbtc, lp_renbtc):
         pack_values([8, 8]),
         pack_values([True] + [False] * 7),
         True,
+        True,
         {'from': accounts[0]}
     )
 

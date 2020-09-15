@@ -94,6 +94,7 @@ class StateMachine:
                     "0x00",
                     "0x00",
                     True,
+                    True,
                     {'from': self.accounts[0]}
                 )
         else:
@@ -108,6 +109,7 @@ class StateMachine:
                 "0x00",
                 pack_values(decimals),
                 pack_values(udecimals),
+                True,
                 True,
                 {'from': self.accounts[0]}
             )

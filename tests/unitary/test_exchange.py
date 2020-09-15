@@ -81,6 +81,7 @@ def test_min_dy(accounts, registry, pool_compound, lp_compound, DAI, USDC):
         pack_values([8, 8]),
         pack_values([18, 6]),
         True,
+        True,
         {'from': accounts[0]}
     )
     DAI._mint_for_testing(10**18, {'from': accounts[0]})
@@ -117,6 +118,7 @@ def test_token_returns_false(PoolMock, accounts, BAD, DAI, registry):
         pack_values([18, 18]),
         pack_values([18, 18]),
         True,
+        True,
         {'from': accounts[0]}
     )
 
@@ -149,6 +151,7 @@ def test_token_returns_false_revert(PoolMock, accounts, BAD, DAI, registry):
         "0x00",
         pack_values([18, 18]),
         pack_values([18, 18]),
+        True,
         True,
         {'from': accounts[0]}
     )
