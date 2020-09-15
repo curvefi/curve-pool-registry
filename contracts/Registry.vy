@@ -14,6 +14,7 @@ struct PoolArray:
     ul_coins: address[MAX_COINS]
     calculator: address
     has_initial_A: bool
+    is_v1: bool
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -68,13 +69,18 @@ interface CurvePool:
     def initial_A() -> uint256: view
     def initial_A_time() -> uint256: view
     def future_A_time() -> uint256: view
-    def coins(i: int128) -> address: view
-    def underlying_coins(i: int128) -> address: view
-    def balances(i: int128) -> uint256: view
+    def coins(i: uint256) -> address: view
+    def underlying_coins(i: uint256) -> address: view
+    def balances(i: uint256) -> uint256: view
     def get_dy(i: int128, j: int128, dx: uint256) -> uint256: view
     def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256: view
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
     def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+
+interface CurvePoolV1:
+    def coins(i: int128) -> address: view
+    def underlying_coins(i: int128) -> address: view
+    def balances(i: int128) -> uint256: view
 
 interface GasEstimator:
     def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: view
@@ -236,6 +242,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     _rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
     _decimals_packed: bytes32 = self.pool_data[_pool].decimals
     _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
+    _is_v1: bool = self.pool_data[_pool].is_v1
 
     for i in range(MAX_COINS):
         _coin: address = self.pool_data[_pool].coins[i]
@@ -246,7 +253,11 @@ def get_pool_info(_pool: address) -> PoolInfo:
         ui: uint256 = convert(i, uint256)
         _pool_info.decimals[i] = convert(slice(_decimals_packed, ui, 1), uint256)
         _pool_info.underlying_decimals[i] = convert(slice(_udecimals_packed, ui, 1), uint256)
-        _pool_info.balances[i] = CurvePool(_pool).balances(i)
+
+        if _is_v1:
+            _pool_info.balances[i] = CurvePool(_pool).balances(ui)
+        else:
+            _pool_info.balances[i] = CurvePoolV1(_pool).balances(i)
 
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
@@ -524,6 +535,8 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
     _coin_info: CoinInfo = empty(CoinInfo)
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
+    _is_v1: bool = self.pool_data[_pool].is_v1
+
     for x in range(MAX_COINS):
         _coin = self.pool_data[_pool].coins[x]
 
@@ -531,7 +544,11 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
             _n_coins = x
             break
 
-        _coin_info.balances[x] = CurvePool(_pool).balances(x)
+        ux: uint256 = convert(x, uint256)
+        if _is_v1:
+            _coin_info.balances[x] = CurvePoolV1(_pool).balances(x)
+        else:
+            _coin_info.balances[x] = CurvePool(_pool).balances(ux)
 
         _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
         _coin_info.precisions[x] = 10 ** (18 - _decimals)
@@ -592,6 +609,7 @@ def get_exchange_amounts(
     _coin_info: CoinInfo = empty(CoinInfo)
     _n_coins: int128 = 0
     _coin: address = ZERO_ADDRESS
+    _is_v1: bool = self.pool_data[_pool].is_v1
     for x in range(MAX_COINS):
         _coin = self.pool_data[_pool].coins[x]
 
@@ -599,9 +617,13 @@ def get_exchange_amounts(
             _n_coins = x
             break
 
-        _coin_info.balances[x] = CurvePool(_pool).balances(x)
+        ux: uint256 = convert(x, uint256)
+        if _is_v1:
+            _coin_info.balances[x] = CurvePoolV1(_pool).balances(x)
+        else:
+            _coin_info.balances[x] = CurvePool(_pool).balances(ux)
 
-        _decimals: uint256 = convert(slice(_decimals_packed, convert(x, uint256), 1), uint256)
+        _decimals: uint256 = convert(slice(_decimals_packed, ux, 1), uint256)
         _coin_info.precisions[x] = 10 ** (18 - _decimals)
 
         if _coin == self.pool_data[_pool].ul_coins[x]:
@@ -641,6 +663,7 @@ def _add_pool(
     _decimals: bytes32,
     _udecimals: bytes32,
     _has_initial_A: bool,
+    _is_v1: bool,
 ):
     # add pool to pool_list
     _length: uint256 = self.pool_count
@@ -651,6 +674,7 @@ def _add_pool(
     self.pool_data[_pool].calculator = _calculator
     self.pool_data[_pool].rate_method_id = _rate_method_id
     self.pool_data[_pool].has_initial_A = _has_initial_A
+    self.pool_data[_pool].is_v1 = _is_v1
 
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
@@ -731,17 +755,24 @@ def _add_pool(
 
 
 @internal
-def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: bool) -> address[MAX_COINS]:
+def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: bool, _is_v1: bool) -> address[MAX_COINS]:
     _coins: address[MAX_COINS] = empty(address[MAX_COINS])
     _coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
+        ui: uint256 = convert(i, uint256)
         if _is_underlying:
-            _coin = CurvePool(_pool).underlying_coins(i)
+            if _is_v1:
+                _coin = CurvePoolV1(_pool).underlying_coins(i)
+            else:
+                _coin = CurvePool(_pool).underlying_coins(ui)
             self.pool_data[_pool].ul_coins[i] =_coin
         else:
-            _coin = CurvePool(_pool).coins(i)
+            if _is_v1:
+                _coin = CurvePoolV1(_pool).coins(i)
+            else:
+                _coin = CurvePool(_pool).coins(ui)
             self.pool_data[_pool].coins[i] = _coin
         if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
             _response: Bytes[32] = raw_call(
@@ -771,6 +802,7 @@ def add_pool(
     _decimals: bytes32,
     _underlying_decimals: bytes32,
     _has_initial_A: bool,
+    _is_v1: bool,
 ):
     """
     @notice Add a pool to the registry
@@ -788,8 +820,8 @@ def add_pool(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    _coins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, False)
-    _ucoins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, True)
+    _coins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, False, _is_v1)
+    _ucoins: address[MAX_COINS] = self._get_and_approve_coins(_pool, _n_coins, True, _is_v1)
 
     self._add_pool(
         _pool,
@@ -802,6 +834,7 @@ def add_pool(
         _decimals,
         _underlying_decimals,
         _has_initial_A,
+        _is_v1,
     )
 
 
@@ -815,6 +848,7 @@ def add_pool_without_underlying(
     _decimals: bytes32,
     _use_rates: bytes32,
     _has_initial_A: bool,
+    _is_v1: bool,
 ):
     """
     @notice Add a pool to the registry
@@ -835,7 +869,7 @@ def add_pool_without_underlying(
     _coins: CoinList = empty(CoinList)
     _use_rates_mem: bytes32 = _use_rates
 
-    _coins.coins = self._get_and_approve_coins(_pool, _n_coins, False)
+    _coins.coins = self._get_and_approve_coins(_pool, _n_coins, False, _is_v1)
 
     for i in range(MAX_COINS):
         if i == _n_coins:
@@ -856,6 +890,7 @@ def add_pool_without_underlying(
         _decimals,
         EMPTY_BYTES32,
         _has_initial_A,
+        _is_v1,
     )
 
 
