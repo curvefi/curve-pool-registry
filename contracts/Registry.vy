@@ -498,7 +498,7 @@ def exchange(
     _received: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         _received = self.balance - _initial_balance
-        send(msg.sender, _received)
+        raw_call(msg.sender, b"", value=_received)
     else:
         _received = ERC20(_to).balanceOf(self) - _initial_balance
         _response: Bytes[32] = raw_call(
@@ -1081,7 +1081,7 @@ def claim_balance(_token: address):
     assert msg.sender == self.admin  # dev: admin-only function
 
     if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        send(msg.sender, self.balance)
+        raw_call(msg.sender, b"", value=self.balance)
     else:
         _balance: uint256 = ERC20(_token).balanceOf(self)
         _response: Bytes[32] = raw_call(
