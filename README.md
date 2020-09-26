@@ -6,7 +6,7 @@ Registry smart contract for [Curve.fi](https://github.com/curvefi/curve-contract
 
 Use the following functions to interact with this contract.
 
-### Finding Curve Pools
+### Finding Curve Pools and Tokens
 
 ```python
 def pool_count() -> int128: view
@@ -30,9 +30,27 @@ Locate a pool based on the tokens you wish to trade.
 
 Returns a zero value if no pool is available, or `i` exceeds the number of available pools.
 
+```python
+def get_pool_from_lp_token(_pool: address) -> address: view
+```
+
+Get the pool address for an LP token.
+
+```python
+def get_lp_token(_pool: address) -> address: view
+```
+
+Get the LP token address for a pool
+
+```python
+def get_pool_n_coins(_pool: address) -> address: view
+```
+
+Get the number of coins used in a pool.
+
 ### Getting Pool Information
 
-Arrays will always have a length of 7. Trailing zero values should be ignored.
+Arrays will always have a length of 8. Trailing zero values should be ignored.
 
 ```python
 def get_pool_coins(pool: address) -> (address[8], address[8], uint256[8]): view
