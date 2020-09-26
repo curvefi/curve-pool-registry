@@ -138,6 +138,12 @@ pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
 
+# lp token -> pool
+get_pool_from_lp_token: public(HashMap[address, address])
+
+# pool -> number of coins
+get_pool_n_coins: public(HashMap[address, int128])
+
 # mapping of estimated gas costs for pools and coins
 # for a pool the values are [wrapped exchange, underlying exchange]
 # for a coin the values are [transfer cost, 0]
@@ -239,6 +245,17 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
             )
 
     return _rates
+
+
+@view
+@external
+def get_lp_token(_pool: address) -> address:
+    """
+    @notice Get the address of the LP token for a pool
+    @param _pool Pool address
+    @return LP token address
+    """
+    return self.pool_data[_pool].lp_token
 
 
 @external
@@ -641,6 +658,10 @@ def _add_pool(
     self.pool_data[_pool].has_initial_A = _has_initial_A
     self.pool_data[_pool].is_v1 = _is_v1
 
+    # update public mappings
+    self.get_pool_from_lp_token[_lp_token] = _pool
+    self.get_pool_n_coins[_pool] = _n_coins
+
     _decimals_packed: uint256 = 0
     _udecimals_packed: uint256 = 0
 
@@ -720,6 +741,7 @@ def _add_pool(
     self.pool_data[_pool].underlying_decimals = convert(_udecimals_packed, bytes32)
 
     log PoolAdded(_pool, slice(_rate_method_id, 0, 4))
+
 
 @internal
 def _get_and_approve_coins(_pool: address, _n_coins: int128, _is_underlying: bool, _is_v1: bool) -> address[MAX_COINS]:
@@ -892,6 +914,8 @@ def remove_pool(_pool: address):
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
+
+    self.get_pool_from_lp_token[self.pool_data[_pool].lp_token] = ZERO_ADDRESS
 
     # remove _pool from pool_list
     _location: uint256 = self.pool_data[_pool].location
