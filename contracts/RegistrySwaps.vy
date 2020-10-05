@@ -55,6 +55,8 @@ registry: public(address)
 default_calculator: public(address)
 pool_calculator: public(HashMap[address, address])
 
+is_approved: HashMap[address, HashMap[address, bool]]
+
 
 @external
 def __init__(_registry: address, _calculator: address):
@@ -240,6 +242,21 @@ def exchange(
         )
         if len(response) != 0:
             assert convert(response, bool)
+
+    # approve input token
+    if not self.is_approved[_from][_pool]:
+        response: Bytes[32] = raw_call(
+            _from,
+            concat(
+                method_id("approve(address,uint256)"),
+                convert(_pool, bytes32),
+                convert(MAX_UINT256, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+        self.is_approved[_from][_pool] = True
 
     # perform coin exchange
     if is_underlying:
