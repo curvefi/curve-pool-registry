@@ -103,7 +103,6 @@ def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
 @external
 def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
            rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
-           underlying: bool,
            i: int128, j: int128, dx: uint256[INPUT_SIZE]) -> uint256[INPUT_SIZE]:
     """
     @notice Bulk-calculate amount of of coin j given in exchange for coin i
@@ -113,7 +112,6 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     @param fee Pool's fee at 1e10 basis
     @param rates Array with rates for "lent out" tokens
     @param precisions Precision multipliers to get the coin to 1e18 basis
-    @param underlying Whether the coin is in raw or lent-out form
     @param i Index of the changed coin (trade in)
     @param j Index of the other changed coin (trade out)
     @param dx Array of values of coin i (trade in)
@@ -124,10 +122,7 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     ratesp: uint256[MAX_COINS] = precisions
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
-        if underlying:
-            ratesp[k] *= 10 ** 18
-        else:
-            ratesp[k] = ratesp[k] * rates[k]
+        ratesp[k] *= rates[k]
     D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
 
     dy: uint256[INPUT_SIZE] = dx
@@ -147,7 +142,6 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
 @external
 def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
            rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
-           underlying: bool,
            i: int128, j: int128, dy: uint256) -> uint256:
     """
     @notice Calculate amount of of coin i taken when exchanging for coin j
@@ -157,7 +151,6 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     @param fee Pool's fee at 1e10 basis
     @param rates Array with rates for "lent out" tokens
     @param precisions Precision multipliers to get the coin to 1e18 basis
-    @param underlying Whether the coin is in raw or lent-out form
     @param i Index of the changed coin (trade in)
     @param j Index of the other changed coin (trade out)
     @param dy Amount of coin j (trade out)
@@ -168,10 +161,7 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     ratesp: uint256[MAX_COINS] = precisions
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
-        if underlying:
-            ratesp[k] *= 10 ** 18
-        else:
-            ratesp[k] = ratesp[k] * rates[k]
+        ratesp[k] *= rates[k]
     D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
 
     y_after_trade: uint256 = xp[j] - dy * ratesp[j] / 10 ** 18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
