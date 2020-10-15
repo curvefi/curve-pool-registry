@@ -125,7 +125,7 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
         balances = Registry(registry).get_underlying_balances(_pool)
         decimals = Registry(registry).get_underlying_decimals(_pool)
         for x in range(MAX_COINS):
-            if convert(x, uint256) == n_coins:
+            if x == n_coins:
                 break
             rates[x] = 10**18
     else:
@@ -134,7 +134,7 @@ def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint
         rates = Registry(registry).get_rates(_pool)
 
     for x in range(MAX_COINS):
-        if convert(x, uint256) == n_coins:
+        if x == n_coins:
             break
         decimals[x] = 10 ** (18 - decimals[x])
 
@@ -174,7 +174,7 @@ def get_exchange_amounts(_pool: address, _from: address, _to: address, _amounts:
         balances = Registry(registry).get_underlying_balances(_pool)
         decimals = Registry(registry).get_underlying_decimals(_pool)
         for x in range(MAX_COINS):
-            if convert(x, uint256) == n_coins:
+            if x == n_coins:
                 break
             rates[x] = 10**18
     else:
@@ -183,7 +183,7 @@ def get_exchange_amounts(_pool: address, _from: address, _to: address, _amounts:
         rates = Registry(registry).get_rates(_pool)
 
     for x in range(MAX_COINS):
-        if convert(x, uint256) == n_coins:
+        if x == n_coins:
             break
         decimals[x] = 10 ** (18 - decimals[x])
 
