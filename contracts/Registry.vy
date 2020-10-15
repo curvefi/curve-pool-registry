@@ -743,25 +743,29 @@ def add_metapool(
     self.pool_data[_pool].coins = coins
 
     base_pool: address = CurveMetapool(_pool).base_pool()
-    assert self.pool_data[base_pool].coins[0] != ZERO_ADDRESS
+    assert self.pool_data[base_pool].coins[0] != ZERO_ADDRESS  # dev: base pool unknown
 
-    base_coin_offset: int128 = convert(_n_coins - 1, int128)
+    base_coin_offset: uint256 = _n_coins - 1
     coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
-        if i >= base_coin_offset:
+        if i < base_coin_offset:
             coin = coins[i]
         else:
             coin = self.pool_data[base_pool].coins[i - base_coin_offset]
         self.pool_data[_pool].ul_coins[i] = coin
 
+    s_base_coin_offset: int128 = convert(base_coin_offset, int128)
     underlying_decimals: uint256 = convert(self.pool_data[base_pool].decimals, uint256)
-    underlying_decimals = shift(underlying_decimals, -8 * base_coin_offset)
-    underlying_decimals += shift(convert(slice(decimals, 0, convert(base_coin_offset, uint256)), uint256), 256 - 8 * base_coin_offset)
+    underlying_decimals = shift(underlying_decimals, -8 * s_base_coin_offset)
+    underlying_decimals += shift(
+        convert(slice(decimals, 0, base_coin_offset), uint256),
+        256 - 8 * s_base_coin_offset
+    )
     self.pool_data[_pool].underlying_decimals = convert(underlying_decimals, bytes32)
 
     self._add_pool(
         _pool,
-        [_n_coins, _base_n_coins],
+        [_n_coins, _base_n_coins + base_coin_offset],
         _lp_token,
         convert(method_id("get_virtual_price"), bytes32),
         True,
