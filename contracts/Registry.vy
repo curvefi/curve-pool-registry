@@ -68,6 +68,9 @@ interface CurvePoolV1:
     def underlying_coins(i: int128) -> address: view
     def balances(i: int128) -> uint256: view
 
+interface CurveMetapool:
+    def base_pool() -> address: view
+
 interface GasEstimator:
     def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: view
 
@@ -285,6 +288,32 @@ def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
         self._get_balances(_pool),
         self._get_rates(_pool),
     )
+
+
+@view
+@external
+def get_coins(_pool: address) -> address[MAX_COINS]:
+    coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    n_coins: uint256 = self.pool_data[_pool].n_coins[0]
+    for i in range(MAX_COINS):
+        if i == n_coins:
+            break
+        coins[i] = self.pool_data[_pool].coins[i]
+
+    return coins
+
+
+@view
+@external
+def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
+    coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    n_coins: uint256 = self.pool_data[_pool].n_coins[1]
+    for i in range(MAX_COINS):
+        if i == n_coins:
+            break
+        coins[i] = self.pool_data[_pool].ul_coins[i]
+
+    return coins
 
 
 @view
@@ -551,7 +580,12 @@ def _add_pool(
 
 
 @internal
-def _get_coins(_pool: address, _n_coins: uint256, _is_underlying: bool, _is_v1: bool) -> address[MAX_COINS]:
+def _get_new_pool_coins(
+    _pool: address,
+    _n_coins: uint256,
+    _is_underlying: bool,
+    _is_v1: bool
+) -> address[MAX_COINS]:
     coin_list: address[MAX_COINS] = empty(address[MAX_COINS])
     coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
@@ -626,14 +660,14 @@ def add_pool(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    coins: address[MAX_COINS] = self._get_coins(_pool, _n_coins, False, _is_v1)
+    coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
     decimals: bytes32 = _decimals
     if decimals == EMPTY_BYTES32:
         decimals = self._get_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
     self.pool_data[_pool].coins = coins
 
-    coins = self._get_coins(_pool, _n_coins, True, _is_v1)
+    coins = self._get_new_pool_coins(_pool, _n_coins, True, _is_v1)
     decimals = _underlying_decimals
     if decimals == EMPTY_BYTES32:
         decimals = self._get_decimals(coins, _n_coins)
@@ -677,7 +711,7 @@ def add_pool_without_underlying(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-    coins: address[MAX_COINS] = self._get_coins(_pool, _n_coins, False, _is_v1)
+    coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
 
     decimals: bytes32 = _decimals
     if decimals == EMPTY_BYTES32:
@@ -710,10 +744,6 @@ def add_pool_without_underlying(
     )
 
 
-interface CurveMetapool:
-    def base_pool() -> address: view
-
-
 @external
 def add_metapool(
     _pool: address,
@@ -734,8 +764,7 @@ def add_metapool(
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
-
-    coins: address[MAX_COINS] = self._get_coins(_pool, _n_coins, False, False)
+    coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
     decimals: bytes32 = _decimals
     if decimals == EMPTY_BYTES32:
         decimals = self._get_decimals(coins, _n_coins)
