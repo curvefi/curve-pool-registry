@@ -21,6 +21,7 @@ interface Registry:
     def get_rates(_pool: address) -> uint256[MAX_COINS]: view
     def get_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]: view
+    def find_pool_for_coins(_from: address, _to: address, i: uint256) -> address: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -75,8 +76,8 @@ def __default__():
 
 
 @view
-@external
-def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+@internal
+def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
     """
     @notice Get the current number of coins received in an exchange
     @param _pool Pool address
@@ -94,6 +95,20 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
 
     return CurvePool(_pool).get_dy(i, j, _amount)
+
+
+@view
+@external
+def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+    """
+    @notice Get the current number of coins received in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_from` to be sent
+    @return Quantity of `_to` to be received
+    """
+    return self._get_exchange_amount(_pool, _from, _to, _amount)
 
 
 @view
@@ -191,6 +206,31 @@ def get_exchange_amounts(_pool: address, _from: address, _to: address, _amounts:
     if calculator == ZERO_ADDRESS:
         calculator = self.default_calculator
     return Calculator(calculator).get_dy(n_coins, balances, amp, fee, rates, decimals, i, j, _amounts)
+
+
+@view
+@external
+def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
+    """
+    @notice Find the pool offering the best rate for a given swap.
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @return Pool address, amount received
+    """
+    best_pool: address = ZERO_ADDRESS
+    max_dy: uint256 = 0
+    for i in range(65536):
+        pool: address = Registry(self.registry).find_pool_for_coins(_from, _to, i)
+        if pool == ZERO_ADDRESS:
+            break
+
+        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    return best_pool, max_dy
 
 
 @payable

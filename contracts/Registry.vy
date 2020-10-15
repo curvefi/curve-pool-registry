@@ -142,9 +142,6 @@ def __init__(_gauge_controller: address):
 def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
     """
     @notice Find an available pool for exchanging two coins
-    @dev For coins where there is no underlying coin, or where
-         the underlying coin cannot be swapped, the rate is
-         given as 1e18
     @param _from Address of coin to be sent
     @param _to Address of coin to be received
     @param i Index value. When multiple pools are available
