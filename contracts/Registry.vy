@@ -1,4 +1,4 @@
-# @version ^0.2.0
+# @version 0.2.7
 
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(int128) = 100
@@ -160,7 +160,7 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
 
 @view
 @external
-def get_pool_n_coins(_pool: address) -> uint256[2]:
+def get_n_coins(_pool: address) -> uint256[2]:
     return self.pool_data[_pool].n_coins
 
 
@@ -187,7 +187,7 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
 
 @view
 @external
-def get_pool_rates(_pool: address) -> uint256[MAX_COINS]:
+def get_rates(_pool: address) -> uint256[MAX_COINS]:
     """
     @notice Get rates between coins and underlying coins
     @dev For coins where there is no underlying coin, or where
@@ -257,7 +257,7 @@ def _get_underlying_balances(
     _balances: uint256[MAX_COINS],
     _rates: uint256[MAX_COINS]
 ) -> uint256[MAX_COINS]:
-    balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    underlying_balances: uint256[MAX_COINS] = _balances
     for i in range(MAX_COINS):
         coin: address = self.pool_data[_pool].coins[i]
         if coin == ZERO_ADDRESS:
@@ -266,9 +266,9 @@ def _get_underlying_balances(
         if ucoin == ZERO_ADDRESS:
             continue
         if ucoin != coin:
-            balances[i] = _balances[i] * _rates[i] / 10 ** 18
+            underlying_balances[i] = _balances[i] * _rates[i] / 10 ** 18
 
-    return balances
+    return underlying_balances
 
 
 @view
@@ -441,22 +441,28 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     @param _pool Pool address
     @return Coin addresses, underlying coin addresses, underlying coin decimals
     """
-    _coins: PoolCoins = empty(PoolCoins)
-    _decimals_packed: bytes32 = self.pool_data[_pool].decimals
-    _udecimals_packed: bytes32 = self.pool_data[_pool].underlying_decimals
+    coins: PoolCoins = empty(PoolCoins)
+    decimals_packed: bytes32 = self.pool_data[_pool].decimals
 
+    n_coins: uint256 = self.pool_data[_pool].n_coins[0]
     for i in range(MAX_COINS):
         ui: uint256 = convert(i, uint256)
-        _coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
-        if _coins.underlying_coins[i] == ZERO_ADDRESS:
+        if ui == n_coins:
             break
+        coins.coins[i] = self.pool_data[_pool].coins[i]
+        coins.decimals[i] = convert(slice(decimals_packed, ui, 1), uint256)
 
-        _coins.underlying_decimals[i] = convert(slice(_udecimals_packed, ui, 1), uint256)
-        _coins.coins[i] = self.pool_data[_pool].coins[i]
-        if _coins.coins[i] != ZERO_ADDRESS:
-            _coins.decimals[i] = convert(slice(_decimals_packed, ui, 1), uint256)
+    n_coins = self.pool_data[_pool].n_coins[1]
+    decimals_packed = self.pool_data[_pool].underlying_decimals
+    for i in range(MAX_COINS):
+        ui: uint256 = convert(i, uint256)
+        if ui == n_coins:
+            break
+        coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
+        if coins.underlying_coins[i] != ZERO_ADDRESS:
+            coins.underlying_decimals[i] = convert(slice(decimals_packed, ui, 1), uint256)
 
-    return _coins
+    return coins
 
 
 @view
@@ -678,26 +684,32 @@ def add_pool_without_underlying(
 
     coins: address[MAX_COINS] = self._get_coins(_pool, _n_coins, False, _is_v1)
 
-    if _decimals == EMPTY_BYTES32:
-        self.pool_data[_pool].decimals = self._get_decimals(coins, _n_coins)
-    else:
-        self.pool_data[_pool].decimals = _decimals
+    decimals: bytes32 = _decimals
+    if decimals == EMPTY_BYTES32:
+        decimals = self._get_decimals(coins, _n_coins)
+
+    self.pool_data[_pool].decimals = decimals
     self.pool_data[_pool].coins = coins
 
-    ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
     use_rates_mem: bytes32 = _use_rates
 
     n_coins: int128 = convert(_n_coins, int128)
+    udecimals: uint256 = 0
+    offset: int128 = 256
     for i in range(MAX_COINS):
         if i == n_coins:
             break
-        # add underlying coin
-        if not convert(slice(use_rates_mem, convert(i, uint256), 1), bool):
+        ui: uint256 = convert(i, uint256)
+        offset -= 8
+        if not convert(slice(use_rates_mem, ui, 1), bool):
             self.pool_data[_pool].ul_coins[i] = coins[i]
+            udecimals += shift(convert(slice(decimals, ui, 1), uint256), offset)
+
+    self.pool_data[_pool].underlying_decimals = convert(udecimals, bytes32)
 
     self._add_pool(
         _pool,
-        [_n_coins, convert(0, uint256)],
+        [_n_coins, _n_coins],
         _lp_token,
         _rate_method_id,
         _has_initial_A,
@@ -812,20 +824,23 @@ def remove_pool(_pool: address):
     self.pool_list[length] = ZERO_ADDRESS
     self.pool_count = length
 
+    self.pool_data[_pool].underlying_decimals = EMPTY_BYTES32
+    self.pool_data[_pool].decimals = EMPTY_BYTES32
+
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
 
     for i in range(MAX_COINS):
         coins[i] = self.pool_data[_pool].coins[i]
         ucoins[i] = self.pool_data[_pool].ul_coins[i]
+        if ucoins[i] == ZERO_ADDRESS and coins[i] == ZERO_ADDRESS:
+            break
         if coins[i] != ZERO_ADDRESS:
             # delete coin address from pool_data
             self.pool_data[_pool].coins[i] = ZERO_ADDRESS
-
-        if ucoins[i] == ZERO_ADDRESS:
-            break
-        # delete underlying_coin from pool_data
-        self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
+        if ucoins[i] != ZERO_ADDRESS:
+            # delete underlying_coin from pool_data
+            self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
 
     for i in range(MAX_COINS):
         coin: address = coins[i]

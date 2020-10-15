@@ -1,4 +1,4 @@
-# @version 0.2.5
+# @version 0.2.7
 
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
@@ -53,7 +53,7 @@ future_admin: address
 
 registry: public(address)
 default_calculator: public(address)
-pool_calculator: public(HashMap[address, address])
+pool_calculator: HashMap[address, address]
 
 is_approved: HashMap[address, HashMap[address, bool]]
 
@@ -88,7 +88,7 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)
+    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to) # dev: no market
 
     if is_underlying:
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
@@ -217,7 +217,7 @@ def exchange(
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)
+    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
     initial_balance: uint256 = 0
@@ -286,6 +286,24 @@ def exchange(
     log TokenExchange(msg.sender, _pool, _from, _to, _amount, received)
 
     return True
+
+
+@view
+@external
+def get_calculator(_pool: address) -> address:
+    """
+    @notice Set calculator contract
+    @dev Used to calculate `get_dy` for a pool
+    @param _pool Pool address
+    @return `CurveCalc` address
+    """
+    assert msg.sender == self.admin  # dev: admin-only function
+
+    calculator: address = self.pool_calculator[_pool]
+    if calculator == ZERO_ADDRESS:
+        return self.default_calculator
+    else:
+        return calculator
 
 
 @external

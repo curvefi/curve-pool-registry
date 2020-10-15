@@ -1,4 +1,4 @@
-# @version ^0.2.0
+# @version 0.2.7
 
 # (c) Curve.Fi, 2020
 # Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
@@ -49,7 +49,7 @@ def get_D(n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256) -> uint256:
 
 @pure
 @internal
-def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
+def get_y(D: uint256, n_coins: uint256, xp: uint256[MAX_COINS], amp: uint256,
           i: int128, j: int128, x: uint256) -> uint256:
     """
     @notice Bulk-calculate new balance of coin j given a new value of coin i
@@ -62,16 +62,16 @@ def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
     @param x Amount of coin i (trade in)
     @return Amount of coin j (trade out)
     """
-    assert (i != j) and (i >= 0) and (j >= 0) and (i < n_coins) and (j < n_coins)
-    n_coins_256: uint256 = convert(n_coins, uint256)
+    n_coins_int: int128 = convert(n_coins, int128)
+    assert (i != j) and (i >= 0) and (j >= 0) and (i < n_coins_int) and (j < n_coins_int)
 
-    Ann: uint256 = amp * n_coins_256
+    Ann: uint256 = amp * n_coins
 
     _x: uint256 = 0
     S_: uint256 = 0
     c: uint256 = D
     for _i in range(MAX_COINS):
-        if _i >= n_coins:
+        if _i == n_coins_int:
             break
         if _i == i:
             _x = x
@@ -80,8 +80,8 @@ def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
         else:
             continue
         S_ += _x
-        c = c * D / (_x * n_coins_256)
-    c = c * D / (Ann * n_coins_256)
+        c = c * D / (_x * n_coins)
+    c = c * D / (Ann * n_coins)
     b: uint256 = S_ + D / Ann  # - D
     y_prev: uint256 = 0
     y: uint256 = D
@@ -101,7 +101,7 @@ def get_y(D: uint256, n_coins: int128, xp: uint256[MAX_COINS], amp: uint256,
 
 @view
 @external
-def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
+def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
            rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
            i: int128, j: int128, dx: uint256[INPUT_SIZE]) -> uint256[INPUT_SIZE]:
     """
@@ -123,7 +123,7 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
         ratesp[k] *= rates[k]
-    D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
+    D: uint256 = self.get_D(n_coins, xp, amp)
 
     dy: uint256[INPUT_SIZE] = dx
     for k in range(INPUT_SIZE):
@@ -140,7 +140,7 @@ def get_dy(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
 
 @view
 @external
-def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
+def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
            rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
            i: int128, j: int128, dy: uint256) -> uint256:
     """
@@ -162,7 +162,7 @@ def get_dx(n_coins: int128, balances: uint256[MAX_COINS], amp: uint256, fee: uin
     for k in range(MAX_COINS):
         xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
         ratesp[k] *= rates[k]
-    D: uint256 = self.get_D(convert(n_coins, uint256), xp, amp)
+    D: uint256 = self.get_D(n_coins, xp, amp)
 
     y_after_trade: uint256 = xp[j] - dy * ratesp[j] / 10 ** 18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
     x: uint256 = self.get_y(D, n_coins, xp, amp, j, i, y_after_trade)
