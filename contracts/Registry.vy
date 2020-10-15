@@ -12,7 +12,7 @@ struct PoolArray:
     lp_token: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
-    n_coins: uint256[2]
+    n_coins: uint256
     has_initial_A: bool
     is_v1: bool
 
@@ -164,7 +164,8 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
 @view
 @external
 def get_n_coins(_pool: address) -> uint256[2]:
-    return self.pool_data[_pool].n_coins
+    n_coins: uint256 = self.pool_data[_pool].n_coins
+    return [shift(n_coins, -128), n_coins % 2**128]
 
 
 @view
@@ -294,7 +295,7 @@ def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
 @external
 def get_coins(_pool: address) -> address[MAX_COINS]:
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    n_coins: uint256 = self.pool_data[_pool].n_coins[0]
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     for i in range(MAX_COINS):
         if i == n_coins:
             break
@@ -307,7 +308,7 @@ def get_coins(_pool: address) -> address[MAX_COINS]:
 @external
 def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    n_coins: uint256 = self.pool_data[_pool].n_coins[1]
+    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
     for i in range(MAX_COINS):
         if i == n_coins:
             break
@@ -357,7 +358,7 @@ def get_fees(_pool: address) -> (uint256, uint256):
 @external
 def get_admin_balances(_pool: address) -> uint256[MAX_COINS]:
     balances: uint256[MAX_COINS] = self._get_balances(_pool)
-    n_coins: uint256 = self.pool_data[_pool].n_coins[0]
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     for i in range(MAX_COINS):
         if i == n_coins:
             break
@@ -473,14 +474,15 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     coins: PoolCoins = empty(PoolCoins)
     decimals_packed: bytes32 = self.pool_data[_pool].decimals
 
-    n_coins: uint256 = self.pool_data[_pool].n_coins[0]
+    n_coins_packed: uint256 = self.pool_data[_pool].n_coins
+    n_coins: uint256 = shift(n_coins_packed, -128)
     for i in range(MAX_COINS):
         if i == n_coins:
             break
         coins.coins[i] = self.pool_data[_pool].coins[i]
         coins.decimals[i] = convert(slice(decimals_packed, i, 1), uint256)
 
-    n_coins = self.pool_data[_pool].n_coins[1]
+    n_coins = n_coins_packed % 2**128
     decimals_packed = self.pool_data[_pool].underlying_decimals
     for i in range(MAX_COINS):
         if i == n_coins:
@@ -556,7 +558,7 @@ def _get_decimals(_coins: address[MAX_COINS], _n_coins: uint256) -> bytes32:
 @internal
 def _add_pool(
     _pool: address,
-    _n_coins: uint256[2],
+    _n_coins: uint256,
     _lp_token: address,
     _rate_method_id: bytes32,
     _has_initial_A: bool,
@@ -676,7 +678,7 @@ def add_pool(
 
     self._add_pool(
         _pool,
-        [_n_coins, _n_coins],
+        _n_coins + shift(_n_coins, 128),
         _lp_token,
         _rate_method_id,
         _has_initial_A,
@@ -736,7 +738,7 @@ def add_pool_without_underlying(
 
     self._add_pool(
         _pool,
-        [_n_coins, _n_coins],
+        _n_coins + shift(_n_coins, 128),
         _lp_token,
         _rate_method_id,
         _has_initial_A,
@@ -783,18 +785,18 @@ def add_metapool(
             coin = self.pool_data[base_pool].coins[i - base_coin_offset]
         self.pool_data[_pool].ul_coins[i] = coin
 
-    s_base_coin_offset: int128 = convert(base_coin_offset, int128)
+    base_offset_int: int128 = convert(base_coin_offset, int128)
     underlying_decimals: uint256 = convert(self.pool_data[base_pool].decimals, uint256)
-    underlying_decimals = shift(underlying_decimals, -8 * s_base_coin_offset)
+    underlying_decimals = shift(underlying_decimals, -8 * base_offset_int)
     underlying_decimals += shift(
         convert(slice(decimals, 0, base_coin_offset), uint256),
-        256 - 8 * s_base_coin_offset
+        256 - 8 * base_offset_int
     )
     self.pool_data[_pool].underlying_decimals = convert(underlying_decimals, bytes32)
 
     self._add_pool(
         _pool,
-        [_n_coins, _base_n_coins + base_coin_offset],
+        _base_n_coins + base_coin_offset + shift(_n_coins, 128),
         _lp_token,
         convert(method_id("get_virtual_price"), bytes32),
         True,
