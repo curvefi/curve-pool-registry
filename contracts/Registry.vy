@@ -605,6 +605,8 @@ def _add_pool(
     _has_initial_A: bool,
     _is_v1: bool,
 ):
+    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
     # add pool to pool_list
     length: uint256 = self.pool_count
     self.pool_list[length] = _pool
@@ -691,7 +693,15 @@ def add_pool(
                                 as uint8 and right padded as bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    self._add_pool(
+        _pool,
+        _n_coins + shift(_n_coins, 128),
+        _lp_token,
+        _rate_method_id,
+        _has_initial_A,
+        _is_v1,
+    )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
     decimals: uint256 = _decimals
@@ -706,15 +716,6 @@ def add_pool(
         decimals = self._get_decimals(coins, _n_coins)
     self.pool_data[_pool].underlying_decimals = decimals
     self.pool_data[_pool].ul_coins = coins
-
-    self._add_pool(
-        _pool,
-        _n_coins + shift(_n_coins, 128),
-        _lp_token,
-        _rate_method_id,
-        _has_initial_A,
-        _is_v1,
-    )
 
 
 @external
@@ -742,7 +743,15 @@ def add_pool_without_underlying(
                       tightly packed and right padded as bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    self._add_pool(
+        _pool,
+        _n_coins + shift(_n_coins, 128),
+        _lp_token,
+        _rate_method_id,
+        _has_initial_A,
+        _is_v1,
+    )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
 
@@ -764,14 +773,6 @@ def add_pool_without_underlying(
 
     self.pool_data[_pool].underlying_decimals = udecimals
 
-    self._add_pool(
-        _pool,
-        _n_coins + shift(_n_coins, 128),
-        _lp_token,
-        _rate_method_id,
-        _has_initial_A,
-        _is_v1,
-    )
 
 
 @external
@@ -792,7 +793,16 @@ def add_metapool(
                      padded as bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
-    assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+
+    base_coin_offset: uint256 = _n_coins - 1
+    self._add_pool(
+        _pool,
+        _base_n_coins + base_coin_offset + shift(_n_coins, 128),
+        _lp_token,
+        EMPTY_BYTES32,
+        True,
+        False,
+    )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
 
@@ -803,11 +813,10 @@ def add_metapool(
     self.pool_data[_pool].coins = coins
 
     base_pool: address = CurveMetapool(_pool).base_pool()
-    assert self.pool_data[base_pool].coins[0] != ZERO_ADDRESS  # dev: base pool unknown
     self.pool_data[_pool].base_pool = base_pool
-
-    base_coin_offset: uint256 = _n_coins - 1
     base_n_coins: uint256 = shift(self.pool_data[base_pool].n_coins, -128)
+    assert base_n_coins > 0  # dev: base pool unknown
+
     base_coins: address[MAX_COINS] = empty(address[MAX_COINS])
     coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
@@ -838,15 +847,6 @@ def add_metapool(
             length: uint256 = self.market_counts[key]
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
-
-    self._add_pool(
-        _pool,
-        _base_n_coins + base_coin_offset + shift(_n_coins, 128),
-        _lp_token,
-        EMPTY_BYTES32,
-        True,
-        False,
-    )
 
 
 @internal
