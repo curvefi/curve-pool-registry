@@ -10,6 +10,7 @@ struct PoolArray:
     underlying_decimals: bytes32
     rate_method_id: bytes32
     lp_token: address
+    base_pool: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
     n_coins: uint256
@@ -62,6 +63,7 @@ interface CurvePool:
     def coins(i: uint256) -> address: view
     def underlying_coins(i: uint256) -> address: view
     def balances(i: uint256) -> uint256: view
+    def get_virtual_price() -> uint256: view
 
 interface CurvePoolV1:
     def coins(i: int128) -> address: view
@@ -169,19 +171,29 @@ def get_n_coins(_pool: address) -> uint256[2]:
 @internal
 def _get_rates(_pool: address) -> uint256[MAX_COINS]:
     rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
+    base_pool: address = self.pool_data[_pool].base_pool
+    if base_pool == ZERO_ADDRESS:
+        rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 0, 4)
 
-    for i in range(MAX_COINS):
-        coin: address = self.pool_data[_pool].coins[i]
-        if coin == ZERO_ADDRESS:
-            break
-        if coin == self.pool_data[_pool].ul_coins[i]:
+        for i in range(MAX_COINS):
+            coin: address = self.pool_data[_pool].coins[i]
+            if coin == ZERO_ADDRESS:
+                break
+            if coin == self.pool_data[_pool].ul_coins[i]:
+                rates[i] = 10 ** 18
+            else:
+                rates[i] = convert(
+                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True), # dev: bad response
+                    uint256
+                )
+    else:
+        base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
+        rates[base_coin_idx] = CurvePool(base_pool).get_virtual_price()
+        for i in range(MAX_COINS):
+            if i == base_coin_idx:
+                break
             rates[i] = 10 ** 18
-        else:
-            rates[i] = convert(
-                raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True), # dev: bad response
-                uint256
-            )
+
 
     return rates
 
@@ -273,6 +285,25 @@ def _get_underlying_balances(
 
 
 @view
+@internal
+def _get_meta_underlying_balances(_pool: address, _base_pool: address) -> uint256[MAX_COINS]:
+
+    base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
+    underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    for i in range(MAX_COINS):
+        ucoin: address = self.pool_data[_pool].ul_coins[i]
+        if ucoin == ZERO_ADDRESS:
+            break
+        if i < base_coin_idx:
+            underlying_balances[i] = CurvePool(_pool).balances(i)
+        else:
+            underlying_balances[i] = CurvePool(_base_pool).balances(i - base_coin_idx)
+
+    return underlying_balances
+
+
+
+@view
 @external
 def get_balances(_pool: address) -> uint256[MAX_COINS]:
     return self._get_balances(_pool)
@@ -281,11 +312,15 @@ def get_balances(_pool: address) -> uint256[MAX_COINS]:
 @view
 @external
 def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
-    return self._get_underlying_balances(
-        _pool,
-        self._get_balances(_pool),
-        self._get_rates(_pool),
-    )
+    base_pool: address = self.pool_data[_pool].base_pool
+    if base_pool == ZERO_ADDRESS:
+        return self._get_underlying_balances(
+            _pool,
+            self._get_balances(_pool),
+            self._get_rates(_pool),
+        )
+    else:
+        return self._get_meta_underlying_balances(_pool, base_pool)
 
 
 @view
@@ -503,11 +538,16 @@ def get_pool_info(_pool: address) -> PoolInfo:
     """
     pool_info: PoolInfo = empty(PoolInfo)
 
-    pool_info.rates = self._get_rates(_pool)
-    pool_info.balances = self._get_balances(_pool)
-    pool_info.underlying_balances = self._get_underlying_balances(_pool, pool_info.balances, pool_info.rates)
     pool_info.decimals = self._unpack_decimals(self.pool_data[_pool].decimals)
     pool_info.underlying_decimals = self._unpack_decimals(self.pool_data[_pool].underlying_decimals)
+    pool_info.rates = self._get_rates(_pool)
+    pool_info.balances = self._get_balances(_pool)
+
+    base_pool: address = self.pool_data[_pool].base_pool
+    if base_pool == ZERO_ADDRESS:
+        pool_info.underlying_balances = self._get_underlying_balances(_pool, pool_info.balances, pool_info.rates)
+    else:
+        pool_info.underlying_balances = self._get_meta_underlying_balances(_pool, base_pool)
 
     pool_info.lp_token = self.pool_data[_pool].lp_token
 
@@ -764,6 +804,9 @@ def add_metapool(
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
+
+    # TODO metapool underlying - only add some markets!!
+
     decimals: bytes32 = _decimals
     if decimals == EMPTY_BYTES32:
         decimals = self._get_decimals(coins, _n_coins)
@@ -772,6 +815,7 @@ def add_metapool(
 
     base_pool: address = CurveMetapool(_pool).base_pool()
     assert self.pool_data[base_pool].coins[0] != ZERO_ADDRESS  # dev: base pool unknown
+    self.pool_data[_pool].base_pool = base_pool
 
     base_coin_offset: uint256 = _n_coins - 1
     coin: address = ZERO_ADDRESS
@@ -795,7 +839,7 @@ def add_metapool(
         _pool,
         _base_n_coins + base_coin_offset + shift(_n_coins, 128),
         _lp_token,
-        convert(method_id("get_virtual_price"), bytes32),
+        EMPTY_BYTES32,
         True,
         False,
     )
