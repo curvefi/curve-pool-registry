@@ -316,8 +316,7 @@ def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
             self._get_balances(_pool),
             self._get_rates(_pool),
         )
-    else:
-        return self._get_meta_underlying_balances(_pool, base_pool)
+    return self._get_meta_underlying_balances(_pool, base_pool)
 
 
 @view
@@ -348,13 +347,13 @@ def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
 
 @view
 @internal
-def _unpack_decimals(_packed: uint256) -> uint256[MAX_COINS]:
+def _unpack_decimals(_packed: uint256, _n_coins: uint256) -> uint256[MAX_COINS]:
     decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    n_coins: int128 = convert(_n_coins, int128)
     for i in range(MAX_COINS):
-        value: uint256 = shift(_packed, -8 * i) % 256
-        if value == 0:
+        if i == n_coins:
             break
-        decimals[i] = value
+        decimals[i] = shift(_packed, -8 * i) % 256
 
     return decimals
 
@@ -362,13 +361,15 @@ def _unpack_decimals(_packed: uint256) -> uint256[MAX_COINS]:
 @view
 @external
 def get_decimals(_pool: address) -> uint256[MAX_COINS]:
-    return self._unpack_decimals(self.pool_data[_pool].decimals)
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
+    return self._unpack_decimals(self.pool_data[_pool].decimals, n_coins)
 
 
 @view
 @external
 def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]:
-    return self._unpack_decimals(self.pool_data[_pool].underlying_decimals)
+    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
+    return self._unpack_decimals(self.pool_data[_pool].underlying_decimals, n_coins)
 
 
 @view
@@ -535,8 +536,6 @@ def get_pool_info(_pool: address) -> PoolInfo:
     """
     pool_info: PoolInfo = empty(PoolInfo)
 
-    pool_info.decimals = self._unpack_decimals(self.pool_data[_pool].decimals)
-    pool_info.underlying_decimals = self._unpack_decimals(self.pool_data[_pool].underlying_decimals)
     pool_info.rates = self._get_rates(_pool)
     pool_info.balances = self._get_balances(_pool)
 
@@ -545,6 +544,16 @@ def get_pool_info(_pool: address) -> PoolInfo:
         pool_info.underlying_balances = self._get_underlying_balances(_pool, pool_info.balances, pool_info.rates)
     else:
         pool_info.underlying_balances = self._get_meta_underlying_balances(_pool, base_pool)
+
+    n_coins_packed: uint256 = self.pool_data[_pool].n_coins
+    pool_info.decimals = self._unpack_decimals(
+        self.pool_data[_pool].decimals,
+        shift(n_coins_packed, -128)
+    )
+    pool_info.underlying_decimals = self._unpack_decimals(
+        self.pool_data[_pool].underlying_decimals,
+        n_coins_packed % 2**128
+    )
 
     pool_info.lp_token = self.pool_data[_pool].lp_token
 
