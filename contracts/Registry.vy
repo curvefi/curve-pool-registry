@@ -126,7 +126,9 @@ gas_estimate_contracts: HashMap[address, address]
 # using the smaller value first. within each pool address array, the first value
 # is shifted 16 bits to the left, and these 16 bits are used to store the array length.
 
-markets: HashMap[uint256, HashMap[uint256, uint256[65536]]]
+markets: HashMap[uint256, address[65536]]
+market_counts: HashMap[uint256, uint256]
+
 liquidity_gauges: HashMap[address, address[10]]
 
 
@@ -151,13 +153,8 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
     @return Pool address
     """
 
-    first: uint256 = min(convert(_from, uint256), convert(_to, uint256))
-    second: uint256 = max(convert(_from, uint256), convert(_to, uint256))
-
-    addr: uint256 = self.markets[first][second][i]
-    if i == 0:
-        addr = shift(addr, -16)
-    return convert(convert(addr, bytes32), address)
+    key: uint256 = bitwise_xor(convert(_from, uint256), convert(_to, uint256))
+    return self.markets[key][i]
 
 
 @view
@@ -648,26 +645,16 @@ def _get_new_pool_coins(
         if i == _n_coins:
             break
 
-        coin = coin_list[i]
-
         # add pool to markets
         i2: uint256 = i + 1
         for x in range(i2, i2 + MAX_COINS):
             if x == _n_coins:
                 break
 
-            coinx: address = coin_list[x]
-            first: uint256 = min(convert(coin, uint256), convert(coinx, uint256))
-            second: uint256 = max(convert(coin, uint256), convert(coinx, uint256))
-
-            pool_zero: uint256 = self.markets[first][second][0]
-            length: uint256 = pool_zero % 65536
-            shifted: uint256 = shift(convert(_pool, uint256), 16) + 1
-            if pool_zero != 0:
-                self.markets[first][second][length] = convert(_pool, uint256)
-                self.markets[first][second][0] = pool_zero + 1
-            else:
-                self.markets[first][second][0] = shifted
+            key: uint256 = bitwise_xor(convert(coin_list[i], uint256), convert(coin_list[x], uint256))
+            length: uint256 = self.market_counts[key]
+            self.markets[key][length] = _pool
+            self.market_counts[key] = length + 1
 
     return coin_list
 
@@ -805,8 +792,6 @@ def add_metapool(
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
 
-    # TODO metapool underlying - only add some markets!!
-
     decimals: bytes32 = _decimals
     if decimals == EMPTY_BYTES32:
         decimals = self._get_decimals(coins, _n_coins)
@@ -835,6 +820,32 @@ def add_metapool(
     )
     self.pool_data[_pool].underlying_decimals = convert(underlying_decimals, bytes32)
 
+    # TODO metapool underlying - only add some markets!!
+    # for i in range(MAX_COINS):
+    #     if i == _n_coins:
+    #         break
+
+    #     coin = coin_list[i]
+
+    #     # add pool to markets
+    #     i2: uint256 = i + 1
+    #     for x in range(i2, i2 + MAX_COINS):
+    #         if x == _n_coins:
+    #             break
+
+    #         coinx: address = coin_list[x]
+    #         first: uint256 = min(convert(coin, uint256), convert(coinx, uint256))
+    #         second: uint256 = max(convert(coin, uint256), convert(coinx, uint256))
+
+    #         pool_zero: uint256 = self.markets[first][second][0]
+    #         length: uint256 = pool_zero % 65536
+    #         shifted: uint256 = shift(convert(_pool, uint256), 16) + 1
+    #         if pool_zero != 0:
+    #             self.markets[first][second][length] = convert(_pool, uint256)
+    #             self.markets[first][second][0] = pool_zero + 1
+    #         else:
+    #             self.markets[first][second][0] = shifted
+
     self._add_pool(
         _pool,
         _base_n_coins + base_coin_offset + shift(_n_coins, 128),
@@ -847,24 +858,18 @@ def add_metapool(
 
 @internal
 def _remove_market(_pool: address, _coina: address, _coinb: address):
-    first: uint256 = min(convert(_coina, uint256), convert(_coinb, uint256))
-    second: uint256 = max(convert(_coina, uint256), convert(_coinb, uint256))
+    key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
+    length: uint256 = self.market_counts[key] - 1
+    self.market_counts[key] = length
+    for i in range(65536):
+        if i > length:
+            raise
+        if self.markets[key][i] == _pool:
+            if i < length:
+                self.markets[key][i] = self.markets[key][length]
+            self.markets[key][length] = ZERO_ADDRESS
+            break
 
-    _pool_zero: uint256 = self.markets[first][second][0]
-    length: uint256 = _pool_zero % 65536 - 1
-    if length == 0:
-        self.markets[first][second][0] = 0
-    elif shift(_pool_zero, -16) == convert(_pool, uint256):
-        self.markets[first][second][0] = shift(self.markets[first][second][length], 16) + length
-        self.markets[first][second][length] = 0
-    else:
-        self.markets[first][second][0] = _pool_zero - 1
-        for n in range(1, 65536):
-            if n == length:
-                break
-            if self.markets[first][second][n] == convert(_pool, uint256):
-                self.markets[first][second][n] = self.markets[first][second][length]
-        self.markets[first][second][length] = 0
 
 
 @external
