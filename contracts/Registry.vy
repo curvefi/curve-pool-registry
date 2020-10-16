@@ -807,12 +807,18 @@ def add_metapool(
     self.pool_data[_pool].base_pool = base_pool
 
     base_coin_offset: uint256 = _n_coins - 1
+    base_n_coins: uint256 = shift(self.pool_data[base_pool].n_coins, -128)
+    base_coins: address[MAX_COINS] = empty(address[MAX_COINS])
     coin: address = ZERO_ADDRESS
     for i in range(MAX_COINS):
+        if i == base_n_coins + base_coin_offset:
+            break
         if i < base_coin_offset:
             coin = coins[i]
         else:
-            coin = self.pool_data[base_pool].coins[i - base_coin_offset]
+            x: uint256 = i - base_coin_offset
+            coin = self.pool_data[base_pool].coins[x]
+            base_coins[x] = coin
         self.pool_data[_pool].ul_coins[i] = coin
 
     underlying_decimals: uint256 = shift(
@@ -822,31 +828,16 @@ def add_metapool(
 
     self.pool_data[_pool].underlying_decimals = underlying_decimals
 
-    # TODO metapool underlying - only add some markets!!
-    # for i in range(MAX_COINS):
-    #     if i == _n_coins:
-    #         break
-
-    #     coin = coin_list[i]
-
-    #     # add pool to markets
-    #     i2: uint256 = i + 1
-    #     for x in range(i2, i2 + MAX_COINS):
-    #         if x == _n_coins:
-    #             break
-
-    #         coinx: address = coin_list[x]
-    #         first: uint256 = min(convert(coin, uint256), convert(coinx, uint256))
-    #         second: uint256 = max(convert(coin, uint256), convert(coinx, uint256))
-
-    #         pool_zero: uint256 = self.markets[first][second][0]
-    #         length: uint256 = pool_zero % 65536
-    #         shifted: uint256 = shift(convert(_pool, uint256), 16) + 1
-    #         if pool_zero != 0:
-    #             self.markets[first][second][length] = convert(_pool, uint256)
-    #             self.markets[first][second][0] = pool_zero + 1
-    #         else:
-    #             self.markets[first][second][0] = shifted
+    for i in range(MAX_COINS):
+        if i == base_coin_offset:
+            break
+        for x in range(MAX_COINS):
+            if x == base_n_coins:
+                break
+            key: uint256 = bitwise_xor(convert(coins[i], uint256), convert(base_coins[x], uint256))
+            length: uint256 = self.market_counts[key]
+            self.markets[key][length] = _pool
+            self.market_counts[key] = length + 1
 
     self._add_pool(
         _pool,
@@ -871,7 +862,6 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
                 self.markets[key][i] = self.markets[key][length]
             self.markets[key][length] = ZERO_ADDRESS
             break
-
 
 
 @external
