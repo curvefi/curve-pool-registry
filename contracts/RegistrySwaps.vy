@@ -13,7 +13,7 @@ interface CurvePool:
 
 interface Registry:
     def get_A(_pool: address) -> uint256: view
-    def get_fees(_pool: address) -> (uint256, uint256): view
+    def get_fees(_pool: address) -> uint256[2]: view
     def get_coin_indices(_pool: address, _from: address, _to: address) -> (int128, int128, bool): view
     def get_n_coins(_pool: address) -> uint256[2]: view
     def get_balances(_pool: address) -> uint256[MAX_COINS]: view

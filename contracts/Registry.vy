@@ -369,8 +369,8 @@ def get_A(_pool: address) -> uint256:
 
 @view
 @external
-def get_fees(_pool: address) -> (uint256, uint256):
-    return CurvePool(_pool).fee(), CurvePool(_pool).admin_fee()
+def get_fees(_pool: address) -> uint256[2]:
+    return [CurvePool(_pool).fee(), CurvePool(_pool).admin_fee()]
 
 
 @view
