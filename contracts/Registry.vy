@@ -9,7 +9,6 @@ struct PoolArray:
     decimals: uint256
     underlying_decimals: uint256
     rate_method_id: bytes32
-    lp_token: address
     base_pool: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
@@ -111,6 +110,8 @@ pool_data: HashMap[address, PoolArray]
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
 
+get_lp_token: public(HashMap[address, address])
+
 # mapping of estimated gas costs for pools and coins
 # for a pool the values are [wrapped exchange, underlying exchange]
 # for a coin the values are [transfer cost, 0]
@@ -211,17 +212,6 @@ def get_rates(_pool: address) -> uint256[MAX_COINS]:
 
 @view
 @external
-def get_lp_token(_pool: address) -> address:
-    """
-    @notice Get the address of the LP token for a pool
-    @param _pool Pool address
-    @return LP token address
-    """
-    return self.pool_data[_pool].lp_token
-
-
-@view
-@external
 def get_gauges(_pool: address) -> PoolGauges:
     """
     @notice Get a list of LiquidityGauge contracts associated with a pool
@@ -297,7 +287,6 @@ def _get_meta_underlying_balances(_pool: address, _base_pool: address) -> uint25
             underlying_balances[i] = CurvePool(_base_pool).balances(i - base_coin_idx)
 
     return underlying_balances
-
 
 
 @view
@@ -554,7 +543,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         n_coins_packed % 2**128
     )
 
-    pool_info.lp_token = self.pool_data[_pool].lp_token
+    pool_info.lp_token = self.get_lp_token[_pool]
 
     pool_info.A = CurvePool(_pool).A()
     pool_info.future_A = CurvePool(_pool).future_A()
@@ -612,7 +601,6 @@ def _add_pool(
     self.pool_list[length] = _pool
     self.pool_count = length + 1
     self.pool_data[_pool].location = length
-    self.pool_data[_pool].lp_token = _lp_token
     self.pool_data[_pool].rate_method_id = _rate_method_id
     self.pool_data[_pool].has_initial_A = _has_initial_A
     self.pool_data[_pool].is_v1 = _is_v1
@@ -620,6 +608,7 @@ def _add_pool(
 
     # update public mappings
     self.get_pool_from_lp_token[_lp_token] = _pool
+    self.get_lp_token[_pool] = _lp_token
 
     log PoolAdded(_pool, slice(_rate_method_id, 0, 4))
 
@@ -874,7 +863,9 @@ def remove_pool(_pool: address):
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
 
-    self.get_pool_from_lp_token[self.pool_data[_pool].lp_token] = ZERO_ADDRESS
+
+    self.get_pool_from_lp_token[self.get_lp_token[_pool]] = ZERO_ADDRESS
+    self.get_lp_token[_pool] = ZERO_ADDRESS
 
     # remove _pool from pool_list
     location: uint256 = self.pool_data[_pool].location
@@ -984,7 +975,7 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
-    _lp_token: address = self.pool_data[_pool].lp_token
+    _lp_token: address = self.get_lp_token[_pool]
     _gauge_controller: address = self.gauge_controller
     for i in range(10):
         _gauge: address = _liquidity_gauges[i]
