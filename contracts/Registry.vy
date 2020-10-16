@@ -427,21 +427,20 @@ def _get_coin_indices(
         if coin != self.pool_data[_pool].ul_coins[x]:
             check_underlying = False
 
-    assert check_underlying, "No available market"
-
-    # check underlying coin markets
-    for x in range(MAX_COINS):
-        coin: address = self.pool_data[_pool].ul_coins[x]
-        if coin == _from:
-            i = x
-        elif coin == _to:
-            j = x
-        elif coin == ZERO_ADDRESS:
-            break
-        else:
-            continue
-        if i >= 0 and j >= 0:
-            return i, j, True
+    if check_underlying:
+        # check underlying coin markets
+        for x in range(MAX_COINS):
+            coin: address = self.pool_data[_pool].ul_coins[x]
+            if coin == _from:
+                i = x
+            elif coin == _to:
+                j = x
+            elif coin == ZERO_ADDRESS:
+                break
+            else:
+                continue
+            if i >= 0 and j >= 0:
+                return i, j, True
 
     raise "No available market"
 
