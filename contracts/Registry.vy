@@ -491,23 +491,23 @@ def get_pool_coins(_pool: address) -> PoolCoins:
     """
     coins: PoolCoins = empty(PoolCoins)
     decimals_packed: uint256 = self.pool_data[_pool].decimals
+    ul_decimals_packed: uint256 = self.pool_data[_pool].underlying_decimals
 
     n_coins_packed: uint256 = self.pool_data[_pool].n_coins
-    n_coins: int128 = convert(shift(n_coins_packed, -128), int128)
+    n_coins: uint256 = shift(n_coins_packed, -128)
+    n_coins_underlying: uint256 = n_coins_packed % 2**128
     for i in range(MAX_COINS):
-        if i == n_coins:
+        if i == n_coins_underlying:
             break
-        coins.coins[i] = self.pool_data[_pool].coins[i]
-        coins.decimals[i] = shift(decimals_packed, -8 * i) % 256
+        offset: int128 = -8 * convert(i, int128)
+        if i < n_coins:
+            coins.coins[i] = self.pool_data[_pool].coins[i]
+            coins.decimals[i] = shift(decimals_packed, offset) % 256
 
-    n_coins = convert(n_coins_packed % 2**128, int128)
-    decimals_packed = self.pool_data[_pool].underlying_decimals
-    for i in range(MAX_COINS):
-        if i == n_coins:
-            break
-        coins.underlying_coins[i] = self.pool_data[_pool].ul_coins[i]
-        if coins.underlying_coins[i] != ZERO_ADDRESS:
-            coins.underlying_decimals[i] = shift(decimals_packed, -8 * i) % 256
+        coin: address = self.pool_data[_pool].ul_coins[i]
+        if coin != ZERO_ADDRESS:
+            coins.underlying_decimals[i] = shift(ul_decimals_packed, offset) % 256
+            coins.underlying_coins[i] = coin
 
     return coins
 
@@ -842,14 +842,14 @@ def add_metapool(
 def _remove_market(_pool: address, _coina: address, _coinb: address):
     key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
     length: uint256 = self.market_counts[key] - 1
-    self.market_counts[key] = length
     for i in range(65536):
         if i > length:
-            raise
+            break
         if self.markets[key][i] == _pool:
             if i < length:
                 self.markets[key][i] = self.markets[key][length]
             self.markets[key][length] = ZERO_ADDRESS
+            self.market_counts[key] = length
             break
 
 
