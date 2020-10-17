@@ -683,10 +683,9 @@ def add_pool(
     @param _lp_token Pool deposit token address
     @param _rate_method_id Encoded four-byte function signature to query
                            coin rates, right padded to bytes32
-    @param _decimals Coin decimal values, tightly packed as uint8 and right
-                     padded as bytes32
+    @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _underlying_decimals Underlying coin decimal values, tightly packed
-                                as uint8 and right padded as bytes32
+                                as uint8 in a little-endian bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
@@ -733,10 +732,9 @@ def add_pool_without_underlying(
     @param _lp_token Pool deposit token address
     @param _rate_method_id Encoded four-byte function signature to query
                            coin rates, right padded as bytes32
-    @param _decimals Coin decimal values, tightly packed as uint8 and right
-                     padded as bytes32
+    @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _use_rates Boolean array indicating which coins use lending rates,
-                      tightly packed and right padded as bytes32
+                      tightly packed in a little-endian bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
@@ -785,8 +783,7 @@ def add_metapool(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _decimals Coin decimal values, tightly packed as uint8 and right
-                     padded as bytes32
+    @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
