@@ -39,10 +39,6 @@ struct PoolCoins:
     decimals: uint256[MAX_COINS]
     underlying_decimals: uint256[MAX_COINS]
 
-# struct PoolGauges:
-#     liquidity_gauges: address[10]
-#     gauge_types: int128[10]
-
 
 interface ERC20:
     def balanceOf(_addr: address) -> uint256: view
@@ -393,46 +389,56 @@ def _get_coin_indices(
     _pool: address,
     _from: address,
     _to: address
-) -> (int128, int128, bool):
+) -> uint256[3]:
     """
     Convert coin addresses to indices for use with pool methods.
     """
-    i: int128 = -1
-    j: int128 = i
-    check_underlying: bool = True
+    # the return value is stored as `uint256[3]` to reduce gas costs
+    # from index, to index, is the market underlying?
+    result: uint256[3] = empty(uint256[3])
+
+    found_market: bool = False
 
     # check coin markets
     for x in range(MAX_COINS):
         coin: address = self.pool_data[_pool].coins[x]
-        if coin == _from:
-            i = x
-        elif coin == _to:
-            j = x
-        elif coin == ZERO_ADDRESS:
+        if coin == ZERO_ADDRESS:
+            # if we reach the end of the coins, reset `found_market` and try again
+            # with the underlying coins
+            found_market = False
             break
+        if coin == _from:
+            result[0] = x
+        elif coin == _to:
+            result[1] = x
         else:
             continue
-        if i >= 0 and j >= 0:
-            return i, j, False
-        if coin != self.pool_data[_pool].ul_coins[x]:
-            check_underlying = False
 
-    if check_underlying:
+        if found_market:
+            # the second time we find a match, break out of the loop
+            break
+        # the first time we find a match, set `found_market` to True
+        found_market = True
+
+    if not found_market:
         # check underlying coin markets
         for x in range(MAX_COINS):
             coin: address = self.pool_data[_pool].ul_coins[x]
+            if coin == ZERO_ADDRESS:
+                raise "No available market"
             if coin == _from:
-                i = x
+                result[0] = x
             elif coin == _to:
-                j = x
-            elif coin == ZERO_ADDRESS:
-                break
+                result[1] = x
             else:
                 continue
-            if i >= 0 and j >= 0:
-                return i, j, True
 
-    raise "No available market"
+            if found_market:
+                result[2] = 1
+                break
+            found_market = True
+
+    return result
 
 
 @view
@@ -445,7 +451,8 @@ def get_coin_indices(
     """
     Convert coin addresses to indices for use with pool methods.
     """
-    return self._get_coin_indices(_pool, _from, _to)
+    result: uint256[3] = self._get_coin_indices(_pool, _from, _to)
+    return convert(result[0], int128), convert(result[1], int128), result[2] > 0
 
 
 @view
@@ -462,11 +469,10 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     if estimator != ZERO_ADDRESS:
         return GasEstimator(estimator).estimate_gas_used(_pool, _from, _to)
 
-    # here we call `_get_coin_indices` to find out if the exchange involves
-    # wrapped or underlying coins, and convert the result to an integer that we
-    # use as an index for `gas_estimate_values`
+    # here we call `_get_coin_indices` to find out if the exchange involves wrapped
+    # or underlying coins, and use the result as an index in `gas_estimate_values`
     # 0 == wrapped   1 == underlying
-    idx_underlying: uint256 = convert(self._get_coin_indices(_pool, _from, _to)[2], uint256)
+    idx_underlying: uint256 = self._get_coin_indices(_pool, _from, _to)[2]
 
     total: uint256 = self.gas_estimate_values[_pool][idx_underlying]
     assert total != 0  # dev: pool value not set
