@@ -39,9 +39,9 @@ struct PoolCoins:
     decimals: uint256[MAX_COINS]
     underlying_decimals: uint256[MAX_COINS]
 
-struct PoolGauges:
-    liquidity_gauges: address[10]
-    gauge_types: int128[10]
+# struct PoolGauges:
+#     liquidity_gauges: address[10]
+#     gauge_types: int128[10]
 
 
 interface ERC20:
@@ -212,22 +212,23 @@ def get_rates(_pool: address) -> uint256[MAX_COINS]:
 
 @view
 @external
-def get_gauges(_pool: address) -> PoolGauges:
+def get_gauges(_pool: address) -> (address[10], int128[10]):
     """
     @notice Get a list of LiquidityGauge contracts associated with a pool
     @param _pool Pool address
     @return address[10] of gauge addresses, int128[10] of gauge types
     """
-    gauge_info: PoolGauges = empty(PoolGauges)
+    liquidity_gauges: address[10] = empty(address[10])
+    gauge_types: int128[10] = empty(int128[10])
     gauge_controller: address = self.gauge_controller
     for i in range(10):
         gauge: address = self.liquidity_gauges[_pool][i]
         if gauge == ZERO_ADDRESS:
             break
-        gauge_info.liquidity_gauges[i] = gauge
-        gauge_info.gauge_types[i] = GaugeController(gauge_controller).gauge_types(gauge)
+        liquidity_gauges[i] = gauge
+        gauge_types[i] = GaugeController(gauge_controller).gauge_types(gauge)
 
-    return gauge_info
+    return liquidity_gauges, gauge_types
 
 
 @view
