@@ -43,6 +43,7 @@ struct PoolCoins:
 interface ERC20:
     def balanceOf(_addr: address) -> uint256: view
     def decimals() -> uint256: view
+    def totalSupply() -> uint256: view
 
 interface CurvePool:
     def A() -> uint256: view
@@ -234,8 +235,7 @@ def _get_balances(_pool: address) -> uint256[MAX_COINS]:
 
     balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     for i in range(MAX_COINS):
-        coin: address = self.pool_data[_pool].coins[i]
-        if coin == ZERO_ADDRESS:
+        if self.pool_data[_pool].coins[i] == ZERO_ADDRESS:
             assert i != 0
             break
 
@@ -271,17 +271,27 @@ def _get_underlying_balances(
 @view
 @internal
 def _get_meta_underlying_balances(_pool: address, _base_pool: address) -> uint256[MAX_COINS]:
-
     base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
+    is_v1: bool = self.pool_data[_base_pool].is_v1
+    underlying_pct: uint256 = (
+        CurvePool(_pool).balances(base_coin_idx) * 10**18 /
+        ERC20(self.get_lp_token[_base_pool]).totalSupply()
+    )
     underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+
+    ul_balance: uint256 = 0
     for i in range(MAX_COINS):
-        ucoin: address = self.pool_data[_pool].ul_coins[i]
-        if ucoin == ZERO_ADDRESS:
+        if self.pool_data[_pool].ul_coins[i] == ZERO_ADDRESS:
             break
         if i < base_coin_idx:
-            underlying_balances[i] = CurvePool(_pool).balances(i)
+            ul_balance = CurvePool(_pool).balances(i)
         else:
-            underlying_balances[i] = CurvePool(_base_pool).balances(i - base_coin_idx)
+            if is_v1:
+                ul_balance = CurvePoolV1(_base_pool).balances(convert(i - base_coin_idx, int128))
+            else:
+                ul_balance = CurvePool(_base_pool).balances(i-base_coin_idx)
+            ul_balance = ul_balance * underlying_pct / 10**18
+        underlying_balances[i] = ul_balance
 
     return underlying_balances
 
