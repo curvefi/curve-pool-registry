@@ -703,14 +703,12 @@ def add_pool(
     if decimals == 0:
         decimals = self._get_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
-    self.pool_data[_pool].coins = coins
 
     coins = self._get_new_pool_coins(_pool, _n_coins, True, _is_v1)
     decimals = _underlying_decimals
     if decimals == 0:
         decimals = self._get_decimals(coins, _n_coins)
     self.pool_data[_pool].underlying_decimals = decimals
-    self.pool_data[_pool].ul_coins = coins
 
 
 @external
@@ -752,9 +750,7 @@ def add_pool_without_underlying(
     decimals: uint256 = _decimals
     if decimals == 0:
         decimals = self._get_decimals(coins, _n_coins)
-
     self.pool_data[_pool].decimals = decimals
-    self.pool_data[_pool].coins = coins
 
     udecimals: uint256 = 0
     for i in range(MAX_COINS):
@@ -803,7 +799,6 @@ def add_metapool(
     if decimals == 0:
         decimals = self._get_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
-    self.pool_data[_pool].coins = coins
 
     base_pool: address = CurveMetapool(_pool).base_pool()
     self.pool_data[_pool].base_pool = base_pool
