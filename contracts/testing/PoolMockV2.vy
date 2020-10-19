@@ -12,7 +12,7 @@ interface ERC20Mock:
     def transferFrom(_from: address, _to: address, _amount: uint256) -> bool: nonpayable
     def _mint_for_testing(_amount: uint256): nonpayable
 
-n_coins: public(int128)
+n_coins: uint256
 coin_list: address[4]
 underlying_coin_list: address[4]
 
@@ -23,6 +23,7 @@ future_A: public(uint256)
 future_A_time: public(uint256)
 
 fee: public(uint256)
+admin_fee: public(uint256)
 future_fee: public(uint256)
 future_admin_fee: public(uint256)
 future_owner: public(address)
@@ -32,7 +33,7 @@ _balances: uint256[4]
 
 @external
 def __init__(
-    _n_coins: int128,
+    _n_coins: uint256,
     _coin_list: address[4],
     _underlying_coin_list: address[4],
     _A: uint256,
@@ -48,21 +49,22 @@ def __init__(
 
 @external
 @view
-def coins(i: int128) -> address:
+def coins(i: uint256) -> address:
     assert i < self.n_coins  # dev: exceeds n_coins
     return self.coin_list[i]
 
 
 @external
 @view
-def underlying_coins(i: int128) -> address:
+def underlying_coins(i: uint256) -> address:
+    assert self.underlying_coin_list[0] != ZERO_ADDRESS
     assert i < self.n_coins  # dev: exceeds n_coins
     return self.underlying_coin_list[i]
 
 
 @external
 @view
-def balances(i: int128) -> uint256:
+def balances(i: uint256) -> uint256:
     assert i < self.n_coins
     return self._balances[i]
 
@@ -97,6 +99,7 @@ def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
 @external
 @view
 def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
+    assert self.underlying_coin_list[0] != ZERO_ADDRESS
     return self._get_dy(self.underlying_coin_list[i], self.underlying_coin_list[j], dx)
 
 
@@ -153,6 +156,8 @@ def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256):
 @payable
 @nonreentrant('lock')
 def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
+    assert self.underlying_coin_list[0] != ZERO_ADDRESS
+
     _from: address = self.underlying_coin_list[i]
     if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         assert msg.value == dx
@@ -182,11 +187,13 @@ def _set_A(
 @external
 def _set_fees_and_owner(
     _fee: uint256,
+    _admin_fee: uint256,
     _future_fee: uint256,
     _future_admin_fee: uint256,
     _future_owner: address
 ):
     self.fee = _fee
+    self.admin_fee = _admin_fee
     self.future_fee = _future_fee
     self.future_admin_fee = _future_admin_fee
     self.future_owner = _future_owner
