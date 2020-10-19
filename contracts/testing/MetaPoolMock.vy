@@ -10,7 +10,7 @@ interface ERC20Mock:
     def balanceOf(_addr: address) -> uint256: view
     def transfer(_to: address, _amount: uint256) -> bool: nonpayable
     def transferFrom(_from: address, _to: address, _amount: uint256) -> bool: nonpayable
-    def _mint_for_testing(_amount: uint256): nonpayable
+    def _mint_for_testing(_to: address, _amount: uint256): nonpayable
 
 n_coins: public(uint256)
 n_coins_underlying: uint256
@@ -139,7 +139,7 @@ def _exchange(_sender: address, _from: address, _to: address, dx: uint256, min_d
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         send(_sender, dy)
     else:
-        ERC20Mock(_to)._mint_for_testing(dy)
+        ERC20Mock(_to)._mint_for_testing(self, dy)
         _response: Bytes[32] = raw_call(
             _to,
             concat(
