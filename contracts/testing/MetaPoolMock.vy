@@ -30,6 +30,7 @@ future_admin_fee: public(uint256)
 future_owner: public(address)
 
 base_pool: public(address)
+get_virtual_price: public(uint256)
 
 _balances: uint256[4]
 
@@ -50,6 +51,7 @@ def __init__(
     self.base_coin_list = _base_coin_list
     self.A = _A
     self.fee = _fee
+    self.get_virtual_price = 10**18
 
 
 @external
@@ -222,6 +224,11 @@ def _set_fees_and_owner(
 @external
 def _set_balances(_new_balances: uint256[4]):
     self._balances = _new_balances
+
+
+@external
+def _set_virtual_price(_value: uint256):
+    self.get_virtual_price = _value
 
 
 @external
