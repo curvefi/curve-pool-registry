@@ -365,6 +365,12 @@ def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
 
 @view
 @external
+def get_virtual_price_from_lp_token(_token: address) -> uint256:
+    return CurvePool(self.get_pool_from_lp_token[_token]).get_virtual_price()
+
+
+@view
+@external
 def get_A(_pool: address) -> uint256:
     return CurvePool(_pool).A()
 
@@ -381,9 +387,13 @@ def get_admin_balances(_pool: address) -> uint256[MAX_COINS]:
     balances: uint256[MAX_COINS] = self._get_balances(_pool)
     n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     for i in range(MAX_COINS):
+        coin: address = self.pool_data[_pool].coins[i]
         if i == n_coins:
             break
-        balances[i] -= ERC20(self.pool_data[_pool].coins[i]).balanceOf(_pool)
+        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            balances[i] = _pool.balance - balances[i]
+        else:
+            balances[i] = ERC20(coin).balanceOf(_pool) - balances[i]
 
     return balances
 
