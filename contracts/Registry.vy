@@ -26,6 +26,7 @@ struct PoolInfo:
     A: uint256
     future_A: uint256
     fee: uint256
+    admin_fee: uint256
     future_fee: uint256
     future_admin_fee: uint256
     future_owner: address
@@ -571,6 +572,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     pool_info.future_A = CurvePool(_pool).future_A()
     pool_info.fee = CurvePool(_pool).fee()
     pool_info.future_fee = CurvePool(_pool).future_fee()
+    pool_info.admin_fee = CurvePool(_pool).admin_fee()
     pool_info.future_admin_fee = CurvePool(_pool).future_admin_fee()
     pool_info.future_owner = CurvePool(_pool).future_owner()
 
