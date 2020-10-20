@@ -326,10 +326,10 @@ def _get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
 def _get_meta_underlying_balances(_pool: address, _base_pool: address) -> uint256[MAX_COINS]:
     base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
     is_v1: bool = self.pool_data[_base_pool].is_v1
-    underlying_pct: uint256 = (
-        CurvePool(_pool).balances(base_coin_idx) * 10**18 /
-        ERC20(self.get_lp_token[_base_pool]).totalSupply()
-    )
+    base_total_supply: uint256 = ERC20(self.get_lp_token[_base_pool]).totalSupply()
+    underlying_pct: uint256 = 0
+    if base_total_supply > 0:
+        underlying_pct = CurvePool(_pool).balances(base_coin_idx) * 10**18 / base_total_supply
     underlying_balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
 
     ul_balance: uint256 = 0
