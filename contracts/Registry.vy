@@ -599,6 +599,7 @@ def _add_pool(
     _is_v1: bool,
 ):
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
+    assert self.get_pool_from_lp_token[_lp_token] == ZERO_ADDRESS
 
     # add pool to pool_list
     length: uint256 = self.pool_count
@@ -901,6 +902,8 @@ def remove_pool(_pool: address):
 
     self.pool_data[_pool].underlying_decimals = 0
     self.pool_data[_pool].decimals = 0
+    self.pool_data[_pool].n_coins = 0
+    self.pool_data[_pool].base_pool = ZERO_ADDRESS
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
