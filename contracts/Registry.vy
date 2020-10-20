@@ -108,6 +108,7 @@ pool_data: HashMap[address, PoolArray]
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
 
+# pool -> lp token
 get_lp_token: public(HashMap[address, address])
 
 # mapping of estimated gas costs for pools and coins
@@ -140,54 +141,7 @@ def __init__(_gauge_controller: address):
     self.gauge_controller = _gauge_controller
 
 
-@view
-@external
-def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
-    """
-    @notice Find an available pool for exchanging two coins
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param i Index value. When multiple pools are available
-            this value is used to return the n'th address.
-    @return Pool address
-    """
-
-    key: uint256 = bitwise_xor(convert(_from, uint256), convert(_to, uint256))
-    return self.markets[key][i]
-
-
-@view
-@external
-def get_n_coins(_pool: address) -> uint256[2]:
-    n_coins: uint256 = self.pool_data[_pool].n_coins
-    return [shift(n_coins, -128), n_coins % 2**128]
-
-
-@view
-@external
-def get_coins(_pool: address) -> address[MAX_COINS]:
-    coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
-    for i in range(MAX_COINS):
-        if i == n_coins:
-            break
-        coins[i] = self.pool_data[_pool].coins[i]
-
-    return coins
-
-
-@view
-@external
-def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
-    coins: address[MAX_COINS] = empty(address[MAX_COINS])
-    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
-    for i in range(MAX_COINS):
-        if i == n_coins:
-            break
-        coins[i] = self.pool_data[_pool].ul_coins[i]
-
-    return coins
-
+# internal functionality for getters
 
 @view
 @internal
@@ -200,20 +154,6 @@ def _unpack_decimals(_packed: uint256, _n_coins: uint256) -> uint256[MAX_COINS]:
         decimals[i] = shift(_packed, -8 * i) % 256
 
     return decimals
-
-
-@view
-@external
-def get_decimals(_pool: address) -> uint256[MAX_COINS]:
-    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
-    return self._unpack_decimals(self.pool_data[_pool].decimals, n_coins)
-
-
-@view
-@external
-def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]:
-    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
-    return self._unpack_decimals(self.pool_data[_pool].underlying_decimals, n_coins)
 
 
 @view
@@ -243,44 +183,7 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
                 break
             rates[i] = 10 ** 18
 
-
     return rates
-
-
-@view
-@external
-def get_rates(_pool: address) -> uint256[MAX_COINS]:
-    """
-    @notice Get rates between coins and underlying coins
-    @dev For coins where there is no underlying coin, or where
-         the underlying coin cannot be swapped, the rate is
-         given as 1e18
-    @param _pool Pool address
-    @return Rates between coins and underlying coins
-    """
-    return self._get_rates(_pool)
-
-
-@view
-@external
-def get_gauges(_pool: address) -> (address[10], int128[10]):
-    """
-    @notice Get a list of LiquidityGauge contracts associated with a pool
-    @param _pool Pool address
-    @return address[10] of gauge addresses, int128[10] of gauge types
-    """
-    liquidity_gauges: address[10] = empty(address[10])
-    gauge_types: int128[10] = empty(int128[10])
-    gauge_controller: address = self.gauge_controller
-    for i in range(10):
-        gauge: address = self.liquidity_gauges[_pool][i]
-        if gauge == ZERO_ADDRESS:
-            break
-        liquidity_gauges[i] = gauge
-        gauge_types[i] = GaugeController(gauge_controller).gauge_types(gauge)
-
-    return liquidity_gauges, gauge_types
-
 
 @view
 @internal
@@ -350,56 +253,6 @@ def _get_meta_underlying_balances(_pool: address, _base_pool: address) -> uint25
 
 
 @view
-@external
-def get_balances(_pool: address) -> uint256[MAX_COINS]:
-    return self._get_balances(_pool)
-
-
-@view
-@external
-def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
-    base_pool: address = self.pool_data[_pool].base_pool
-    if base_pool == ZERO_ADDRESS:
-        return self._get_underlying_balances(_pool)
-    return self._get_meta_underlying_balances(_pool, base_pool)
-
-
-@view
-@external
-def get_virtual_price_from_lp_token(_token: address) -> uint256:
-    return CurvePool(self.get_pool_from_lp_token[_token]).get_virtual_price()
-
-
-@view
-@external
-def get_A(_pool: address) -> uint256:
-    return CurvePool(_pool).A()
-
-
-@view
-@external
-def get_fees(_pool: address) -> uint256[2]:
-    return [CurvePool(_pool).fee(), CurvePool(_pool).admin_fee()]
-
-
-@view
-@external
-def get_admin_balances(_pool: address) -> uint256[MAX_COINS]:
-    balances: uint256[MAX_COINS] = self._get_balances(_pool)
-    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
-    for i in range(MAX_COINS):
-        coin: address = self.pool_data[_pool].coins[i]
-        if i == n_coins:
-            break
-        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            balances[i] = _pool.balance - balances[i]
-        else:
-            balances[i] = ERC20(coin).balanceOf(_pool) - balances[i]
-
-    return balances
-
-
-@view
 @internal
 def _get_coin_indices(
     _pool: address,
@@ -457,6 +310,156 @@ def _get_coin_indices(
     return result
 
 
+# targetted external getters, optimized for on-chain calls
+
+@view
+@external
+def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address:
+    """
+    @notice Find an available pool for exchanging two coins
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param i Index value. When multiple pools are available
+            this value is used to return the n'th address.
+    @return Pool address
+    """
+
+    key: uint256 = bitwise_xor(convert(_from, uint256), convert(_to, uint256))
+    return self.markets[key][i]
+
+
+@view
+@external
+def get_n_coins(_pool: address) -> uint256[2]:
+    n_coins: uint256 = self.pool_data[_pool].n_coins
+    return [shift(n_coins, -128), n_coins % 2**128]
+
+
+@view
+@external
+def get_coins(_pool: address) -> address[MAX_COINS]:
+    coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
+    for i in range(MAX_COINS):
+        if i == n_coins:
+            break
+        coins[i] = self.pool_data[_pool].coins[i]
+
+    return coins
+
+
+@view
+@external
+def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
+    coins: address[MAX_COINS] = empty(address[MAX_COINS])
+    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
+    for i in range(MAX_COINS):
+        if i == n_coins:
+            break
+        coins[i] = self.pool_data[_pool].ul_coins[i]
+
+    return coins
+
+
+@view
+@external
+def get_decimals(_pool: address) -> uint256[MAX_COINS]:
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
+    return self._unpack_decimals(self.pool_data[_pool].decimals, n_coins)
+
+
+@view
+@external
+def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]:
+    n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
+    return self._unpack_decimals(self.pool_data[_pool].underlying_decimals, n_coins)
+
+
+@view
+@external
+def get_rates(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get rates between coins and underlying coins
+    @dev For coins where there is no underlying coin, or where
+         the underlying coin cannot be swapped, the rate is
+         given as 1e18
+    @param _pool Pool address
+    @return Rates between coins and underlying coins
+    """
+    return self._get_rates(_pool)
+
+
+@view
+@external
+def get_gauges(_pool: address) -> (address[10], int128[10]):
+    """
+    @notice Get a list of LiquidityGauge contracts associated with a pool
+    @param _pool Pool address
+    @return address[10] of gauge addresses, int128[10] of gauge types
+    """
+    liquidity_gauges: address[10] = empty(address[10])
+    gauge_types: int128[10] = empty(int128[10])
+    gauge_controller: address = self.gauge_controller
+    for i in range(10):
+        gauge: address = self.liquidity_gauges[_pool][i]
+        if gauge == ZERO_ADDRESS:
+            break
+        liquidity_gauges[i] = gauge
+        gauge_types[i] = GaugeController(gauge_controller).gauge_types(gauge)
+
+    return liquidity_gauges, gauge_types
+
+
+@view
+@external
+def get_balances(_pool: address) -> uint256[MAX_COINS]:
+    return self._get_balances(_pool)
+
+
+@view
+@external
+def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
+    base_pool: address = self.pool_data[_pool].base_pool
+    if base_pool == ZERO_ADDRESS:
+        return self._get_underlying_balances(_pool)
+    return self._get_meta_underlying_balances(_pool, base_pool)
+
+
+@view
+@external
+def get_virtual_price_from_lp_token(_token: address) -> uint256:
+    return CurvePool(self.get_pool_from_lp_token[_token]).get_virtual_price()
+
+
+@view
+@external
+def get_A(_pool: address) -> uint256:
+    return CurvePool(_pool).A()
+
+
+@view
+@external
+def get_fees(_pool: address) -> uint256[2]:
+    return [CurvePool(_pool).fee(), CurvePool(_pool).admin_fee()]
+
+
+@view
+@external
+def get_admin_balances(_pool: address) -> uint256[MAX_COINS]:
+    balances: uint256[MAX_COINS] = self._get_balances(_pool)
+    n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
+    for i in range(MAX_COINS):
+        coin: address = self.pool_data[_pool].coins[i]
+        if i == n_coins:
+            break
+        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            balances[i] = _pool.balance - balances[i]
+        else:
+            balances[i] = ERC20(coin).balanceOf(_pool) - balances[i]
+
+    return balances
+
+
 @view
 @external
 def get_coin_indices(
@@ -501,7 +504,7 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
     return total
 
 
-# large view methods - not optimized, intended for off-chain calls
+# large external getters - not optimized, intended for off-chain calls
 
 @view
 @external
@@ -584,30 +587,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
     return pool_info
 
 
-# Admin functions
-
-
-@view
-@internal
-def _get_decimals(_coins: address[MAX_COINS], _n_coins: uint256) -> uint256:
-    packed: uint256 = 0
-    value: uint256 = 0
-
-    n_coins: int128 = convert(_n_coins, int128)
-    for i in range(MAX_COINS):
-        if i == n_coins:
-            break
-        coin: address = _coins[i]
-        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            value = 18
-        else:
-            value = ERC20(coin).decimals()
-            assert value < 256  # dev: decimal overflow
-
-        packed += shift(value, i * 8)
-
-    return packed
-
+# internal functionality used in admin setters
 
 @internal
 def _add_pool(
@@ -681,6 +661,45 @@ def _get_new_pool_coins(
     return coin_list
 
 
+@view
+@internal
+def _get_new_pool_decimals(_coins: address[MAX_COINS], _n_coins: uint256) -> uint256:
+    packed: uint256 = 0
+    value: uint256 = 0
+
+    n_coins: int128 = convert(_n_coins, int128)
+    for i in range(MAX_COINS):
+        if i == n_coins:
+            break
+        coin: address = _coins[i]
+        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            value = 18
+        else:
+            value = ERC20(coin).decimals()
+            assert value < 256  # dev: decimal overflow
+
+        packed += shift(value, i * 8)
+
+    return packed
+
+
+@internal
+def _remove_market(_pool: address, _coina: address, _coinb: address):
+    key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
+    length: uint256 = self.market_counts[key] - 1
+    for i in range(65536):
+        if i > length:
+            break
+        if self.markets[key][i] == _pool:
+            if i < length:
+                self.markets[key][i] = self.markets[key][length]
+            self.markets[key][length] = ZERO_ADDRESS
+            self.market_counts[key] = length
+            break
+
+
+# admin functions
+
 @external
 def add_pool(
     _pool: address,
@@ -717,13 +736,13 @@ def add_pool(
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
     decimals: uint256 = _decimals
     if decimals == 0:
-        decimals = self._get_decimals(coins, _n_coins)
+        decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
 
     coins = self._get_new_pool_coins(_pool, _n_coins, True, _is_v1)
     decimals = _underlying_decimals
     if decimals == 0:
-        decimals = self._get_decimals(coins, _n_coins)
+        decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].underlying_decimals = decimals
 
 
@@ -764,7 +783,7 @@ def add_pool_without_underlying(
 
     decimals: uint256 = _decimals
     if decimals == 0:
-        decimals = self._get_decimals(coins, _n_coins)
+        decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
 
     udecimals: uint256 = 0
@@ -815,7 +834,7 @@ def add_metapool(
 
     decimals: uint256 = _decimals
     if decimals == 0:
-        decimals = self._get_decimals(coins, _n_coins)
+        decimals = self._get_new_pool_decimals(coins, _n_coins)
 
     self.pool_data[_pool].decimals = decimals
     self.pool_data[_pool].base_pool = base_pool
@@ -850,21 +869,6 @@ def add_metapool(
             length: uint256 = self.market_counts[key]
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
-
-
-@internal
-def _remove_market(_pool: address, _coina: address, _coinb: address):
-    key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
-    length: uint256 = self.market_counts[key] - 1
-    for i in range(65536):
-        if i > length:
-            break
-        if self.markets[key][i] == _pool:
-            if i < length:
-                self.markets[key][i] = self.markets[key][length]
-            self.markets[key][length] = ZERO_ADDRESS
-            self.market_counts[key] = length
-            break
 
 
 @external
