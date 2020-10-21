@@ -12,6 +12,7 @@ interface CurvePool:
     def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
 
 interface Registry:
+    def admin() -> address: view
     def get_A(_pool: address) -> uint256: view
     def get_fees(_pool: address) -> uint256[2]: view
     def get_coin_indices(_pool: address, _from: address, _to: address) -> (int128, int128, bool): view
@@ -48,10 +49,6 @@ event NewAdmin:
     admin: indexed(address)
 
 
-admin: public(address)
-transfer_ownership_deadline: uint256
-future_admin: address
-
 registry: public(address)
 default_calculator: public(address)
 pool_calculator: HashMap[address, address]
@@ -64,7 +61,6 @@ def __init__(_registry: address, _calculator: address):
     """
     @notice Constructor function
     """
-    self.admin = msg.sender
     self.registry = _registry
     self.default_calculator = _calculator
 
@@ -337,7 +333,7 @@ def get_calculator(_pool: address) -> address:
     @param _pool Pool address
     @return `CurveCalc` address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
 
     calculator: address = self.pool_calculator[_pool]
     if calculator == ZERO_ADDRESS:
@@ -354,68 +350,31 @@ def set_calculator(_pool: address, _calculator: address):
     @param _pool Pool address
     @param _calculator `CurveCalc` address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
 
-    if _pool == ZERO_ADDRESS:
-        self.default_calculator = _calculator
-    else:
-        self.pool_calculator[_pool] = _calculator
+    self.pool_calculator[_pool] = _calculator
 
 
 @external
-def commit_transfer_ownership(_new_admin: address):
+def set_default_calculator(_calculator: address):
     """
-    @notice Initiate a transfer of contract ownership
-    @dev Once initiated, the actual transfer may be performed three days later
-    @param _new_admin Address of the new owner account
+    @notice Set default calculator contract
+    @dev Used to calculate `get_dy` for a pool
+    @param _calculator `CurveCalc` address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.transfer_ownership_deadline == 0  # dev: transfer already active
+    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
 
-    deadline: uint256 = block.timestamp + 3*86400
-    self.transfer_ownership_deadline = deadline
-    self.future_admin = _new_admin
-
-    log CommitNewAdmin(deadline, _new_admin)
-
-
-@external
-def apply_transfer_ownership():
-    """
-    @notice Finalize a transfer of contract ownership
-    @dev May only be called by the current owner, three days after a
-         call to `commit_transfer_ownership`
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.transfer_ownership_deadline != 0  # dev: transfer not active
-    assert block.timestamp >= self.transfer_ownership_deadline  # dev: now < deadline
-
-    new_admin: address = self.future_admin
-    self.admin = new_admin
-    self.transfer_ownership_deadline = 0
-
-    log NewAdmin(new_admin)
-
-
-@external
-def revert_transfer_ownership():
-    """
-    @notice Revert a transfer of contract ownership
-    @dev May only be called by the current owner
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-
-    self.transfer_ownership_deadline = 0
+    self.default_calculator = _calculator
 
 
 @external
 def claim_balance(_token: address):
     """
     @notice Transfer an ERC20 or ETH balance held by this contract
-    @dev The entire balance is transferred to `self.admin`
+    @dev The entire balance is transferred to the owner
     @param _token Token address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
 
     if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         raw_call(msg.sender, b"", value=self.balance)
