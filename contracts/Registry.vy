@@ -598,6 +598,7 @@ def _add_pool(
     _has_initial_A: bool,
     _is_v1: bool,
 ):
+    assert _lp_token != ZERO_ADDRESS
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
     assert self.get_pool_from_lp_token[_lp_token] == ZERO_ADDRESS
 
