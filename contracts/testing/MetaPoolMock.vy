@@ -107,14 +107,16 @@ def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
 def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
     _from: address = ZERO_ADDRESS
     _to: address = ZERO_ADDRESS
-    if i == 0:
-        _from = self.coin_list[0]
+
+    max_base_coin: int128 = convert(self.n_coins - 1, int128)
+    if i <= max_base_coin:
+        _from = self.coin_list[i]
     else:
-        _from = self.base_coin_list[i-1]
-    if j == 0:
-        _to = self.coin_list[0]
+        _from = self.base_coin_list[i-max_base_coin]
+    if j <= max_base_coin:
+        _to = self.coin_list[j]
     else:
-        _to = self.base_coin_list[j-1]
+        _to = self.base_coin_list[j-max_base_coin]
 
     return self._get_dy(_from, _to, dx)
 
@@ -174,14 +176,17 @@ def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256):
 def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
     _from: address = ZERO_ADDRESS
     _to: address = ZERO_ADDRESS
-    if i == 0:
-        _from = self.coin_list[0]
+
+    max_base_coin: int128 = convert(self.n_coins - 1, int128)
+    if i < max_base_coin:
+        _from = self.coin_list[i]
     else:
-        _from = self.base_coin_list[i-1]
-    if j == 0:
-        _to = self.coin_list[0]
+        _from = self.base_coin_list[i-max_base_coin]
+    if j < max_base_coin:
+        _to = self.coin_list[j]
     else:
-        _to = self.base_coin_list[j-1]
+        _to = self.base_coin_list[j-max_base_coin]
+
     if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         assert msg.value == dx
     else:
