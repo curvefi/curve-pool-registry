@@ -21,23 +21,3 @@ def pack_values(values: List[int]) -> bytes:
     assert max(values) < 256
 
     return sum(i << c*8 for c, i in enumerate(values))
-
-
-
-def right_pad(hexstring: str) -> str:
-    """
-    Right-pad a hex string to 32 bytes.
-
-    Arguments
-    ---------
-    hexstring : str
-        Hex string to be padded
-
-    Returns
-    -------
-    str
-        Hex string right padded to 32 bytes
-    """
-    length = len(hexstring) // 2 - 1
-    pad_amount = 32 - length
-    return f"{hexstring}{'00'*pad_amount}"
