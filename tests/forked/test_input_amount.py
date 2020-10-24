@@ -13,7 +13,8 @@ def test_get_input_amount(registry_swap, swap, underlying_coins, underlying_deci
     recv = underlying_coins[recv]
 
     dx = registry_swap.get_input_amount(swap, send, recv, dy)
-    assert registry_swap.get_exchange_amount(swap, send, recv, dx) == dy
+    amount = registry_swap.get_exchange_amount(swap, send, recv, dx)
+    assert abs(amount - dy) <= 1
 
 
 @pytest.mark.itercoins("send", "recv")
@@ -26,4 +27,5 @@ def test_get_input_amount_wrapped(registry_swap, swap, wrapped_coins, wrapped_de
     recv = wrapped_coins[recv]
 
     dx = registry_swap.get_input_amount(swap, send, recv, dy)
-    assert registry_swap.get_exchange_amount(swap, send, recv, dx) == dy
+    amount = registry_swap.get_exchange_amount(swap, send, recv, dx)
+    assert abs(amount - dy) <= 1

@@ -18,7 +18,7 @@ def test_get_amounts_wrapped(registry_swap, swap, wrapped_coins, wrapped_decimal
     for i in range(100):
         # `get_exchange_amount` is a thin wrapper that calls `swap.get_dy`
         amount = registry_swap.get_exchange_amount(swap, send, recv, st_amounts[i])
-        assert amount == amounts[i]
+        assert abs(amount - amounts[i]) <= 1
 
 
 @pytest.mark.itercoins("send", "recv", underlying=True)
@@ -36,4 +36,4 @@ def test_get_amounts_underlying(registry_swap, swap, underlying_coins, underlyin
     for i in range(100):
         # `get_exchange_amount` is a thin wrapper that calls `swap.get_dy_underlying`
         amount = registry_swap.get_exchange_amount(swap, send, recv, st_amounts[i])
-        assert amount == amounts[i]
+        assert abs(amount - amounts[i]) <= 1
