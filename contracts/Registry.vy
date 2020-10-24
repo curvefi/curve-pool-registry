@@ -114,11 +114,9 @@ gas_estimate_values: HashMap[address, uint256[2]]
 # values in `gas_estimate_values`
 gas_estimate_contracts: HashMap[address, address]
 
-# mapping of coin -> coin -> pools for trading
-# all addresses are converted to uint256 prior to storage. coin addresses are stored
-# using the smaller value first. within each pool address array, the first value
-# is shifted 16 bits to the left, and these 16 bits are used to store the array length.
-
+# mapping of coins -> pools for trading
+# a mapping key is generated for each pair of addresses via
+# `bitwise_xor(convert(a, uint256), convert(b, uint256))`
 markets: HashMap[uint256, address[65536]]
 market_counts: HashMap[uint256, uint256]
 
@@ -139,6 +137,8 @@ def __init__(_address_provider: address, _gauge_controller: address):
 @view
 @internal
 def _unpack_decimals(_packed: uint256, _n_coins: uint256) -> uint256[MAX_COINS]:
+    # decimals are tightly packed as a series of uint8 within a little-endian bytes32
+    # the packed value is stored as uint256 to simplify unpacking via shift and modulo
     decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     n_coins: int128 = convert(_n_coins, int128)
     for i in range(MAX_COINS):
@@ -317,7 +317,6 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
             this value is used to return the n'th address.
     @return Pool address
     """
-
     key: uint256 = bitwise_xor(convert(_from, uint256), convert(_to, uint256))
     return self.markets[key][i]
 
@@ -325,6 +324,13 @@ def find_pool_for_coins(_from: address, _to: address, i: uint256 = 0) -> address
 @view
 @external
 def get_n_coins(_pool: address) -> uint256[2]:
+    """
+    @notice Get the number of coins in a pool
+    @dev For non-metapools, both returned values are identical
+         even when the pool does not use wrapping/lending
+    @param _pool Pool address
+    @return Number of wrapped coins, number of underlying coins
+    """
     n_coins: uint256 = self.pool_data[_pool].n_coins
     return [shift(n_coins, -128), n_coins % 2**128]
 
@@ -332,6 +338,12 @@ def get_n_coins(_pool: address) -> uint256[2]:
 @view
 @external
 def get_coins(_pool: address) -> address[MAX_COINS]:
+    """
+    @notice Get the coins within a pool
+    @dev For pools using lending, these are the wrapped coin addresses
+    @param _pool Pool address
+    @return List of coin addresses
+    """
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     for i in range(MAX_COINS):
@@ -345,6 +357,12 @@ def get_coins(_pool: address) -> address[MAX_COINS]:
 @view
 @external
 def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
+    """
+    @notice Get the underlying coins within a pool
+    @dev For pools that do not lend, returns the same value as `get_coins`
+    @param _pool Pool address
+    @return List of coin addresses
+    """
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
     for i in range(MAX_COINS):
@@ -358,6 +376,12 @@ def get_underlying_coins(_pool: address) -> address[MAX_COINS]:
 @view
 @external
 def get_decimals(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get decimal places for each coin within a pool
+    @dev For pools using lending, these are the wrapped coin decimal places
+    @param _pool Pool address
+    @return uint256 list of decimals
+    """
     n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     return self._unpack_decimals(self.pool_data[_pool].decimals, n_coins)
 
@@ -365,6 +389,12 @@ def get_decimals(_pool: address) -> uint256[MAX_COINS]:
 @view
 @external
 def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get decimal places for each underlying coin within a pool
+    @dev For pools that do not lend, returns the same value as `get_decimals`
+    @param _pool Pool address
+    @return uint256 list of decimals
+    """
     n_coins: uint256 = self.pool_data[_pool].n_coins % 2**128
     return self._unpack_decimals(self.pool_data[_pool].underlying_decimals, n_coins)
 
@@ -407,12 +437,24 @@ def get_gauges(_pool: address) -> (address[10], int128[10]):
 @view
 @external
 def get_balances(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get balances for each coin within a pool
+    @dev For pools using lending, these are the wrapped coin balances
+    @param _pool Pool address
+    @return uint256 list of balances
+    """
     return self._get_balances(_pool)
 
 
 @view
 @external
 def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get balances for each underlying coin within a pool
+    @dev  For pools that do not lend, returns the same value as `get_balances`
+    @param _pool Pool address
+    @return uint256 list of underlyingbalances
+    """
     base_pool: address = self.pool_data[_pool].base_pool
     if base_pool == ZERO_ADDRESS:
         return self._get_underlying_balances(_pool)
@@ -422,6 +464,11 @@ def get_underlying_balances(_pool: address) -> uint256[MAX_COINS]:
 @view
 @external
 def get_virtual_price_from_lp_token(_token: address) -> uint256:
+    """
+    @notice Get the virtual price of a pool LP token
+    @param _token LP token address
+    @return uint256 Virtual price
+    """
     return CurvePool(self.get_pool_from_lp_token[_token]).get_virtual_price()
 
 
@@ -434,12 +481,23 @@ def get_A(_pool: address) -> uint256:
 @view
 @external
 def get_fees(_pool: address) -> uint256[2]:
+    """
+    @notice Get the fees for a pool
+    @dev Fees are expressed as integers
+    @return Pool fee as uint256 with 1e10 precision
+            Admin fee as 1e10 percentage of pool fee
+    """
     return [CurvePool(_pool).fee(), CurvePool(_pool).admin_fee()]
 
 
 @view
 @external
 def get_admin_balances(_pool: address) -> uint256[MAX_COINS]:
+    """
+    @notice Get the current admin balances (uncollected fees) for a pool
+    @param _pool Pool address
+    @return List of uint256 admin balances
+    """
     balances: uint256[MAX_COINS] = self._get_balances(_pool)
     n_coins: uint256 = shift(self.pool_data[_pool].n_coins, -128)
     for i in range(MAX_COINS):
@@ -462,7 +520,10 @@ def get_coin_indices(
     _to: address
 ) -> (int128, int128, bool):
     """
-    Convert coin addresses to indices for use with pool methods.
+    @notice Convert coin addresses to indices for use with pool methods
+    @param _from Coin address to be used as `i` within a pool
+    @param _to Coin address to be used as `j` within a pool
+    @return int128 `i`, int128 `j`, boolean indicating if `i` and `j` are underlying coins
     """
     result: uint256[3] = self._get_coin_indices(_pool, _from, _to)
     return convert(result[0], int128), convert(result[1], int128), result[2] > 0
