@@ -41,6 +41,9 @@ struct PoolCoins:
     underlying_decimals: uint256[MAX_COINS]
 
 
+interface AddressProvider:
+    def admin() -> address: view
+
 interface ERC20:
     def balanceOf(_addr: address) -> uint256: view
     def decimals() -> uint256: view
@@ -80,13 +83,6 @@ interface GaugeController:
     def gauge_types(gauge: address) -> int128: view
 
 
-event CommitNewAdmin:
-    deadline: indexed(uint256)
-    admin: indexed(address)
-
-event NewAdmin:
-    admin: indexed(address)
-
 event PoolAdded:
     pool: indexed(address)
     rate_method_id: Bytes[4]
@@ -95,11 +91,8 @@ event PoolRemoved:
     pool: indexed(address)
 
 
-admin: public(address)
-transfer_ownership_deadline: uint256
-future_admin: address
-
-gauge_controller: address
+address_provider: public(AddressProvider)
+gauge_controller: public(address)
 pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
@@ -133,11 +126,11 @@ liquidity_gauges: HashMap[address, address[10]]
 
 
 @external
-def __init__(_gauge_controller: address):
+def __init__(_address_provider: address, _gauge_controller: address):
     """
     @notice Constructor function
     """
-    self.admin = msg.sender
+    self.address_provider = AddressProvider(_address_provider)
     self.gauge_controller = _gauge_controller
 
 
@@ -592,6 +585,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
 
 @internal
 def _add_pool(
+    _sender: address,
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
@@ -599,6 +593,7 @@ def _add_pool(
     _has_initial_A: bool,
     _is_v1: bool,
 ):
+    assert _sender == self.address_provider.admin()  # dev: admin-only function
     assert _lp_token != ZERO_ADDRESS
     assert self.pool_data[_pool].coins[0] == ZERO_ADDRESS  # dev: pool exists
     assert self.get_pool_from_lp_token[_lp_token] == ZERO_ADDRESS
@@ -725,9 +720,8 @@ def add_pool(
     @param _underlying_decimals Underlying coin decimal values, tightly packed
                                 as uint8 in a little-endian bytes32
     """
-    assert msg.sender == self.admin  # dev: admin-only function
-
     self._add_pool(
+        msg.sender,
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
@@ -771,9 +765,8 @@ def add_pool_without_underlying(
     @param _use_rates Boolean array indicating which coins use lending rates,
                       tightly packed in a little-endian bytes32
     """
-    assert msg.sender == self.admin  # dev: admin-only function
-
     self._add_pool(
+        msg.sender,
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
@@ -817,14 +810,13 @@ def add_metapool(
     @param _lp_token Pool deposit token address
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     """
-    assert msg.sender == self.admin  # dev: admin-only function
-
     base_coin_offset: uint256 = _n_coins - 1
     base_pool: address = CurveMetapool(_pool).base_pool()
     base_n_coins: uint256 = shift(self.pool_data[base_pool].n_coins, -128)
     assert base_n_coins > 0  # dev: base pool unknown
 
     self._add_pool(
+        msg.sender,
         _pool,
         base_n_coins + base_coin_offset + shift(_n_coins, 128),
         _lp_token,
@@ -881,7 +873,7 @@ def remove_pool(_pool: address):
     @dev Only callable by admin
     @param _pool Pool address to remove
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
     assert self.pool_data[_pool].coins[0] != ZERO_ADDRESS  # dev: pool does not exist
 
 
@@ -952,7 +944,7 @@ def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
     @param _addr Array of pool addresses
     @param _amount Array of gas estimate amounts as `[(wrapped, underlying), ..]`
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     for i in range(5):
         _pool: address = _addr[i]
@@ -968,7 +960,7 @@ def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
     @param _addr Array of coin addresses
     @param _amount Array of gas estimate amounts
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     for i in range(10):
         _coin: address = _addr[i]
@@ -984,7 +976,7 @@ def set_gas_estimate_contract(_pool: address, _estimator: address):
     @param _pool Pool address
     @param _estimator GasEstimator address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.gas_estimate_contracts[_pool] = _estimator
 
@@ -996,7 +988,7 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     @param _pool Pool address
     @param _liquidity_gauges Liquidity gauge address
     """
-    assert msg.sender == self.admin  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     _lp_token: address = self.get_lp_token[_pool]
     _gauge_controller: address = self.gauge_controller
@@ -1010,49 +1002,3 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
             self.liquidity_gauges[_pool][i] = ZERO_ADDRESS
         else:
             break
-
-
-@external
-def commit_transfer_ownership(_new_admin: address):
-    """
-    @notice Initiate a transfer of contract ownership
-    @dev Once initiated, the actual transfer may be performed three days later
-    @param _new_admin Address of the new owner account
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.transfer_ownership_deadline == 0  # dev: transfer already active
-
-    deadline: uint256 = block.timestamp + 3*86400
-    self.transfer_ownership_deadline = deadline
-    self.future_admin = _new_admin
-
-    log CommitNewAdmin(deadline, _new_admin)
-
-
-@external
-def apply_transfer_ownership():
-    """
-    @notice Finalize a transfer of contract ownership
-    @dev May only be called by the current owner, three days after a
-         call to `commit_transfer_ownership`
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-    assert self.transfer_ownership_deadline != 0  # dev: transfer not active
-    assert block.timestamp >= self.transfer_ownership_deadline  # dev: now < deadline
-
-    new_admin: address = self.future_admin
-    self.admin = new_admin
-    self.transfer_ownership_deadline = 0
-
-    log NewAdmin(new_admin)
-
-
-@external
-def revert_transfer_ownership():
-    """
-    @notice Revert a transfer of contract ownership
-    @dev May only be called by the current owner
-    """
-    assert msg.sender == self.admin  # dev: admin-only function
-
-    self.transfer_ownership_deadline = 0

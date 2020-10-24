@@ -5,6 +5,10 @@ CALC_INPUT_SIZE: constant(uint256) = 100
 
 from vyper.interfaces import ERC20
 
+
+interface AddressProvider:
+    def admin() -> address: view
+
 interface CurvePool:
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
     def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
@@ -12,7 +16,7 @@ interface CurvePool:
     def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
 
 interface Registry:
-    def admin() -> address: view
+    def address_provider() -> address: view
     def get_A(_pool: address) -> uint256: view
     def get_fees(_pool: address) -> uint256[2]: view
     def get_coin_indices(_pool: address, _from: address, _to: address) -> (int128, int128, bool): view
@@ -41,14 +45,8 @@ event TokenExchange:
     amount_sold: uint256
     amount_bought: uint256
 
-event CommitNewAdmin:
-    deadline: indexed(uint256)
-    admin: indexed(address)
 
-event NewAdmin:
-    admin: indexed(address)
-
-
+address_provider: AddressProvider
 registry: public(address)
 default_calculator: public(address)
 pool_calculator: HashMap[address, address]
@@ -62,6 +60,7 @@ def __init__(_registry: address, _calculator: address):
     @notice Constructor function
     """
     self.registry = _registry
+    self.address_provider = AddressProvider(Registry(_registry).address_provider())
     self.default_calculator = _calculator
 
 
@@ -333,8 +332,6 @@ def get_calculator(_pool: address) -> address:
     @param _pool Pool address
     @return `CurveCalc` address
     """
-    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
-
     calculator: address = self.pool_calculator[_pool]
     if calculator == ZERO_ADDRESS:
         return self.default_calculator
@@ -350,7 +347,7 @@ def set_calculator(_pool: address, _calculator: address):
     @param _pool Pool address
     @param _calculator `CurveCalc` address
     """
-    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.pool_calculator[_pool] = _calculator
 
@@ -362,7 +359,7 @@ def set_default_calculator(_calculator: address):
     @dev Used to calculate `get_dy` for a pool
     @param _calculator `CurveCalc` address
     """
-    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.default_calculator = _calculator
 
@@ -374,7 +371,7 @@ def claim_balance(_token: address):
     @dev The entire balance is transferred to the owner
     @param _token Token address
     """
-    assert msg.sender == Registry(self.registry).admin()  # dev: admin-only function
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         raw_call(msg.sender, b"", value=self.balance)
