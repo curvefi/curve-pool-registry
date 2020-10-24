@@ -8,9 +8,9 @@ pytestmark = pytest.mark.once
 
 @pytest.fixture(scope="module", autouse=True)
 def registry(
-    Registry, gauge_controller, alice, swap, lp_token, n_coins, is_v1,
+    Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1,
 ):
-    registry = Registry.deploy(gauge_controller, {"from": alice})
+    registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
         swap,
         n_coins,

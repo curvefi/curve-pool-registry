@@ -5,8 +5,8 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 @pytest.fixture(scope="module")
-def registry(Registry, gauge_controller, alice, swap, lp_token, n_coins, is_v1,):
-    registry = Registry.deploy(gauge_controller, {"from": alice})
+def registry(Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1,):
+    registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
         swap,
         n_coins,
