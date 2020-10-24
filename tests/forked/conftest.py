@@ -13,10 +13,8 @@ _pooldata = get_pool_data()
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--pool",
-        help="Only run each test once (no parametrization)"
-    )
+    parser.addoption("--pool", help="comma-separated list of pools to target")
+    parser.addoption("--once", action="store_true", help="Only run each test once per pool")
 
 
 def pytest_configure(config):
@@ -40,12 +38,15 @@ def pytest_generate_tests(metafunc):
 def pytest_collection_modifyitems(config, items):
 
     target_pool = config.getoption("pool")
+    if target_pool:
+        target_pool = target_pool.split(",")
+    seen = {}
 
     for item in items.copy():
         pool_name = item.callspec.params['pool_data']
         pool_data = _pooldata[pool_name]
         base_pool = pool_data.get('base_pool')
-        if target_pool and target_pool != pool_name:
+        if target_pool and pool_name not in target_pool:
             items.remove(item)
             continue
 
@@ -84,6 +85,17 @@ def pytest_collection_modifyitems(config, items):
                 ):
                     items.remove(item)
                     continue
+
+        # filter parametrized tests when `once` is active
+        # this must be the last filter applied, or we might completely skip a test
+        if config.getoption("once") or next(item.iter_markers("once"), None):
+            path = item.fspath
+            seen.setdefault(pool_name, {}).setdefault(path, set())
+
+            if item.obj in seen[pool_name][path]:
+                items.remove(item)
+                continue
+            seen[pool_name][path].add(item.obj)
 
     # hacky magic to ensure the correct number of tests is shown in collection report
     config.pluginmanager.get_plugin("terminalreporter")._numcollected = len(items)

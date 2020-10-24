@@ -81,13 +81,14 @@ def pytest_collection_modifyitems(config, items):
                 continue
 
         # filter parametrized tests when `once` is active
+        # this must be the last filter applied, or we might completely skip a test
         if config.getoption("once") or next(item.iter_markers("once"), None):
             path = item.fspath
-            seen.setdefault(path, [])
+            seen.setdefault(path, set())
             if item.obj in seen[path]:
                 items.remove(item)
                 continue
-            seen[path].append(item.obj)
+            seen[path].add(item.obj)
 
     # hacky magic to ensure the correct number of tests is shown in collection report
     config.pluginmanager.get_plugin("terminalreporter")._numcollected = len(items)
