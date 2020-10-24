@@ -111,8 +111,13 @@ def calculator(CurveCalc, alice):
 
 
 @pytest.fixture(scope="module")
-def registry(Registry, alice, gauge_controller):
-    yield Registry.deploy(gauge_controller, {"from": alice})
+def provider(AddressProvider, alice):
+    yield AddressProvider.deploy({'from': alice})
+
+
+@pytest.fixture(scope="module")
+def registry(Registry, alice, provider, gauge_controller):
+    yield Registry.deploy(provider, gauge_controller, {"from": alice})
 
 
 @pytest.fixture(scope="module")

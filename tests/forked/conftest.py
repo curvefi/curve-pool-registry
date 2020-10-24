@@ -110,8 +110,13 @@ def base_pool_data(pool_data):
 
 
 @pytest.fixture(scope="module")
-def registry(Registry, pool_data, base_pool_data, alice, gauge_controller):
-    registry = Registry.deploy(gauge_controller, {'from': alice})
+def provider(AddressProvider, alice):
+    yield AddressProvider.deploy({'from': alice})
+
+
+@pytest.fixture(scope="module")
+def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_controller):
+    registry = Registry.deploy(provider, gauge_controller, {'from': alice})
     if base_pool_data:
         add_pool(base_pool_data, registry, alice)
 
