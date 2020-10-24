@@ -1,5 +1,8 @@
 # @version 0.2.7
-
+"""
+@title Curve Registry Address Provider
+@author Curve.Fi
+"""
 
 struct AddressInfo:
     addr: address
@@ -43,16 +46,33 @@ def __init__():
 
 @external
 def max_id() -> uint256:
+    """
+    @notice Get the highest ID set within the address provider
+    @dev Reverts if no ID has been set
+    """
     return self.next_id - 1
 
 
 @external
 def get_address(_id: uint256) -> address:
+    """
+    @notice Fetch the address associated with `_id`
+    @dev Returns ZERO_ADDRESS if `_id` has not been defined, or has been unset
+    @param _id Identifier to fetch an address for
+    @return Current address associated to `_id`
+    """
     return self.get_id_info[_id].addr
 
 
 @external
-def add_new_id(_address: address, _description: String[64]) -> bool:
+def add_new_id(_address: address, _description: String[64]) -> uint256:
+    """
+    @notice Add a new identifier to the registry
+    @dev ID is auto-incremented
+    @param _address Initial address to assign to new identifier
+    @param _description Human-readable description of the identifier
+    @return uint256 identifier
+    """
     assert msg.sender == self.admin
 
     id: uint256 = self.next_id
@@ -67,11 +87,17 @@ def add_new_id(_address: address, _description: String[64]) -> bool:
 
     log NewAddressIdentifier(id, _address, _description)
 
-    return True
+    return id
 
 
 @external
 def set_address(_id: uint256, _address: address) -> bool:
+    """
+    @notice Set a new address for an existing identifier
+    @param _id Identifier to set the new address for
+    @param _address Address to set
+    @return bool success
+    """
     assert msg.sender == self.admin
     assert _address.is_contract
 
@@ -90,6 +116,13 @@ def set_address(_id: uint256, _address: address) -> bool:
 
 @external
 def unset_address(_id: uint256) -> bool:
+    """
+    @notice Unset an existing identifier
+    @dev An identifier cannot ever be removed, it can only have the
+         address unset so that it returns ZERO_ADDRESS
+    @param _id Identifier to unset
+    @return bool success
+    """
     assert msg.sender == self.admin
 
     version: uint256 = self.get_id_info[_id].version
