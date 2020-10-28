@@ -30,18 +30,31 @@ event CommitNewAdmin:
 event NewAdmin:
     admin: indexed(address)
 
-
+registry: address
 next_id: uint256
-get_id_info: public(HashMap[uint256, AddressInfo])
 
 admin: public(address)
 transfer_ownership_deadline: public(uint256)
 future_admin: public(address)
 
+get_id_info: public(HashMap[uint256, AddressInfo])
+
 
 @external
 def __init__():
     self.admin = msg.sender
+    self.next_id = 1
+    self.get_id_info[0].description = "Main Registry"
+
+
+@external
+def get_registry() -> address:
+    """
+    @notice Get the address of the main registry contract
+    @dev This is a gas-efficient way of calling `AddressProvider.get_address(0)`
+    @return address main registry contract
+    """
+    return self.registry
 
 
 @external
@@ -74,6 +87,7 @@ def add_new_id(_address: address, _description: String[64]) -> uint256:
     @return uint256 identifier
     """
     assert msg.sender == self.admin
+    assert _address.is_contract
 
     id: uint256 = self.next_id
     self.get_id_info[id] = AddressInfo({
@@ -100,14 +114,17 @@ def set_address(_id: uint256, _address: address) -> bool:
     """
     assert msg.sender == self.admin
     assert _address.is_contract
+    assert self.next_id > _id
 
     version: uint256 = self.get_id_info[_id].version + 1
-    assert version > 1
 
     self.get_id_info[_id].addr = _address
     self.get_id_info[_id].is_active = True
     self.get_id_info[_id].version = version
     self.get_id_info[_id].set_time = block.timestamp
+
+    if _id == 0:
+        self.registry = _address
 
     log AddressModified(_id, _address, version)
 
@@ -131,6 +148,9 @@ def unset_address(_id: uint256) -> bool:
     self.get_id_info[_id].is_active = False
     self.get_id_info[_id].addr = ZERO_ADDRESS
     self.get_id_info[_id].set_time = block.timestamp
+
+    if _id == 0:
+        self.registry = ZERO_ADDRESS
 
     log AddressModified(_id, ZERO_ADDRESS, version)
 
