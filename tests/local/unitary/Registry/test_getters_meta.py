@@ -40,18 +40,33 @@ def registry(
     yield registry
 
 
-def test_find_pool(registry, meta_swap, meta_coins, underlying_coins, n_metacoins, lp_token):
-    for i, j in itertools.combinations(range(n_metacoins), 2):
-        assert registry.find_pool_for_coins(meta_coins[i], meta_coins[j]) == meta_swap
-
-    for meta, base in itertools.product(meta_coins[:-1], underlying_coins):
-        assert registry.find_pool_for_coins(meta, base) == meta_swap
+@pytest.mark.itercoins("idx")
+def test_find_pool_meta_with_underlying(registry, meta_coins, meta_swap, underlying_coins, idx):
+    for meta in meta_coins[:-1]:
+        assert registry.find_pool_for_coins(meta, underlying_coins[idx]) == meta_swap
 
 
-def test_find_pool_not_exists(registry, meta_swap, meta_coins, underlying_coins, n_coins):
-    for i in range(n_coins):
-        assert registry.find_pool_for_coins(meta_coins[i], meta_coins[i]) == ZERO_ADDRESS
-        assert registry.find_pool_for_coins(underlying_coins[i], underlying_coins[i]) == ZERO_ADDRESS
+@pytest.mark.params(n_metacoins=4, n_coins=2)
+@pytest.mark.itermetacoins("send", "recv")
+def test_find_pool_meta(registry, meta_swap, meta_coins, send, recv):
+    assert registry.find_pool_for_coins(meta_coins[send], meta_coins[recv]) == meta_swap
+
+
+@pytest.mark.params(n_coins=4)
+@pytest.mark.itercoins("idx")
+def test_find_pool_not_exists_lp_token_with_underlying(registry, meta_coins, underlying_coins, idx):
+    assert registry.find_pool_for_coins(meta_coins[-1], underlying_coins[idx]) == ZERO_ADDRESS
+
+
+@pytest.mark.params(n_metacoins=4, n_coins=4)
+@pytest.mark.itercoins("idx")
+def test_find_pool_not_exists(registry, underlying_coins, idx):
+    assert registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+
+
+@pytest.mark.itermetacoins("idx")
+def test_find_pool_not_exists_meta(registry, meta_coins, idx):
+    assert registry.find_pool_for_coins(meta_coins[idx], meta_coins[idx]) == ZERO_ADDRESS
 
 
 def test_get_n_coins(registry, meta_swap, n_coins, n_metacoins):
@@ -156,7 +171,7 @@ def test_get_coin_indices(
         assert registry.get_coin_indices(meta_swap, meta_coins[i], meta_coins[j]) == (i, j, False)
 
     coins = meta_coins[:-1] + underlying_coins
-    for i, j in itertools.product(range(n_coins - 1), range(n_coins, n_coins + n_metacoins - 1)):
+    for i, j in itertools.product(range(n_metacoins - 1), range(n_metacoins, n_coins + n_metacoins - 1)):
         assert registry.get_coin_indices(meta_swap, coins[i], coins[j]) == (i, j, True)
 
 
