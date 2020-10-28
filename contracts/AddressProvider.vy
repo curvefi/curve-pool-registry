@@ -89,8 +89,8 @@ def add_new_id(_address: address, _description: String[64]) -> uint256:
     @param _description Human-readable description of the identifier
     @return uint256 identifier
     """
-    assert msg.sender == self.admin
-    assert _address.is_contract
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert _address.is_contract  # dev: not a contract
 
     id: uint256 = self.next_id
     self.get_id_info[id] = AddressInfo({
@@ -115,9 +115,9 @@ def set_address(_id: uint256, _address: address) -> bool:
     @param _address Address to set
     @return bool success
     """
-    assert msg.sender == self.admin
-    assert _address.is_contract
-    assert self.next_id > _id
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert _address.is_contract  # dev: not a contract
+    assert self.next_id > _id  # dev: id does not exist
 
     version: uint256 = self.get_id_info[_id].version + 1
 
@@ -143,8 +143,8 @@ def unset_address(_id: uint256) -> bool:
     @param _id Identifier to unset
     @return bool success
     """
-    assert msg.sender == self.admin
-    assert self.get_id_info[_id].is_active
+    assert msg.sender == self.admin  # dev: admin-only function
+    assert self.get_id_info[_id].is_active  # dev: not active
 
     self.get_id_info[_id].is_active = False
     self.get_id_info[_id].addr = ZERO_ADDRESS
