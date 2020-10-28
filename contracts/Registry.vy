@@ -16,13 +16,7 @@ struct PoolArray:
     has_initial_A: bool
     is_v1: bool
 
-struct PoolInfo:
-    balances: uint256[MAX_COINS]
-    underlying_balances: uint256[MAX_COINS]
-    decimals: uint256[MAX_COINS]
-    underlying_decimals: uint256[MAX_COINS]
-    rates: uint256[MAX_COINS]
-    lp_token: address
+struct PoolParams:
     A: uint256
     future_A: uint256
     fee: uint256
@@ -33,12 +27,6 @@ struct PoolInfo:
     initial_A: uint256
     initial_A_time: uint256
     future_A_time: uint256
-
-struct PoolCoins:
-    coins: address[MAX_COINS]
-    underlying_coins: address[MAX_COINS]
-    decimals: uint256[MAX_COINS]
-    underlying_decimals: uint256[MAX_COINS]
 
 
 interface AddressProvider:
@@ -480,6 +468,33 @@ def get_A(_pool: address) -> uint256:
 
 @view
 @external
+def get_parameters(_pool: address) -> PoolParams:
+    """
+    @notice Get parameters for a pool
+    @dev For older pools where `initial_A` is not public, this value is set to 0
+    @param _pool Pool address
+    @return Pool amp, future amp, fee, admin fee, future fee, future admin fee,
+            future owner, initial amp, initial amp time, future amp time
+    """
+    pool_params: PoolParams = empty(PoolParams)
+    pool_params.A = CurvePool(_pool).A()
+    pool_params.future_A = CurvePool(_pool).future_A()
+    pool_params.fee = CurvePool(_pool).fee()
+    pool_params.future_fee = CurvePool(_pool).future_fee()
+    pool_params.admin_fee = CurvePool(_pool).admin_fee()
+    pool_params.future_admin_fee = CurvePool(_pool).future_admin_fee()
+    pool_params.future_owner = CurvePool(_pool).future_owner()
+
+    if self.pool_data[_pool].has_initial_A:
+        pool_params.initial_A = CurvePool(_pool).initial_A()
+        pool_params.initial_A_time = CurvePool(_pool).initial_A_time()
+        pool_params.future_A_time = CurvePool(_pool).future_A_time()
+
+    return pool_params
+
+
+@view
+@external
 def get_fees(_pool: address) -> uint256[2]:
     """
     @notice Get the fees for a pool
@@ -557,89 +572,6 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
         total += _gas
 
     return total
-
-
-# large external getters - not optimized, intended for off-chain calls
-
-@view
-@external
-def get_pool_coins(_pool: address) -> PoolCoins:
-    """
-    @notice Get information on coins in a pool
-    @dev Empty values in the returned arrays may be ignored
-    @param _pool Pool address
-    @return Coin addresses, underlying coin addresses, underlying coin decimals
-    """
-    coins: PoolCoins = empty(PoolCoins)
-    decimals_packed: uint256 = self.pool_data[_pool].decimals
-    ul_decimals_packed: uint256 = self.pool_data[_pool].underlying_decimals
-
-    n_coins_packed: uint256 = self.pool_data[_pool].n_coins
-    n_coins: uint256 = shift(n_coins_packed, -128)
-    n_coins_underlying: uint256 = n_coins_packed % 2**128
-    for i in range(MAX_COINS):
-        if i == n_coins_underlying:
-            break
-        offset: int128 = -8 * convert(i, int128)
-        if i < n_coins:
-            coins.coins[i] = self.pool_data[_pool].coins[i]
-            coins.decimals[i] = shift(decimals_packed, offset) % 256
-
-        coin: address = self.pool_data[_pool].ul_coins[i]
-        if coin != ZERO_ADDRESS:
-            coins.underlying_decimals[i] = shift(ul_decimals_packed, offset) % 256
-            coins.underlying_coins[i] = coin
-
-    return coins
-
-
-@view
-@external
-def get_pool_info(_pool: address) -> PoolInfo:
-    """
-    @notice Get information on a pool
-    @dev Reverts if the pool address is unknown
-    @param _pool Pool address
-    @return balances, underlying balances, decimals, underlying decimals,
-            lp token, amplification coefficient, fees
-    """
-    pool_info: PoolInfo = empty(PoolInfo)
-
-    pool_info.rates = self._get_rates(_pool)
-    pool_info.balances = self._get_balances(_pool)
-
-    base_pool: address = self.pool_data[_pool].base_pool
-    if base_pool == ZERO_ADDRESS:
-        pool_info.underlying_balances = self._get_underlying_balances(_pool)
-    else:
-        pool_info.underlying_balances = self._get_meta_underlying_balances(_pool, base_pool)
-
-    n_coins_packed: uint256 = self.pool_data[_pool].n_coins
-    pool_info.decimals = self._unpack_decimals(
-        self.pool_data[_pool].decimals,
-        shift(n_coins_packed, -128)
-    )
-    pool_info.underlying_decimals = self._unpack_decimals(
-        self.pool_data[_pool].underlying_decimals,
-        n_coins_packed % 2**128
-    )
-
-    pool_info.lp_token = self.get_lp_token[_pool]
-
-    pool_info.A = CurvePool(_pool).A()
-    pool_info.future_A = CurvePool(_pool).future_A()
-    pool_info.fee = CurvePool(_pool).fee()
-    pool_info.future_fee = CurvePool(_pool).future_fee()
-    pool_info.admin_fee = CurvePool(_pool).admin_fee()
-    pool_info.future_admin_fee = CurvePool(_pool).future_admin_fee()
-    pool_info.future_owner = CurvePool(_pool).future_owner()
-
-    if self.pool_data[_pool].has_initial_A:
-        pool_info.initial_A = CurvePool(_pool).initial_A()
-        pool_info.initial_A_time = CurvePool(_pool).initial_A_time()
-        pool_info.future_A_time = CurvePool(_pool).future_A_time()
-
-    return pool_info
 
 
 # internal functionality used in admin setters
