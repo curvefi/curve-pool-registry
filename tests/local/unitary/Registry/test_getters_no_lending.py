@@ -21,6 +21,7 @@ def registry(
         is_v1,
         {"from": alice},
     )
+    provider.set_address(0, registry, {'from': alice})
     yield registry
 
 
@@ -44,31 +45,31 @@ def test_get_coins(registry, swap, underlying_coins, n_coins):
     assert registry.get_underlying_coins(swap) == expected
 
 
-def test_get_decimals(registry, swap, underlying_decimals, n_coins):
+def test_get_decimals(registry, registry_pool_info, swap, underlying_decimals, n_coins):
     expected = underlying_decimals + [0] * (8 - n_coins)
     assert registry.get_decimals(swap) == expected
     assert registry.get_underlying_decimals(swap) == expected
 
-    pool_info = registry.get_pool_info(swap)
+    pool_info = registry_pool_info.get_pool_info(swap)
     assert pool_info["decimals"] == expected
     assert pool_info["underlying_decimals"] == expected
 
 
-def test_get_pool_coins(registry, swap, underlying_coins, underlying_decimals, n_coins):
-    coin_info = registry.get_pool_coins(swap)
+def test_get_pool_coins(registry_pool_info, swap, underlying_coins, underlying_decimals, n_coins):
+    coin_info = registry_pool_info.get_pool_coins(swap)
     assert coin_info["coins"] == underlying_coins + [ZERO_ADDRESS] * (8 - n_coins)
     assert coin_info["underlying_coins"] == underlying_coins + [ZERO_ADDRESS] * (8 - n_coins)
     assert coin_info["decimals"] == underlying_decimals + [0] * (8 - n_coins)
     assert coin_info["underlying_decimals"] == underlying_decimals + [0] * (8 - n_coins)
 
 
-def test_get_rates(registry, swap, n_coins):
+def test_get_rates(registry, registry_pool_info, swap, n_coins):
     expected = [10 ** 18] * n_coins + [0] * (8 - n_coins)
     assert registry.get_rates(swap) == expected
-    assert registry.get_pool_info(swap)["rates"] == expected
+    assert registry_pool_info.get_pool_info(swap)["rates"] == expected
 
 
-def test_get_balances(registry, swap, n_coins):
+def test_get_balances(registry, registry_pool_info, swap, n_coins):
     balances = [1234, 2345, 3456, 4567]
     swap._set_balances(balances)
 
@@ -76,7 +77,7 @@ def test_get_balances(registry, swap, n_coins):
     assert registry.get_balances(swap) == expected
     assert registry.get_underlying_balances(swap) == expected
 
-    pool_info = registry.get_pool_info(swap)
+    pool_info = registry_pool_info.get_pool_info(swap)
     assert pool_info["balances"] == expected
     assert pool_info["underlying_balances"] == expected
 

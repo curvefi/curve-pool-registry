@@ -30,6 +30,7 @@ def registry(
         is_v1,
         {"from": alice},
     )
+    provider.set_address(0, registry, {'from': alice})
     yield registry
 
 
@@ -66,20 +67,20 @@ def test_get_underlying_coins(registry, lending_swap, underlying_coins, n_coins)
     assert registry.get_underlying_coins(lending_swap) == underlying_coins + [ZERO_ADDRESS] * (8 - n_coins)
 
 
-def test_get_decimals(registry, lending_swap, wrapped_decimals, n_coins):
+def test_get_decimals(registry, registry_pool_info, lending_swap, wrapped_decimals, n_coins):
     expected = wrapped_decimals + [0] * (8 - n_coins)
     assert registry.get_decimals(lending_swap) == expected
-    assert registry.get_pool_info(lending_swap)["decimals"] == expected
+    assert registry_pool_info.get_pool_info(lending_swap)["decimals"] == expected
 
 
-def test_get_underlying_decimals(registry, lending_swap, underlying_decimals, n_coins):
+def test_get_underlying_decimals(registry, registry_pool_info, lending_swap, underlying_decimals, n_coins):
     expected = underlying_decimals + [0] * (8 - n_coins)
     assert registry.get_underlying_decimals(lending_swap) == expected
-    assert registry.get_pool_info(lending_swap)["underlying_decimals"] == expected
+    assert registry_pool_info.get_pool_info(lending_swap)["underlying_decimals"] == expected
 
 
 def test_get_pool_coins(
-    registry,
+    registry_pool_info,
     lending_swap,
     underlying_coins,
     wrapped_coins,
@@ -87,14 +88,14 @@ def test_get_pool_coins(
     wrapped_decimals,
     n_coins,
 ):
-    coin_info = registry.get_pool_coins(lending_swap)
+    coin_info = registry_pool_info.get_pool_coins(lending_swap)
     assert coin_info["coins"] == wrapped_coins + [ZERO_ADDRESS] * (8 - n_coins)
     assert coin_info["underlying_coins"] == underlying_coins + [ZERO_ADDRESS] * (8 - n_coins)
     assert coin_info["decimals"] == wrapped_decimals + [0] * (8 - n_coins)
     assert coin_info["underlying_decimals"] == underlying_decimals + [0] * (8 - n_coins)
 
 
-def test_get_rates(registry, lending_swap, wrapped_coins):
+def test_get_rates(registry, registry_pool_info, lending_swap, wrapped_coins):
     rates = []
     for i, coin in enumerate(wrapped_coins, start=1):
         if hasattr(coin, "_set_exchange_rate"):
@@ -105,20 +106,20 @@ def test_get_rates(registry, lending_swap, wrapped_coins):
     rates += [0] * (8 - len(rates))
 
     assert registry.get_rates(lending_swap) == rates
-    assert registry.get_pool_info(lending_swap)["rates"] == rates
+    assert registry_pool_info.get_pool_info(lending_swap)["rates"] == rates
 
 
-def test_get_balances(registry, lending_swap, n_coins):
+def test_get_balances(registry, registry_pool_info, lending_swap, n_coins):
     balances = [1234, 2345, 3456, 4567]
     lending_swap._set_balances(balances)
 
     expected = balances[:n_coins] + [0] * (8 - n_coins)
     assert registry.get_balances(lending_swap) == expected
-    assert registry.get_pool_info(lending_swap)["balances"] == expected
+    assert registry_pool_info.get_pool_info(lending_swap)["balances"] == expected
 
 
 def test_get_underlying_balances(
-    registry, lending_swap, wrapped_coins, underlying_decimals, n_coins
+    registry, registry_pool_info, lending_swap, wrapped_coins, underlying_decimals, n_coins
 ):
     balances = [1234, 2345, 3456, 4567]
     lending_swap._set_balances(balances)
@@ -136,7 +137,7 @@ def test_get_underlying_balances(
     expected = balances[:n_coins] + [0] * (8 - n_coins)
 
     assert registry.get_underlying_balances(lending_swap) == expected
-    assert registry.get_pool_info(lending_swap)["underlying_balances"] == expected
+    assert registry_pool_info.get_pool_info(lending_swap)["underlying_balances"] == expected
 
 
 def test_get_admin_balances(alice, registry, lending_swap, wrapped_coins, n_coins):
@@ -165,22 +166,22 @@ def test_get_coin_indices(alice, registry, lending_swap, wrapped_coins, underlyi
 
 
 @pytest.mark.once
-def test_get_A(alice, registry, lending_swap):
+def test_get_A(alice, registry, registry_pool_info, lending_swap):
     assert registry.get_A(lending_swap) == lending_swap.A()
 
     lending_swap._set_A(12345, 0, 0, 0, 0, {"from": alice})
     assert registry.get_A(lending_swap) == 12345
-    assert registry.get_pool_info(lending_swap)["A"] == 12345
+    assert registry_pool_info.get_pool_info(lending_swap)["params"]["A"] == 12345
 
 
 @pytest.mark.once
-def test_get_fees(alice, registry, lending_swap):
+def test_get_fees(alice, registry, registry_pool_info, lending_swap):
     assert registry.get_fees(lending_swap) == [lending_swap.fee(), lending_swap.admin_fee()]
 
     lending_swap._set_fees_and_owner(12345, 31337, 42, 69420, alice, {"from": alice})
     assert registry.get_fees(lending_swap) == [12345, 31337]
 
-    pool_info = registry.get_pool_info(lending_swap)
+    pool_info = registry_pool_info.get_pool_info(lending_swap)["params"]
     assert pool_info["fee"] == 12345
     assert pool_info["admin_fee"] == 31337
     assert pool_info["future_fee"] == 42

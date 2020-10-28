@@ -118,7 +118,14 @@ def provider(AddressProvider, alice):
 
 @pytest.fixture(scope="module")
 def registry(Registry, alice, provider, gauge_controller):
-    yield Registry.deploy(provider, gauge_controller, {"from": alice})
+    contract = Registry.deploy(provider, gauge_controller, {"from": alice})
+    provider.set_address(0, contract, {'from': alice})
+    yield contract
+
+
+@pytest.fixture(scope="module")
+def registry_pool_info(PoolInfo, alice, provider):
+    yield PoolInfo.deploy(provider, {'from': alice})
 
 
 @pytest.fixture(scope="module")

@@ -36,6 +36,7 @@ def registry(
     registry.add_metapool(
         meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), {"from": alice}
     )
+    provider.set_address(0, registry, {'from': alice})
     yield registry
 
 
@@ -67,21 +68,21 @@ def test_get_underlying_coins(registry, meta_swap, meta_coins, underlying_coins)
     assert registry.get_underlying_coins(meta_swap) == expected
 
 
-def test_get_decimals(registry, meta_swap, meta_decimals, n_metacoins):
+def test_get_decimals(registry, registry_pool_info, meta_swap, meta_decimals, n_metacoins):
     expected = meta_decimals + [0] * (8 - n_metacoins)
     assert registry.get_decimals(meta_swap) == expected
-    assert registry.get_pool_info(meta_swap)["decimals"] == expected
+    assert registry_pool_info.get_pool_info(meta_swap)["decimals"] == expected
 
 
-def test_get_underlying_decimals(registry, meta_swap, meta_decimals, underlying_decimals):
+def test_get_underlying_decimals(registry, registry_pool_info, meta_swap, meta_decimals, underlying_decimals):
     expected = meta_decimals[:-1] + underlying_decimals
     expected += [0] * (8 - len(expected))
     assert registry.get_underlying_decimals(meta_swap) == expected
-    assert registry.get_pool_info(meta_swap)["underlying_decimals"] == expected
+    assert registry_pool_info.get_pool_info(meta_swap)["underlying_decimals"] == expected
 
 
 def test_get_pool_coins(
-    registry,
+    registry_pool_info,
     meta_swap,
     meta_coins,
     underlying_coins,
@@ -90,7 +91,7 @@ def test_get_pool_coins(
     n_metacoins,
     n_coins,
 ):
-    coin_info = registry.get_pool_coins(meta_swap)
+    coin_info = registry_pool_info.get_pool_coins(meta_swap)
     ul_trailing = 9 - n_coins - n_metacoins
     assert coin_info["coins"] == meta_coins + [ZERO_ADDRESS] * (8 - n_metacoins)
     assert coin_info["underlying_coins"] == meta_coins[:-1] + underlying_coins + [ZERO_ADDRESS] * ul_trailing
@@ -98,23 +99,25 @@ def test_get_pool_coins(
     assert coin_info["underlying_decimals"] == meta_decimals[:-1] + underlying_decimals + [0] * ul_trailing
 
 
-def test_get_rates(alice, registry, meta_swap, swap, n_metacoins):
+def test_get_rates(alice, registry, registry_pool_info, meta_swap, swap, n_metacoins):
     swap._set_virtual_price(12345678, {"from": alice})
     expected = [10 ** 18] * (n_metacoins - 1) + [12345678] + [0] * (8 - n_metacoins)
     assert registry.get_rates(meta_swap) == expected
-    assert registry.get_pool_info(meta_swap)["rates"] == expected
+    assert registry_pool_info.get_pool_info(meta_swap)["rates"] == expected
 
 
-def test_get_balances(registry, meta_swap, n_metacoins):
+def test_get_balances(registry, registry_pool_info, meta_swap, n_metacoins):
     balances = [1234, 2345, 3456, 4567]
     meta_swap._set_balances(balances)
 
     expected = balances[:n_metacoins] + [0] * (8 - n_metacoins)
     assert registry.get_balances(meta_swap) == expected
-    assert registry.get_pool_info(meta_swap)["balances"] == expected
+    assert registry_pool_info.get_pool_info(meta_swap)["balances"] == expected
 
 
-def test_get_underlying_balances(alice, registry, swap, meta_swap, n_metacoins, n_coins, lp_token):
+def test_get_underlying_balances(
+    alice, registry, registry_pool_info, swap, meta_swap, n_metacoins, n_coins, lp_token
+):
     balances = [1234, 2345, 3456, 4567]
     meta_swap._set_balances(balances)
 
@@ -127,7 +130,7 @@ def test_get_underlying_balances(alice, registry, swap, meta_swap, n_metacoins, 
     expected += [0] * (8 - len(expected))
 
     assert registry.get_underlying_balances(meta_swap) == expected
-    assert registry.get_pool_info(meta_swap)["underlying_balances"] == expected
+    assert registry_pool_info.get_pool_info(meta_swap)["underlying_balances"] == expected
 
 
 def test_get_admin_balances(alice, registry, meta_swap, meta_coins):
