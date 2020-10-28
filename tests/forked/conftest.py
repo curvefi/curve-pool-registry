@@ -123,7 +123,7 @@ def base_pool_data(pool_data):
 
 @pytest.fixture(scope="module")
 def provider(AddressProvider, alice):
-    yield AddressProvider.deploy({'from': alice})
+    yield AddressProvider.deploy(alice, {'from': alice})
 
 
 @pytest.fixture(scope="module")

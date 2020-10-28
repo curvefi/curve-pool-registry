@@ -3,11 +3,11 @@ import brownie
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-def test_admin_is_deployer(AddressProvider, alice, bob):
-    provider = AddressProvider.deploy({'from': alice})
+def test_set_admin_on_deployment(AddressProvider, alice, bob):
+    provider = AddressProvider.deploy(alice, {'from': alice})
     assert provider.admin() == alice
 
-    provider = AddressProvider.deploy({'from': bob})
+    provider = AddressProvider.deploy(bob, {'from': alice})
     assert provider.admin() == bob
 
 

@@ -113,7 +113,7 @@ def calculator(CurveCalc, alice):
 
 @pytest.fixture(scope="module")
 def provider(AddressProvider, alice):
-    yield AddressProvider.deploy({'from': alice})
+    yield AddressProvider.deploy(alice, {'from': alice})
 
 
 @pytest.fixture(scope="module")
