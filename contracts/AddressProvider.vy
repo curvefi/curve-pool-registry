@@ -22,13 +22,13 @@ event AddressModified:
     new_address: address
     version: uint256
 
-
 event CommitNewAdmin:
     deadline: indexed(uint256)
     admin: indexed(address)
 
 event NewAdmin:
     admin: indexed(address)
+
 
 registry: address
 next_id: uint256
@@ -47,6 +47,7 @@ def __init__():
     self.get_id_info[0].description = "Main Registry"
 
 
+@view
 @external
 def get_registry() -> address:
     """
@@ -57,15 +58,17 @@ def get_registry() -> address:
     return self.registry
 
 
+@view
 @external
 def max_id() -> uint256:
     """
     @notice Get the highest ID set within the address provider
-    @dev Reverts if no ID has been set
+    @return uint256 max ID
     """
     return self.next_id - 1
 
 
+@view
 @external
 def get_address(_id: uint256) -> address:
     """
@@ -141,9 +144,7 @@ def unset_address(_id: uint256) -> bool:
     @return bool success
     """
     assert msg.sender == self.admin
-
-    version: uint256 = self.get_id_info[_id].version
-    assert version != 0
+    assert self.get_id_info[_id].is_active
 
     self.get_id_info[_id].is_active = False
     self.get_id_info[_id].addr = ZERO_ADDRESS
@@ -152,7 +153,7 @@ def unset_address(_id: uint256) -> bool:
     if _id == 0:
         self.registry = ZERO_ADDRESS
 
-    log AddressModified(_id, ZERO_ADDRESS, version)
+    log AddressModified(_id, ZERO_ADDRESS, self.get_id_info[_id].version)
 
     return True
 
@@ -163,6 +164,7 @@ def commit_transfer_ownership(_new_admin: address) -> bool:
     @notice Initiate a transfer of contract ownership
     @dev Once initiated, the actual transfer may be performed three days later
     @param _new_admin Address of the new owner account
+    @return bool success
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline == 0  # dev: transfer already active
@@ -182,6 +184,7 @@ def apply_transfer_ownership() -> bool:
     @notice Finalize a transfer of contract ownership
     @dev May only be called by the current owner, three days after a
          call to `commit_transfer_ownership`
+    @return bool success
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline != 0  # dev: transfer not active
@@ -201,6 +204,7 @@ def revert_transfer_ownership() -> bool:
     """
     @notice Revert a transfer of contract ownership
     @dev May only be called by the current owner
+    @return bool success
     """
     assert msg.sender == self.admin  # dev: admin-only function
 
