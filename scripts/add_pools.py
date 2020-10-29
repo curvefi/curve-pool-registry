@@ -2,7 +2,7 @@ import requests
 from brownie import Registry, Contract, accounts
 
 from scripts.get_pool_data import get_pool_data
-from scripts.utils import pack_values
+from scripts.utils import get_gas_price, pack_values
 
 GITHUB_POOLS = "https://api.github.com/repos/curvefi/curve-contract/contents/contracts/pools"
 GITHUB_POOLDATA = "https://raw.githubusercontent.com/curvefi/curve-contract/master/contracts/pools/{}/pooldata.json"
@@ -25,7 +25,13 @@ def add_pool(data, registry, deployer):
 
     if "base_pool" in data:
         # adding a metapool
-        registry.add_metapool(swap, n_coins, token, decimals, {'from': deployer})
+        registry.add_metapool(
+            swap,
+            n_coins,
+            token,
+            decimals,
+            {'from': deployer, 'gas_price': get_gas_price()}
+        )
         return
 
     is_v1 = data['lp_contract'] == "CurveTokenV1"
@@ -45,7 +51,7 @@ def add_pool(data, registry, deployer):
             decimals,
             has_initial_A,
             is_v1,
-            {'from': deployer}
+            {'from': deployer, 'gas_price': get_gas_price()}
         )
     else:
         use_lending_rates = pack_values(["wrapped_decimals" in i for i in data['coins']])
@@ -58,7 +64,7 @@ def add_pool(data, registry, deployer):
             use_lending_rates,
             has_initial_A,
             is_v1,
-            {'from': deployer}
+            {'from': deployer, 'gas_price': get_gas_price()}
         )
 
 
@@ -66,11 +72,7 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
     """
     Fetch pool data from Github and add new pools to the existing registry deployment.
     """
-    if registry:
-        registry = Contract(registry)
-    else:
-        registry = Registry.deploy("0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB", {'from': deployer})
-
+    registry = Registry.at(registry)
     pool_data = get_pool_data(True)
 
     print("Adding pools to registry...")
@@ -81,4 +83,4 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
             continue
 
         print(f"Adding {name}...")
-        add_pool(pool_data, name, registry, deployer)
+        add_pool(data, registry, deployer)
