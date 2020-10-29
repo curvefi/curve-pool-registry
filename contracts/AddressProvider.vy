@@ -1,24 +1,17 @@
 # @version 0.2.7
 """
 @title Curve Registry Address Provider
+@license MIT
 @author Curve.Fi
 """
 
-struct AddressInfo:
-    addr: address
-    is_active: bool
-    version: uint256
-    set_time: uint256
-    description: String[64]
-
-
 event NewAddressIdentifier:
-    id: uint256
+    id: indexed(uint256)
     addr: address
     description: String[64]
 
 event AddressModified:
-    id: uint256
+    id: indexed(uint256)
     new_address: address
     version: uint256
 
@@ -30,20 +23,27 @@ event NewAdmin:
     admin: indexed(address)
 
 
-registry: address
-next_id: uint256
+struct AddressInfo:
+    addr: address
+    is_active: bool
+    version: uint256
+    last_modified: uint256
+    description: String[64]
 
+
+registry: address
 admin: public(address)
 transfer_ownership_deadline: public(uint256)
 future_admin: public(address)
 
+queue_length: uint256
 get_id_info: public(HashMap[uint256, AddressInfo])
 
 
 @external
 def __init__():
     self.admin = msg.sender
-    self.next_id = 1
+    self.queue_length = 1
     self.get_id_info[0].description = "Main Registry"
 
 
@@ -65,7 +65,7 @@ def max_id() -> uint256:
     @notice Get the highest ID set within the address provider
     @return uint256 max ID
     """
-    return self.next_id - 1
+    return self.queue_length - 1
 
 
 @view
@@ -92,15 +92,15 @@ def add_new_id(_address: address, _description: String[64]) -> uint256:
     assert msg.sender == self.admin  # dev: admin-only function
     assert _address.is_contract  # dev: not a contract
 
-    id: uint256 = self.next_id
+    id: uint256 = self.queue_length
     self.get_id_info[id] = AddressInfo({
         addr: _address,
         is_active: True,
         version: 1,
-        set_time: block.timestamp,
+        last_modified: block.timestamp,
         description: _description
     })
-    self.next_id = id + 1
+    self.queue_length = id + 1
 
     log NewAddressIdentifier(id, _address, _description)
 
@@ -117,14 +117,14 @@ def set_address(_id: uint256, _address: address) -> bool:
     """
     assert msg.sender == self.admin  # dev: admin-only function
     assert _address.is_contract  # dev: not a contract
-    assert self.next_id > _id  # dev: id does not exist
+    assert self.queue_length > _id  # dev: id does not exist
 
     version: uint256 = self.get_id_info[_id].version + 1
 
     self.get_id_info[_id].addr = _address
     self.get_id_info[_id].is_active = True
     self.get_id_info[_id].version = version
-    self.get_id_info[_id].set_time = block.timestamp
+    self.get_id_info[_id].last_modified = block.timestamp
 
     if _id == 0:
         self.registry = _address
@@ -148,7 +148,7 @@ def unset_address(_id: uint256) -> bool:
 
     self.get_id_info[_id].is_active = False
     self.get_id_info[_id].addr = ZERO_ADDRESS
-    self.get_id_info[_id].set_time = block.timestamp
+    self.get_id_info[_id].last_modified = block.timestamp
 
     if _id == 0:
         self.registry = ZERO_ADDRESS
