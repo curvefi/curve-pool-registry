@@ -20,10 +20,13 @@ def test_get_decimals(Contract, registry, swap, wrapped_coins):
         assert coin.decimals() == decimals[i]
 
 
-def test_get_underlying_decimals(Contract, registry, swap, underlying_coins):
+def test_get_underlying_decimals(Contract, registry, swap, underlying_coins, pool_data):
     decimals = registry.get_underlying_decimals(swap)
     for i, coin in enumerate(underlying_coins):
-        assert coin.decimals() == decimals[i]
+        if "decimals" in pool_data['coins'][i]:
+            assert coin.decimals() == decimals[i]
+        else:
+            assert decimals[i] == 0
 
 
 def test_get_virtual_price_from_lp_token(registry, swap, lp_token):
