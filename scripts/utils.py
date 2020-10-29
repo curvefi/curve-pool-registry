@@ -1,3 +1,5 @@
+import brownie
+import requests
 from typing import List
 
 
@@ -21,3 +23,12 @@ def pack_values(values: List[int]) -> bytes:
     assert max(values) < 256
 
     return sum(i << c*8 for c, i in enumerate(values))
+
+
+def get_gas_price():
+    if brownie.network.show_active() == "development":
+        return 0
+
+    data = requests.get("https://www.gasnow.org/api/v3/gas/price").json()
+    # change `fast` to `rapid` if you're in a hurry
+    return data['data']['fast'] + 10**9
