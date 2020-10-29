@@ -41,8 +41,8 @@ get_id_info: public(HashMap[uint256, AddressInfo])
 
 
 @external
-def __init__():
-    self.admin = msg.sender
+def __init__(_admin: address):
+    self.admin = _admin
     self.queue_length = 1
     self.get_id_info[0].description = "Main Registry"
 
