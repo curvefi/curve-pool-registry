@@ -21,6 +21,8 @@ def pytest_configure(config):
     # add custom markers
     config.addinivalue_line("markers", "once: only run this test once (no parametrization)")
     config.addinivalue_line("markers", "params: test parametrization filters")
+    config.addinivalue_line("markers", "meta: only run test against metapools")
+    config.addinivalue_line("markers", "skip_meta: do not run test against metapools")
     config.addinivalue_line(
         "markers",
         "itercoins: parametrize a test with one or more ranges, "
