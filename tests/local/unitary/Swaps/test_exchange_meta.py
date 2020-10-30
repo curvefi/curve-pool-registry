@@ -36,8 +36,8 @@ def registry(
 
 
 @pytest.fixture(scope="module")
-def registry_swap(RegistrySwap, alice, bob, registry, meta_swap, calculator, underlying_coins, meta_coins):
-    contract = RegistrySwap.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, bob, registry, meta_swap, calculator, underlying_coins, meta_coins):
+    contract = Swaps.deploy(registry, calculator, {'from': alice})
 
     for coin in underlying_coins:
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":

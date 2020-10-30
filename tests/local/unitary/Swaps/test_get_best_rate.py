@@ -48,8 +48,8 @@ def registry(ERC20, Registry, provider, gauge_controller, alice, swap1, swap2, s
 
 
 @pytest.fixture(scope="module")
-def registry_swap(RegistrySwap, alice, registry, calculator):
-    yield RegistrySwap.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, registry, calculator):
+    yield Swaps.deploy(registry, calculator, {'from': alice})
 
 
 @pytest.mark.params(n_coins=4)
