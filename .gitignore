@@ -7,3 +7,4 @@ build/
 reports/
 venv/
 .ipynb_checkpoints
+pooldata.json

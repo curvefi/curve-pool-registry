@@ -1,9 +1,14 @@
+import brownie
+import requests
 from typing import List
 
 
 def pack_values(values: List[int]) -> bytes:
     """
-    Tightly pack integer values as a `bytes32` value prior to calling `Registry.add_pool`
+    Tightly pack integer values.
+
+    Each number is represented as a single byte within a low-endian bytestring. The
+    bytestring is then converted back to a `uint256` to be used in `Registry.add_pool`
 
     Arguments
     ---------
@@ -12,29 +17,18 @@ def pack_values(values: List[int]) -> bytes:
 
     Returns
     -------
-    bytes
-        Bytestring of tightly packed values, right padded right to 32 bytes
+    int
+        32 byte little-endian bytestring of packed values, converted to an integer
     """
+    assert max(values) < 256
 
-    packed = b"".join(i.to_bytes(1, "big") for i in values)
-    padded = packed + bytes(32 - len(values))
-    return padded
+    return sum(i << c*8 for c, i in enumerate(values))
 
 
-def right_pad(hexstring: str) -> str:
-    """
-    Right-pad a hex string to 32 bytes.
+def get_gas_price():
+    if brownie.network.show_active() == "development":
+        return 0
 
-    Arguments
-    ---------
-    hexstring : str
-        Hex string to be padded
-
-    Returns
-    -------
-    str
-        Hex string right padded to 32 bytes
-    """
-    length = len(hexstring) // 2 - 1
-    pad_amount = 32 - length
-    return f"{hexstring}{'00'*pad_amount}"
+    data = requests.get("https://www.gasnow.org/api/v3/gas/price").json()
+    # change `fast` to `rapid` if you're in a hurry
+    return data['data']['fast'] + 10**9

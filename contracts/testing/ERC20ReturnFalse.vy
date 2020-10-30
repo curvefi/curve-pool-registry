@@ -75,7 +75,7 @@ def approve(_spender : address, _value : uint256):
 
 
 @external
-def _mint_for_testing(_value: uint256):
+def _mint_for_testing(_to: address, _value: uint256):
     self.total_supply += _value
-    self.balanceOf[msg.sender] += _value
-    log Transfer(ZERO_ADDRESS, msg.sender, _value)
+    self.balanceOf[_to] += _value
+    log Transfer(ZERO_ADDRESS, _to, _value)
