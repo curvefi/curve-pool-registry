@@ -4,11 +4,12 @@ from brownie import Registry, Contract, accounts
 from scripts.get_pool_data import get_pool_data
 from scripts.utils import get_gas_price, pack_values
 
+# modify this prior to mainnet use
+DEPLOYER = accounts.at("0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a", force=True)
+REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
+
 GITHUB_POOLS = "https://api.github.com/repos/curvefi/curve-contract/contents/contracts/pools"
 GITHUB_POOLDATA = "https://raw.githubusercontent.com/curvefi/curve-contract/master/contracts/pools/{}/pooldata.json"
-
-DEPLOYER = ""
-REGISTRY = ""  # TODO set me once the registry has been deployed
 
 RATE_METHOD_IDS = {
     "cERC20": "0x182df0f5",     # exchangeRateStored
