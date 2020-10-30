@@ -1,4 +1,9 @@
 # @version 0.2.7
+"""
+@title Curve Registry
+@license MIT
+@author Curve.Fi
+"""
 
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(int128) = 100

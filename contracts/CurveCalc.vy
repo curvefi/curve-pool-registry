@@ -1,7 +1,10 @@
 # @version 0.2.7
-
-# (c) Curve.Fi, 2020
-# Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
+"""
+@title Curve Registry Calculator
+@license (c) Curve.Fi, 2020
+@author Curve.Fi
+@notice Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
+"""
 
 MAX_COINS: constant(int128) = 8
 INPUT_SIZE: constant(int128) = 100

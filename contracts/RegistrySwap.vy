@@ -1,4 +1,10 @@
 # @version 0.2.7
+"""
+@title Curve Registry Exchange Contract
+@license MIT
+@author Curve.Fi
+@notice Find pools, query exchange rates and perform swaps
+"""
 
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100

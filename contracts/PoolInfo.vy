@@ -1,10 +1,10 @@
 # @version 0.2.7
 """
 @title Curve Registry PoolInfo
-@notice Large getters designed for off-chain use
+@license MIT
 @author Curve.Fi
+@notice Large getters designed for off-chain use
 """
-
 
 MAX_COINS: constant(int128) = 8
 
