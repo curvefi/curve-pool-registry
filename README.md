@@ -4,7 +4,7 @@ On-chain registry and unified API for [Curve.fi](https://github.com/curvefi/curv
 
 ## Usage
 
-See the [documentation](TODO) for information on how this project is organized, and how it may be integrated within other projects.
+See the [documentation](https://curve.readthedocs.io/) for information on how this project is organized, and how it may be integrated within other projects.
 
 ## Deployments
 
