@@ -4,6 +4,7 @@ __pycache__
 .venv/
 .vscode/
 build/
+docs/_build
 reports/
 venv/
 .ipynb_checkpoints
