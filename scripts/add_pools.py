@@ -1,4 +1,3 @@
-import requests
 from brownie import Registry, Contract, accounts
 
 from scripts.get_pool_data import get_pool_data
@@ -69,19 +68,50 @@ def add_pool(data, registry, deployer):
         )
 
 
+def add_gauges(data, registry, deployer):
+    pool = data['swap_address']
+    gauges = data['gauge_addresses']
+    gauges += ["0x0000000000000000000000000000000000000000"] * (10 - len(gauges))
+
+    if registry.get_gauges(pool)[0] != gauges:
+        registry.set_liquidity_gauges(
+            pool,
+            gauges,
+            {'from': deployer, 'gas_price': get_gas_price()}
+        )
+
+
 def main(registry=REGISTRY, deployer=DEPLOYER):
     """
-    Fetch pool data from Github and add new pools to the existing registry deployment.
+    * Fetch pool data from Github
+    * Add new pools to the existing registry deployment
+    * Add / update pool gauges within the registry
     """
+    balance = deployer.balance()
     registry = Registry.at(registry)
-    pool_data = get_pool_data(True)
+    pool_data = get_pool_data()
 
     print("Adding pools to registry...")
 
     for name, data in pool_data.items():
-        if registry.get_n_coins(data['swap_address'])[0] != 0:
-            print(f"{name} has already been added - skipping")
-            continue
+        pool = data['swap_address']
+        if registry.get_n_coins(pool)[0] == 0:
+            print(f"\nAdding {name}...")
+            add_pool(data, registry, deployer)
+        else:
+            print(f"\n{name} has already been added to registry")
 
-        print(f"Adding {name}...")
-        add_pool(data, registry, deployer)
+        gauges = data['gauge_addresses']
+        gauges += ["0x0000000000000000000000000000000000000000"] * (10 - len(gauges))
+
+        if registry.get_gauges(pool)[0] == gauges:
+            print(f"{name} gauges are up-to-date")
+        else:
+            print(f"Updating gauges for {name}...")
+            registry.set_liquidity_gauges(
+                pool,
+                gauges,
+                {'from': deployer, 'gas_price': get_gas_price()}
+            )
+
+    print(f"Total gas used: {(balance - deployer.balance()) / 1e18:.4f} eth")
