@@ -1,130 +1,82 @@
 # curve-pool-registry
 
-Registry smart contract for [Curve.fi](https://github.com/curvefi/curve-contract) pools.
+On-chain registry and unified API for [Curve.fi](https://github.com/curvefi/curve-contract) pools.
 
 ## Usage
 
-Use the following functions to interact with this contract.
+See the [documentation](TODO) for information on how this project is organized, and how it may be integrated within other projects.
 
-### Finding Curve Pools and Tokens
+## Deployments
 
-```python
-def pool_count() -> int128: view
-def pool_list(i: int128) -> address: view
-```
-
-* `pool_count` provides the number of pools currently included in the registry.
-* You may call to `pool_list` to obtain the address for a specific pool.
-
-Calling with a value greater than `pool_count` will return a zero value.
-
-```python
-def find_pool_for_coins(from: address, to: address, i: uint256 = 0) -> address: view
-```
-
-Locate a pool based on the tokens you wish to trade.
-
-* `from`: Address of the token you wish to sell
-* `to`: Address of the token you wish to buy
-* `i`: Optional index value - if more than one pool is available for the trade, use this argument to see the n-th result
-
-Returns a zero value if no pool is available, or `i` exceeds the number of available pools.
-
-```python
-def get_pool_from_lp_token(_pool: address) -> address: view
-```
-
-Get the pool address for an LP token.
-
-```python
-def get_lp_token(_pool: address) -> address: view
-```
-
-Get the LP token address for a pool
-
-```python
-def get_pool_n_coins(_pool: address) -> address: view
-```
-
-Get the number of coins used in a pool.
-
-### Getting Pool Information
-
-Arrays will always have a length of 8. Trailing zero values should be ignored.
-
-```python
-def get_pool_coins(pool: address) -> (address[8], address[8], uint256[8]): view
-```
-
-Get information on tradeable tokens in a pool.
-
-Returns arrays of token addresses, underlying token addresses, and underlying token decimals.
-
-```python
-def get_pool_info(pool: address) -> (uint256[8], uint256[8], uint256[8], uint256, uint256): view
-```
-
-Get information on a pool.
-
-Returns token balances, underlying token balances, underlying token decimals, pool amplification coefficient, pool fees.
-
-If the pool does not exist the call will revert.
-
-```python
-def get_pool_rates(pool: address) -> uint256[8]: view
-```
-
-Get rates between tokens and underlying tokens.
-
-For tokens where there is no underlying tokens, or where the underlying token cannot be swapped, the rate is given as `1e18`.
-
-### Making Trades
-
-```python
-def get_exchange_amount(pool: address, from: address, to: address, amount: uint256) -> uint256: view
-```
-
-Get the number of tokens that will be received in an exchange.
-
-* `pool`: Pool address
-* `from`: Address of the token you intend to sell
-* `to`: Address of the token you intend to buy
-* `amount`: Quantity of `from` to be sent in the exchange
-
-Returns the expected amount of `to` to be received in the exchange, after fees.
-
-```python
-def exchange(pool: address, from: address, to: address, amount: uint256, expected: uint256) -> bool: payable
-```
-
-Perform a token exchange.
-
-* `pool`: Pool address
-* `from`: Address of the token you intend to sell
-* `to`: Address of the token you intend to buy
-* `amount`: Quantity of `from` to be sent in the exchange
-* `expected`: Minimum quantity of tokens received in order for the transaction to succeed
-
-Prior to calling this function you must call the `approve` method in `from`, authrorizing the registry contract to transfer `amount` tokens.
+* [`AddressProvider`](contracts/AddressProvider.vy): [0x0000000022D53366457F9d5E68Ec105046FC4383](https://etherscan.io/address/0x0000000022d53366457f9d5e68ec105046fc4383)
+* [`Registry`](contracts/Registry.vy): [0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c](https://etherscan.io/address/0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c)
+* [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
 
 ## Testing and Development
 
-This project is written for compilation with Vyper [`0.2.3`](https://github.com/vyperlang/vyper/releases/tag/v0.2.3).
+### Dependencies
 
-Unit testing and development of this project is performed using [Brownie](https://github.com/iamdefinitelyahuman/brownie).
+* [python3](https://www.python.org/downloads/release/python-368/) version 3.6 or greater, python3-dev
+* [brownie](https://github.com/iamdefinitelyahuman/brownie) - tested with version [1.11.10](https://github.com/eth-brownie/brownie/releases/tag/v1.11.10)
+* [ganache-cli](https://github.com/trufflesuite/ganache-cli) - tested with version [6.12.0](https://github.com/trufflesuite/ganache-cli/releases/tag/v6.12.0)
 
-To get started, first create and initialize a Python [virtual environment](https://docs.python.org/3/library/venv.html). Next, install the requirements:
+Curve contracts are compiled using [Vyper](https://github.com/vyperlang/vyper), however installation of the required Vyper versions is handled by Brownie.
+
+### Setup
+
+To get started, first create and initialize a Python [virtual environment](https://docs.python.org/3/library/venv.html). Next, clone the repo and install the developer dependencies:
 
 ```bash
-pip install -r requirements
+git clone https://github.com/curvefi/curve-pool-registry.git
+cd curve-pool-registry
+pip install -r requirements.txt
 ```
 
-You can then run the test suite:
+### Running the Tests
+
+The registry has two independent test suites.
+
+#### Local tests
+
+The [local test suite](tests/local) is designed to be run in a local environment. It is mostly comprised of parametrized unit tests that validate functionality against many possible pool iterations.
+
+To run the entire local test suite:
 
 ```bash
-brownie test
+brownie test tests/local
 ```
+
+You can optionally include the `--once` flag to skip parametrization and run each test exactly once.
+
+#### Forked tests
+
+The [forked test suite](tests/forked) is designed for use with a forked mainnet. These tests verify functionality within the registry against actual data from deployed pools.  The data is obtained from the [`pooldata.json`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools#adding-a-new-pool) file within each subdirectory in [`curvefi/curve-contract/contract/pools`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools).
+
+
+To run the forked tests:
+
+```bash
+brownie test tests/forked
+```
+
+You can optionally include the `--pool` flag to only target one or more specific pools:
+
+```bash
+brownie test tests/forked --pool 3pool,gusd
+```
+
+## Deployment
+
+Deployment is handled via functions within [`scripts/deploy.py`](scripts/deploy.py).
+
+To run a deployment function:
+
+```bash
+brownie run deploy [FUNCTION NAME] --network mainnet
+```
+
+You must set `deployer` prior to running on the mainnet. It is recommended to test the script in a forked mainnet environment prior to actual deployment.
 
 ## License
 
-This project is licensed under the [MIT](LICENSE) license.
+Except where otherwise noted, (c) Curve.Fi, 2020 - [All rights reserved](LICENSE).
