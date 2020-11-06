@@ -243,6 +243,7 @@ def exchange(
     _to: address,
     _amount: uint256,
     _expected: uint256,
+    _destination: address = msg.sender
 ) -> uint256:
     """
     @notice Perform an exchange.
@@ -309,14 +310,14 @@ def exchange(
     received_amount: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         received_amount = self.balance - initial_balance
-        raw_call(msg.sender, b"", value=received_amount)
+        raw_call(_destination, b"", value=received_amount)
     else:
         received_amount = ERC20(_to).balanceOf(self) - initial_balance
         response: Bytes[32] = raw_call(
             _to,
             concat(
                 method_id("transfer(address,uint256)"),
-                convert(msg.sender, bytes32),
+                convert(_destination, bytes32),
                 convert(received_amount, bytes32),
             ),
             max_outsize=32,
