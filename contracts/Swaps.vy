@@ -242,8 +242,8 @@ def exchange(
     _from: address,
     _to: address,
     _amount: uint256,
-    _expected: uint256
-) -> bool:
+    _expected: uint256,
+) -> uint256:
     """
     @notice Perform an exchange.
     @dev Prior to calling this function you must approve
@@ -253,7 +253,7 @@ def exchange(
     @param _amount Quantity of `_from` being sent
     @param _expected Minimum quantity of `_from` received
            in order for the transaction to succeed
-    @return True
+    @return uint256 Amount received
     """
     i: int128 = 0
     j: int128 = 0
@@ -306,27 +306,27 @@ def exchange(
         CurvePool(_pool).exchange(i, j, _amount, _expected, value=msg.value)
 
     # perform output transfer
-    received: uint256 = 0
+    received_amount: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        received = self.balance - initial_balance
-        raw_call(msg.sender, b"", value=received)
+        received_amount = self.balance - initial_balance
+        raw_call(msg.sender, b"", value=received_amount)
     else:
-        received = ERC20(_to).balanceOf(self) - initial_balance
+        received_amount = ERC20(_to).balanceOf(self) - initial_balance
         response: Bytes[32] = raw_call(
             _to,
             concat(
                 method_id("transfer(address,uint256)"),
                 convert(msg.sender, bytes32),
-                convert(received, bytes32),
+                convert(received_amount, bytes32),
             ),
             max_outsize=32,
         )
         if len(response) != 0:
             assert convert(response, bool)
 
-    log TokenExchange(msg.sender, _pool, _from, _to, _amount, received)
+    log TokenExchange(msg.sender, _pool, _from, _to, _amount, received_amount)
 
-    return True
+    return received_amount
 
 
 @view
