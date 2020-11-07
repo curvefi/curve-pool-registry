@@ -256,20 +256,26 @@ def _exchange(
            in order for the transaction to succeed
     @return uint256 Amount received
     """
+    initial_balance: uint256 = 0
+    eth_amount: uint256 = 0
+    received_amount: uint256 = 0
+
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
     i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
-    initial_balance: uint256 = 0
+
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         initial_balance = self.balance
     else:
         initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
-    if _from != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        eth_amount = _amount
+    else:
         response: Bytes[32] = raw_call(
             _from,
             concat(
@@ -299,16 +305,12 @@ def _exchange(
         self.is_approved[_from][_pool] = True
 
     # perform coin exchange
-    eth_amount: uint256 = 0
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        eth_amount = _amount
     if is_underlying:
         CurvePool(_pool).exchange_underlying(i, j, _amount, _expected, value=eth_amount)
     else:
         CurvePool(_pool).exchange(i, j, _amount, _expected, value=eth_amount)
 
     # perform output transfer
-    received_amount: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         received_amount = self.balance - initial_balance
         raw_call(_receiver, b"", value=received_amount)
