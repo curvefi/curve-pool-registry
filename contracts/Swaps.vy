@@ -57,6 +57,7 @@ event TokenExchange:
 address_provider: AddressProvider
 registry: public(address)
 default_calculator: public(address)
+is_killed: public(bool)
 pool_calculator: HashMap[address, address]
 
 is_approved: HashMap[address, HashMap[address, bool]]
@@ -257,6 +258,8 @@ def _exchange(
            in order for the transaction to succeed
     @return uint256 Amount received
     """
+    assert not self.is_killed
+
     initial_balance: uint256 = 0
     eth_amount: uint256 = 0
     received_amount: uint256 = 0
@@ -491,3 +494,13 @@ def claim_balance(_token: address):
             assert convert(response, bool)
 
 
+@external
+def set_killed(_is_killed: bool) -> bool:
+    """
+    @notice Kill or unkill the contract
+    @param _is_killed Killed status of the contract
+    @return bool success
+    """
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
+    self.is_killed = _is_killed
+    return True
