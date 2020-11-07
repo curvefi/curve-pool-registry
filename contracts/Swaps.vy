@@ -14,6 +14,7 @@ from vyper.interfaces import ERC20
 
 interface AddressProvider:
     def admin() -> address: view
+    def get_registry() -> address: view
 
 interface CurvePool:
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
@@ -62,12 +63,12 @@ is_approved: HashMap[address, HashMap[address, bool]]
 
 
 @external
-def __init__(_registry: address, _calculator: address):
+def __init__(_address_provider: address, _calculator: address):
     """
     @notice Constructor function
     """
-    self.registry = _registry
-    self.address_provider = AddressProvider(Registry(_registry).address_provider())
+    self.address_provider = AddressProvider(_address_provider)
+    self.registry = AddressProvider(_address_provider).get_registry()
     self.default_calculator = _calculator
 
 
@@ -426,6 +427,20 @@ def get_calculator(_pool: address) -> address:
 
 
 @external
+def update_registry_address() -> bool:
+    """
+    @notice Update registry address
+    @dev The registry address is kept in storage to reduce gas costs.
+         If a new registry is deployed this function should be called
+         to update the local address from the address provider.
+    @return bool success
+    """
+    self.registry = self.address_provider.get_registry()
+
+    return True
+
+
+@external
 def set_calculator(_pool: address, _calculator: address):
     """
     @notice Set calculator contract
@@ -474,3 +489,5 @@ def claim_balance(_token: address):
         )
         if len(response) != 0:
             assert convert(response, bool)
+
+
