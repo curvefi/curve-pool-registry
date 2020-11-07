@@ -45,6 +45,7 @@ interface Calculator:
 
 event TokenExchange:
     buyer: indexed(address)
+    receiver: indexed(address)
     pool: indexed(address)
     token_sold: address
     token_bought: address
@@ -234,16 +235,15 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
     return best_pool, max_dy
 
 
-@payable
-@external
-@nonreentrant("lock")
-def exchange(
+@internal
+def _exchange(
     _pool: address,
     _from: address,
     _to: address,
     _amount: uint256,
     _expected: uint256,
-    _destination: address = msg.sender
+    _sender: address,
+    _receiver: address,
 ) -> uint256:
     """
     @notice Perform an exchange.
@@ -264,19 +264,17 @@ def exchange(
     # record initial balance
     initial_balance: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        initial_balance = self.balance - msg.value
+        initial_balance = self.balance
     else:
         initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        assert _amount == msg.value, "Incorrect ETH amount"
-    else:
+    if _from != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         response: Bytes[32] = raw_call(
             _from,
             concat(
                 method_id("transferFrom(address,address,uint256)"),
-                convert(msg.sender, bytes32),
+                convert(_sender, bytes32),
                 convert(self, bytes32),
                 convert(_amount, bytes32),
             ),
@@ -301,23 +299,26 @@ def exchange(
         self.is_approved[_from][_pool] = True
 
     # perform coin exchange
+    eth_amount: uint256 = 0
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        eth_amount = _amount
     if is_underlying:
-        CurvePool(_pool).exchange_underlying(i, j, _amount, _expected, value=msg.value)
+        CurvePool(_pool).exchange_underlying(i, j, _amount, _expected, value=eth_amount)
     else:
-        CurvePool(_pool).exchange(i, j, _amount, _expected, value=msg.value)
+        CurvePool(_pool).exchange(i, j, _amount, _expected, value=eth_amount)
 
     # perform output transfer
     received_amount: uint256 = 0
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         received_amount = self.balance - initial_balance
-        raw_call(_destination, b"", value=received_amount)
+        raw_call(_receiver, b"", value=received_amount)
     else:
         received_amount = ERC20(_to).balanceOf(self) - initial_balance
         response: Bytes[32] = raw_call(
             _to,
             concat(
                 method_id("transfer(address,uint256)"),
-                convert(_destination, bytes32),
+                convert(_receiver, bytes32),
                 convert(received_amount, bytes32),
             ),
             max_outsize=32,
@@ -325,9 +326,85 @@ def exchange(
         if len(response) != 0:
             assert convert(response, bool)
 
-    log TokenExchange(msg.sender, _pool, _from, _to, _amount, received_amount)
+    log TokenExchange(_sender, _receiver, _pool, _from, _to, _amount, received_amount)
 
     return received_amount
+
+
+@payable
+@external
+@nonreentrant("lock")
+def exchange(
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256,
+    _expected: uint256,
+    _receiver: address = msg.sender,
+) -> uint256:
+    """
+    @notice Perform an exchange.
+    @dev Prior to calling this function, the caller must approve
+         this contract to transfer `_amount` coins from `_from`
+    @param _pool Address of the pool to use for the swap
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @param _expected Minimum quantity of `_from` received
+           in order for the transaction to succeed
+    @param _receiver Address to transfer the received tokens to
+    @return uint256 Amount received
+    """
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        assert _amount == msg.value, "Incorrect ETH amount"
+    else:
+        assert msg.value == 0, "Incorrect ETH amount"
+
+    return self._exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+
+
+@payable
+@external
+@nonreentrant("lock")
+def exchange_with_best_rate(
+    _from: address,
+    _to: address,
+    _amount: uint256,
+    _expected: uint256,
+    _receiver: address = msg.sender,
+) -> uint256:
+    """
+    @notice Perform an exchange using the pool to offers the best rate.
+    @dev Prior to calling this function, the caller must approve
+         this contract to transfer `_amount` coins from `_from`
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @param _expected Minimum quantity of `_from` received
+           in order for the transaction to succeed
+    @param _receiver Address to transfer the received tokens to
+    @return uint256 Amount received
+    """
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        assert _amount == msg.value, "Incorrect ETH amount"
+    else:
+        assert msg.value == 0, "Incorrect ETH amount"
+
+    registry: address = self.registry
+    best_pool: address = Registry(registry).find_pool_for_coins(_from, _to, 0)
+    max_dy: uint256 = 0
+    for i in range(1, 65536):
+        pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
+        if pool == ZERO_ADDRESS:
+            break
+        elif i == 1:
+            max_dy = self._get_exchange_amount(best_pool, _from, _to, _amount)
+        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    return self._exchange(best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
 @view
