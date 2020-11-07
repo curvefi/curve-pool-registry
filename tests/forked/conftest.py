@@ -140,8 +140,8 @@ def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_control
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, registry, calculator):
-    yield Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, registry, provider, calculator):
+    yield Swaps.deploy(provider, calculator, {'from': alice})
 
 
 @pytest.fixture(scope="module")

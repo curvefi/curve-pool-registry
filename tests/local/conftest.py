@@ -129,8 +129,9 @@ def registry_pool_info(PoolInfo, alice, provider):
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, registry, calculator):
-    yield Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, provider, registry, calculator):
+    provider.set_address(0, registry, {'from': alice})
+    yield Swaps.deploy(provider, calculator, {'from': alice})
 
 
 @pytest.fixture(scope="module")

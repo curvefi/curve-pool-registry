@@ -32,6 +32,7 @@ def swap3(PoolMockV2, underlying_coins, alice):
 @pytest.fixture(scope="module")
 def registry(ERC20, Registry, provider, gauge_controller, alice, swap1, swap2, swap3, lp_token):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
+    provider.set_address(0, registry, {'from': alice})
 
     for swap, n_coins in ((swap1, 4), (swap2, 3), (swap3, 2)):
         token = ERC20.deploy("", "", 18, {'from': alice})
@@ -51,8 +52,8 @@ def registry(ERC20, Registry, provider, gauge_controller, alice, swap1, swap2, s
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, registry, calculator, underlying_coins):
-    contract = Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, registry, provider, calculator, underlying_coins):
+    contract = Swaps.deploy(provider, calculator, {'from': alice})
 
     for coin in underlying_coins:
         if coin != ETH_ADDRESS:

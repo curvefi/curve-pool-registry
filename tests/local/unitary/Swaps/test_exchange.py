@@ -7,6 +7,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 @pytest.fixture(scope="module")
 def registry(Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1,):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
+    provider.set_address(0, registry, {'from': alice})
     registry.add_pool_without_underlying(
         swap,
         n_coins,
@@ -22,8 +23,8 @@ def registry(Registry, provider, gauge_controller, alice, swap, lp_token, n_coin
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, bob, registry, swap, calculator, underlying_coins):
-    contract = Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, bob, registry, provider, swap, calculator, underlying_coins):
+    contract = Swaps.deploy(provider, calculator, {'from': alice})
 
     for coin in underlying_coins:
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
