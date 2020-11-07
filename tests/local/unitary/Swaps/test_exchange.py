@@ -48,6 +48,9 @@ def test_exchange(alice, registry_swap, swap, underlying_coins, underlying_decim
         send._mint_for_testing(alice, amount, {'from': alice})
         value = 0
 
+    if recv == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
+        eth_balance = alice.balance()
+
     expected = registry_swap.get_exchange_amount(swap, send, recv, amount)
     registry_swap.exchange(swap, send, recv, amount, 0, {'from': alice, 'value': value})
 
@@ -60,6 +63,7 @@ def test_exchange(alice, registry_swap, swap, underlying_coins, underlying_decim
 
     if recv == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
         assert registry_swap.balance() == 0
+        assert alice.balance() > eth_balance
     else:
         assert recv.balanceOf(registry_swap) == 0
         assert recv.balanceOf(alice) == expected
@@ -138,3 +142,38 @@ def test_existing_balance_insufficient_send(
 
     with brownie.reverts():
         registry_swap.exchange(swap, send, recv, amount, 0, {'from': alice, 'value': value})
+
+
+@pytest.mark.params(n_coins=2)
+@pytest.mark.itercoins("send", "recv")
+def test_receiver(alice, bob, registry_swap, swap, underlying_coins, underlying_decimals, send, recv):
+
+    amount = 10 ** underlying_decimals[send]
+
+    send = underlying_coins[send]
+    recv = underlying_coins[recv]
+    if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
+        value = 10**18
+    else:
+        send._mint_for_testing(alice, amount, {'from': alice})
+        value = 0
+    if recv == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
+        eth_balance = bob.balance()
+
+    expected = registry_swap.get_exchange_amount(swap, send, recv, amount)
+    registry_swap.exchange(swap, send, recv, amount, 0, bob, {'from': alice, 'value': value})
+
+    if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
+        assert registry_swap.balance() == 0
+    else:
+
+        assert send.balanceOf(registry_swap) == 0
+        assert send.balanceOf(alice) == 0
+
+    if recv == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
+        assert registry_swap.balance() == 0
+        assert bob.balance() > eth_balance
+    else:
+        assert recv.balanceOf(registry_swap) == 0
+        assert recv.balanceOf(alice) == 0
+        assert recv.balanceOf(bob) == expected
