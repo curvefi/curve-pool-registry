@@ -1,4 +1,4 @@
-from brownie import AddressProvider, PoolInfo, Registry, accounts
+from brownie import ZERO_ADDRESS, AddressProvider, PoolInfo, Registry, Swaps, accounts
 
 from scripts.add_pools import main as add_pools
 from scripts.utils import get_gas_price
@@ -49,4 +49,27 @@ def deploy_pool_info():
         provider.set_address(1, pool_info, {'from': deployer, 'gas_price': get_gas_price()})
 
     print(f"PoolInfo deployed to: {pool_info.address}")
+    print(f"Total gas used: {(balance - deployer.balance()) / 1e18:.4f} eth")
+
+
+def deploy_swaps():
+    """
+    Deploy `Swaps` and set the address in `AddressProvider`.
+    """
+    balance = deployer.balance()
+
+    provider = AddressProvider.at(ADDRESS_PROVIDER)
+
+    swaps = Swaps.deploy(provider, ZERO_ADDRESS, {'from': deployer, 'gas_price': get_gas_price()})
+
+    if provider.max_id() == 1:
+        provider.add_new_id(
+            swaps,
+            "Exchanges",
+            {'from': deployer, 'gas_price': get_gas_price()}
+        )
+    else:
+        provider.set_address(2, swaps, {'from': deployer, 'gas_price': get_gas_price()})
+
+    print(f"PoolInfo deployed to: {swaps.address}")
     print(f"Total gas used: {(balance - deployer.balance()) / 1e18:.4f} eth")

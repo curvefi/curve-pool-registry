@@ -18,6 +18,7 @@ def registry(
     is_v1,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
+    provider.set_address(0, registry, {'from': alice})
     registry.add_pool_without_underlying(
         swap,
         n_coins,
@@ -36,8 +37,8 @@ def registry(
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, bob, registry, meta_swap, calculator, underlying_coins, meta_coins):
-    contract = Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, bob, registry, provider, meta_swap, calculator, underlying_coins, meta_coins):
+    contract = Swaps.deploy(provider, calculator, {'from': alice})
 
     for coin in underlying_coins:
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":

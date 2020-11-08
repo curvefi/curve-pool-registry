@@ -67,7 +67,7 @@ def pytest_collection_modifyitems(config, items):
             is_underlying = marker.kwargs.get("underlying")
             if is_underlying and base_pool:
                 # for metacoins, underlying must include the base pool
-                n_coins = len(pool_data['coins']) + len(_pooldata[base_pool]["coins"])
+                n_coins = len(pool_data['coins']) + len(_pooldata[base_pool]["coins"]) - 1
             else:
                 n_coins = len(pool_data['coins'])
 
@@ -79,7 +79,7 @@ def pytest_collection_modifyitems(config, items):
                 items.remove(item)
                 continue
 
-            if not is_underlying:
+            if not is_underlying and not base_pool:
                 # skip if `itercoins` is not marked as underlying and pool has no wrapped coins
                 if next(
                     (True for i in values if "wrapped_decimals" not in pool_data["coins"][i]),
@@ -140,8 +140,8 @@ def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_control
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, registry, calculator):
-    yield Swaps.deploy(registry, calculator, {'from': alice})
+def registry_swap(Swaps, alice, registry, provider, calculator):
+    yield Swaps.deploy(provider, calculator, {'from': alice})
 
 
 @pytest.fixture(scope="module")
