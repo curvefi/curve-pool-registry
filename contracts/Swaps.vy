@@ -101,142 +101,6 @@ def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: 
     return CurvePool(_pool).get_dy(i, j, _amount)
 
 
-@view
-@external
-def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
-    """
-    @notice Get the current number of coins received in an exchange
-    @param _pool Pool address
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param _amount Quantity of `_from` to be sent
-    @return Quantity of `_to` to be received
-    """
-    return self._get_exchange_amount(_pool, _from, _to, _amount)
-
-
-@view
-@external
-def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
-    """
-    @notice Get the current number of coins required to receive the given amount in an exchange
-    @param _pool Pool address
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param _amount Quantity of `_to` to be received
-    @return Quantity of `_from` to be sent
-    """
-
-    registry: address = self.registry
-
-    i: int128 = 0
-    j: int128 = 0
-    is_underlying: bool = False
-    i, j, is_underlying = Registry(registry).get_coin_indices(_pool, _from, _to)
-    amp: uint256 = Registry(registry).get_A(_pool)
-    fee: uint256 = Registry(registry).get_fees(_pool)[0]
-
-    balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    n_coins: uint256 = Registry(registry).get_n_coins(_pool)[convert(is_underlying, uint256)]
-    if is_underlying:
-        balances = Registry(registry).get_underlying_balances(_pool)
-        decimals = Registry(registry).get_underlying_decimals(_pool)
-        for x in range(MAX_COINS):
-            if x == n_coins:
-                break
-            rates[x] = 10**18
-    else:
-        balances = Registry(registry).get_balances(_pool)
-        decimals = Registry(registry).get_decimals(_pool)
-        rates = Registry(registry).get_rates(_pool)
-
-    for x in range(MAX_COINS):
-        if x == n_coins:
-            break
-        decimals[x] = 10 ** (18 - decimals[x])
-
-    calculator: address = self.pool_calculator[_pool]
-    if calculator == ZERO_ADDRESS:
-        calculator = self.default_calculator
-    return Calculator(calculator).get_dx(n_coins, balances, amp, fee, rates, decimals, i, j, _amount)
-
-
-@view
-@external
-def get_exchange_amounts(_pool: address, _from: address, _to: address, _amounts: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]:
-    """
-    @notice Get the current number of coins required to receive the given amount in an exchange
-    @param _pool Pool address
-    @param _from Address of coin to be sent
-    @param _to Address of coin to be received
-    @param _amounts Quantity of `_to` to be received
-    @return Quantity of `_from` to be sent
-    """
-
-    registry: address = self.registry
-
-    i: int128 = 0
-    j: int128 = 0
-    is_underlying: bool = False
-    balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-    decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-
-    amp: uint256 = Registry(registry).get_A(_pool)
-    fee: uint256 = Registry(registry).get_fees(_pool)[0]
-    i, j, is_underlying = Registry(registry).get_coin_indices(_pool, _from, _to)
-    n_coins: uint256 = Registry(registry).get_n_coins(_pool)[convert(is_underlying, uint256)]
-
-    if is_underlying:
-        balances = Registry(registry).get_underlying_balances(_pool)
-        decimals = Registry(registry).get_underlying_decimals(_pool)
-        for x in range(MAX_COINS):
-            if x == n_coins:
-                break
-            rates[x] = 10**18
-    else:
-        balances = Registry(registry).get_balances(_pool)
-        decimals = Registry(registry).get_decimals(_pool)
-        rates = Registry(registry).get_rates(_pool)
-
-    for x in range(MAX_COINS):
-        if x == n_coins:
-            break
-        decimals[x] = 10 ** (18 - decimals[x])
-
-    calculator: address = self.pool_calculator[_pool]
-    if calculator == ZERO_ADDRESS:
-        calculator = self.default_calculator
-    return Calculator(calculator).get_dy(n_coins, balances, amp, fee, rates, decimals, i, j, _amounts)
-
-
-@view
-@external
-def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
-    """
-    @notice Find the pool offering the best rate for a given swap.
-    @param _from Address of coin being sent
-    @param _to Address of coin being received
-    @param _amount Quantity of `_from` being sent
-    @return Pool address, amount received
-    """
-    best_pool: address = ZERO_ADDRESS
-    max_dy: uint256 = 0
-    for i in range(65536):
-        pool: address = Registry(self.registry).find_pool_for_coins(_from, _to, i)
-        if pool == ZERO_ADDRESS:
-            break
-
-        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
-        if dy > max_dy:
-            best_pool = pool
-            max_dy = dy
-
-    return best_pool, max_dy
-
-
 @internal
 def _exchange(
     _pool: address,
@@ -247,17 +111,7 @@ def _exchange(
     _sender: address,
     _receiver: address,
 ) -> uint256:
-    """
-    @notice Perform an exchange.
-    @dev Prior to calling this function you must approve
-         this contract to transfer `_amount` coins from `_from`
-    @param _from Address of coin being sent
-    @param _to Address of coin being received
-    @param _amount Quantity of `_from` being sent
-    @param _expected Minimum quantity of `_from` received
-           in order for the transaction to succeed
-    @return uint256 Amount received
-    """
+
     assert not self.is_killed
 
     initial_balance: uint256 = 0
@@ -270,7 +124,6 @@ def _exchange(
     i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
-
     if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         initial_balance = self.balance
     else:
@@ -340,38 +193,6 @@ def _exchange(
 @payable
 @external
 @nonreentrant("lock")
-def exchange(
-    _pool: address,
-    _from: address,
-    _to: address,
-    _amount: uint256,
-    _expected: uint256,
-    _receiver: address = msg.sender,
-) -> uint256:
-    """
-    @notice Perform an exchange.
-    @dev Prior to calling this function, the caller must approve
-         this contract to transfer `_amount` coins from `_from`
-    @param _pool Address of the pool to use for the swap
-    @param _from Address of coin being sent
-    @param _to Address of coin being received
-    @param _amount Quantity of `_from` being sent
-    @param _expected Minimum quantity of `_from` received
-           in order for the transaction to succeed
-    @param _receiver Address to transfer the received tokens to
-    @return uint256 Amount received
-    """
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        assert _amount == msg.value, "Incorrect ETH amount"
-    else:
-        assert msg.value == 0, "Incorrect ETH amount"
-
-    return self._exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
-
-
-@payable
-@external
-@nonreentrant("lock")
 def exchange_with_best_rate(
     _from: address,
     _to: address,
@@ -380,7 +201,7 @@ def exchange_with_best_rate(
     _receiver: address = msg.sender,
 ) -> uint256:
     """
-    @notice Perform an exchange using the pool to offers the best rate.
+    @notice Perform an exchange using the pool that offers the best rate
     @dev Prior to calling this function, the caller must approve
          this contract to transfer `_amount` coins from `_from`
     @param _from Address of coin being sent
@@ -411,6 +232,177 @@ def exchange_with_best_rate(
             max_dy = dy
 
     return self._exchange(best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+
+
+@payable
+@external
+@nonreentrant("lock")
+def exchange(
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256,
+    _expected: uint256,
+    _receiver: address = msg.sender,
+) -> uint256:
+    """
+    @notice Perform an exchange using a specific pool
+    @dev Prior to calling this function, the caller must approve
+         this contract to transfer `_amount` coins from `_from`
+    @param _pool Address of the pool to use for the swap
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @param _expected Minimum quantity of `_from` received
+           in order for the transaction to succeed
+    @param _receiver Address to transfer the received tokens to
+    @return uint256 Amount received
+    """
+    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        assert _amount == msg.value, "Incorrect ETH amount"
+    else:
+        assert msg.value == 0, "Incorrect ETH amount"
+
+    return self._exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+
+
+@view
+@external
+def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
+    """
+    @notice Find the pool offering the best rate for a given swap.
+    @param _from Address of coin being sent
+    @param _to Address of coin being received
+    @param _amount Quantity of `_from` being sent
+    @return Pool address, amount received
+    """
+    best_pool: address = ZERO_ADDRESS
+    max_dy: uint256 = 0
+    for i in range(65536):
+        pool: address = Registry(self.registry).find_pool_for_coins(_from, _to, i)
+        if pool == ZERO_ADDRESS:
+            break
+
+        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    return best_pool, max_dy
+
+
+@view
+@external
+def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+    """
+    @notice Get the current number of coins received in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_from` to be sent
+    @return Quantity of `_to` to be received
+    """
+    return self._get_exchange_amount(_pool, _from, _to, _amount)
+
+
+@view
+@external
+def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+    """
+    @notice Get the current number of coins required to receive the given amount in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_to` to be received
+    @return Quantity of `_from` to be sent
+    """
+    registry: address = self.registry
+
+    i: int128 = 0
+    j: int128 = 0
+    is_underlying: bool = False
+    i, j, is_underlying = Registry(registry).get_coin_indices(_pool, _from, _to)
+    amp: uint256 = Registry(registry).get_A(_pool)
+    fee: uint256 = Registry(registry).get_fees(_pool)[0]
+
+    balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    n_coins: uint256 = Registry(registry).get_n_coins(_pool)[convert(is_underlying, uint256)]
+    if is_underlying:
+        balances = Registry(registry).get_underlying_balances(_pool)
+        decimals = Registry(registry).get_underlying_decimals(_pool)
+        for x in range(MAX_COINS):
+            if x == n_coins:
+                break
+            rates[x] = 10**18
+    else:
+        balances = Registry(registry).get_balances(_pool)
+        decimals = Registry(registry).get_decimals(_pool)
+        rates = Registry(registry).get_rates(_pool)
+
+    for x in range(MAX_COINS):
+        if x == n_coins:
+            break
+        decimals[x] = 10 ** (18 - decimals[x])
+
+    calculator: address = self.pool_calculator[_pool]
+    if calculator == ZERO_ADDRESS:
+        calculator = self.default_calculator
+    return Calculator(calculator).get_dx(n_coins, balances, amp, fee, rates, decimals, i, j, _amount)
+
+
+@view
+@external
+def get_exchange_amounts(
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amounts: uint256[CALC_INPUT_SIZE]
+) -> uint256[CALC_INPUT_SIZE]:
+    """
+    @notice Get the current number of coins required to receive the given amount in an exchange
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amounts Quantity of `_to` to be received
+    @return Quantity of `_from` to be sent
+    """
+    registry: address = self.registry
+
+    i: int128 = 0
+    j: int128 = 0
+    is_underlying: bool = False
+    balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+    decimals: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+
+    amp: uint256 = Registry(registry).get_A(_pool)
+    fee: uint256 = Registry(registry).get_fees(_pool)[0]
+    i, j, is_underlying = Registry(registry).get_coin_indices(_pool, _from, _to)
+    n_coins: uint256 = Registry(registry).get_n_coins(_pool)[convert(is_underlying, uint256)]
+
+    if is_underlying:
+        balances = Registry(registry).get_underlying_balances(_pool)
+        decimals = Registry(registry).get_underlying_decimals(_pool)
+        for x in range(MAX_COINS):
+            if x == n_coins:
+                break
+            rates[x] = 10**18
+    else:
+        balances = Registry(registry).get_balances(_pool)
+        decimals = Registry(registry).get_decimals(_pool)
+        rates = Registry(registry).get_rates(_pool)
+
+    for x in range(MAX_COINS):
+        if x == n_coins:
+            break
+        decimals[x] = 10 ** (18 - decimals[x])
+
+    calculator: address = self.pool_calculator[_pool]
+    if calculator == ZERO_ADDRESS:
+        calculator = self.default_calculator
+    return Calculator(calculator).get_dy(n_coins, balances, amp, fee, rates, decimals, i, j, _amounts)
 
 
 @view
@@ -444,36 +436,43 @@ def update_registry_address() -> bool:
 
 
 @external
-def set_calculator(_pool: address, _calculator: address):
+def set_calculator(_pool: address, _calculator: address) -> bool:
     """
     @notice Set calculator contract
     @dev Used to calculate `get_dy` for a pool
     @param _pool Pool address
     @param _calculator `CurveCalc` address
+    @return bool success
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.pool_calculator[_pool] = _calculator
 
+    return True
+
 
 @external
-def set_default_calculator(_calculator: address):
+def set_default_calculator(_calculator: address) -> bool:
     """
     @notice Set default calculator contract
     @dev Used to calculate `get_dy` for a pool
     @param _calculator `CurveCalc` address
+    @return bool success
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.default_calculator = _calculator
 
+    return True
+
 
 @external
-def claim_balance(_token: address):
+def claim_balance(_token: address) -> bool:
     """
     @notice Transfer an ERC20 or ETH balance held by this contract
     @dev The entire balance is transferred to the owner
     @param _token Token address
+    @return bool success
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
@@ -493,6 +492,8 @@ def claim_balance(_token: address):
         if len(response) != 0:
             assert convert(response, bool)
 
+    return True
+
 
 @external
 def set_killed(_is_killed: bool) -> bool:
@@ -503,4 +504,5 @@ def set_killed(_is_killed: bool) -> bool:
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
     self.is_killed = _is_killed
+
     return True
