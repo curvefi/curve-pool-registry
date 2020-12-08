@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title Curve Registry Calculator
 @license (c) Curve.Fi, 2020
@@ -291,8 +291,26 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
 
                 elif j == 0:
                     # deposit to base pool (calc_token_amount)
-                    # swap
-                    pass
+                    new_balances: uint256[MAX_COINS] = xp_base
+                    new_balances[i+1] += dx[k] * ratesp[i+1] / 10**18
+                    # invariant after deposit
+                    D1: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
+                    # take fees into account
+                    for l in range(BASE_N_COINS):
+                        ideal_balance: uint256 = D1 * xp_base[i+1] / D_base_0
+                        difference: uint256 = 0
+                        if ideal_balance > new_balances[i+1]:
+                            difference = ideal_balance - new_balances[i+1]
+                        else:
+                            difference = new_balances[i+1] - ideal_balance
+                        new_balances[i+1] -= base_fee * difference / FEE_DENOMINATOR
+                    D2: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
+                    dx_meta: uint256 = base_supply * (D2 - D_base_0) / D_base_0
+                    # swap dx_meta to coin j
+                    x_after_trade: uint256 = dx_meta * v_price / 10**18 + xp[1]
+                    dy[k] = self.get_y(D, N_COINS, xp, amp, 1, 0, x_after_trade)
+                    dy[k] = (xp[0] - dy[k] - 1) * 10**18 / ratesp[0]
+                    dy[k] -= dy[k] * fee / FEE_DENOMINATOR
 
                 else:
                     x_after_trade: uint256 = dx[k] * ratesp[i] / 10**18 + xp[i]
