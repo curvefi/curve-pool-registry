@@ -1,20 +1,22 @@
 from brownie import Registry, Contract, accounts
+from brownie.network.gas.strategies import GasNowScalingStrategy
 
 from scripts.get_pool_data import get_pool_data
-from scripts.utils import get_gas_price, pack_values
+from scripts.utils import pack_values
 
 # modify this prior to mainnet use
-DEPLOYER = None # accounts.at("0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a", force=True)
-REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
+DEPLOYER = accounts.at("0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a", force=True)
 
-GITHUB_POOLS = "https://api.github.com/repos/curvefi/curve-contract/contents/contracts/pools"
-GITHUB_POOLDATA = "https://raw.githubusercontent.com/curvefi/curve-contract/master/contracts/pools/{}/pooldata.json"
+REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
+GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
 
 RATE_METHOD_IDS = {
     "cERC20": "0x182df0f5",     # exchangeRateStored
     "renERC20": "0xbd6d894d",   # exchangeRateCurrent
     "yERC20": "0x77c7b8fc",     # getPricePerFullShare
 }
+
+gas_strategy = GasNowScalingStrategy("standard", "fast")
 
 
 def add_pool(data, registry, deployer):
@@ -30,7 +32,7 @@ def add_pool(data, registry, deployer):
             n_coins,
             token,
             decimals,
-            {'from': deployer, 'gas_price': get_gas_price()}
+            {'from': deployer, 'gas_price': gas_strategy}
         )
         return
 
@@ -51,7 +53,7 @@ def add_pool(data, registry, deployer):
             decimals,
             has_initial_A,
             is_v1,
-            {'from': deployer, 'gas_price': get_gas_price()}
+            {'from': deployer, 'gas_price': gas_strategy}
         )
     else:
         use_lending_rates = pack_values(["wrapped_decimals" in i for i in data['coins']])
@@ -64,7 +66,7 @@ def add_pool(data, registry, deployer):
             use_lending_rates,
             has_initial_A,
             is_v1,
-            {'from': deployer, 'gas_price': get_gas_price()}
+            {'from': deployer, 'gas_price': gas_strategy}
         )
 
 
@@ -77,7 +79,7 @@ def add_gauges(data, registry, deployer):
         registry.set_liquidity_gauges(
             pool,
             gauges,
-            {'from': deployer, 'gas_price': get_gas_price()}
+            {'from': deployer, 'gas_price': gas_strategy}
         )
 
 
@@ -106,12 +108,22 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
 
         if registry.get_gauges(pool)[0] == gauges:
             print(f"{name} gauges are up-to-date")
-        else:
-            print(f"Updating gauges for {name}...")
+            continue
+
+        print(f"Updating gauges for {name}...")
+        for gauge in data['gauge_addresses']:
+            try:
+                Contract(GAUGE_CONTROLLER).gauge_types(gauge)
+            except ValueError:
+                print(f"Gauge {gauge} is not known to GaugeController, cannot add to registry")
+                gauges = False
+                break
+
+        if gauges:
             registry.set_liquidity_gauges(
                 pool,
                 gauges,
-                {'from': deployer, 'gas_price': get_gas_price()}
+                {'from': deployer, 'gas_price': gas_strategy}
             )
 
     print(f"Total gas used: {(balance - deployer.balance()) / 1e18:.4f} eth")
