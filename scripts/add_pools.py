@@ -1,4 +1,5 @@
 from brownie import Registry, Contract, accounts
+from brownie.exceptions import VirtualMachineError
 from brownie.network.gas.strategies import GasNowScalingStrategy
 
 from scripts.get_pool_data import get_pool_data
@@ -11,7 +12,9 @@ REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
 GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
 
 RATE_METHOD_IDS = {
+    "ATokenMock": "0x00000000",
     "cERC20": "0x182df0f5",     # exchangeRateStored
+    "IdleToken": "0x7ff9b596",  # tokenPrice
     "renERC20": "0xbd6d894d",   # exchangeRateCurrent
     "yERC20": "0x77c7b8fc",     # getPricePerFullShare
 }
@@ -104,7 +107,7 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
             print(f"\n{name} has already been added to registry")
 
         gauges = data['gauge_addresses']
-        gauges += ["0x0000000000000000000000000000000000000000"] * (10 - len(gauges))
+        gauges = gauges + ["0x0000000000000000000000000000000000000000"] * (10 - len(gauges))
 
         if registry.get_gauges(pool)[0] == gauges:
             print(f"{name} gauges are up-to-date")
@@ -114,7 +117,7 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
         for gauge in data['gauge_addresses']:
             try:
                 Contract(GAUGE_CONTROLLER).gauge_types(gauge)
-            except ValueError:
+            except (ValueError, VirtualMachineError):
                 print(f"Gauge {gauge} is not known to GaugeController, cannot add to registry")
                 gauges = False
                 break
