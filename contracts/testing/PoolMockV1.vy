@@ -167,6 +167,12 @@ def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
     self._exchange(msg.sender, _from, self.underlying_coin_list[j], dx, min_dy)
 
 
+@external
+@view
+def A_precise() -> uint256:
+    return self.A
+
+
 # testing functions
 
 @external
@@ -197,6 +203,12 @@ def _set_fees_and_owner(
     self.future_fee = _future_fee
     self.future_admin_fee = _future_admin_fee
     self.future_owner = _future_owner
+
+
+@view
+@external
+def base_virtual_price() -> uint256:
+    return self.get_virtual_price
 
 
 @external

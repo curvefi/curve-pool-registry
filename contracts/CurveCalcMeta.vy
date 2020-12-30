@@ -246,8 +246,10 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
         _base_pool: address = self.base_pool
         xp_base: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
         v_price: uint256 = CurveBase(_base_pool).base_virtual_price()
+        ratesp_base: uint256[MAX_COINS] = ratesp 
         for k in range(BASE_N_COINS):
             xp_base[k] = xp[N_COINS+k-1]
+            ratesp_base[k] = ratesp[N_COINS+k-1]
         xp[N_COINS-1] = Curve(self.meta_pool).balances(N_COINS-1) * v_price / 10**18
         ratesp[N_COINS-1] = v_price
         xp[N_COINS] = 0
@@ -313,9 +315,9 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
                     dy[k] -= dy[k] * fee / FEE_DENOMINATOR
 
                 else:
-                    x_after_trade: uint256 = dx[k] * ratesp[i] / 10**18 + xp[i]
+                    x_after_trade: uint256 = dx[k] * ratesp_base[i-1] / 10**18 + xp_base[i-1]
                     dy[k] = self.get_y(D_base_0, BASE_N_COINS, xp_base, amp_base, i-1, j-1, x_after_trade)
-                    dy[k] = (xp[j] - dy[k] - 1) * 10**18 / ratesp[j]
+                    dy[k] = (xp_base[j-1] - dy[k] - 1) * 10**18 / ratesp_base[j-1]
                     dy[k] -= dy[k] * base_fee / FEE_DENOMINATOR
 
     else:
@@ -324,107 +326,3 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
     return dy
 
 
-@view
-@external
-def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: uint256,
-           rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
-           i: int128, j: int128, dy: uint256[INPUT_SIZE]) -> uint256[INPUT_SIZE]:
-    """ 
-    @notice Bulk-calculate amount of coin i taken when exchanging for coin j
-    @param n_coins Number of coins in the pool
-    @param balances Array with coin balances
-    @param _amp Amplification coefficient
-    @param fee Pool's fee at 1e10 basis
-    @param rates Array with rates for "lent out" tokens
-    @param precisions Precision multipliers to get the coin to 1e18 basis
-    @param i Index of the changed coin (trade in)
-    @param j Index of the other changed coin (trade out)
-    @param dy Array of values of coin j (trade out)
-    @return Array of values of coin i (trade in)
-    """
-
-    xp: uint256[MAX_COINS] = balances
-    ratesp: uint256[MAX_COINS] = precisions
-    for k in range(MAX_COINS):
-        xp[k] = xp[k] * rates[k] * precisions[k] / 10 ** 18
-        ratesp[k] *= rates[k]
-    dx: uint256[INPUT_SIZE] = dy
-    amp: uint256 = Curve(self.meta_pool).A_precise()
-
-    if n_coins == N_COINS:
-        # Metapool with the pool token
-        D: uint256 = self.get_D(n_coins, xp, amp)
-        for k in range(INPUT_SIZE):
-            if dy[k] == 0:
-                break
-            else:
-                y_after_trade: uint256 = xp[j] - dy[k] * ratesp[j] / 10 ** 18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
-                dx[k] = self.get_y(D, n_coins, xp, amp, j, i, y_after_trade)
-                dx[k] = (dx[k] - xp[i]) * 10 ** 18 / ratesp[i]
-
-    elif n_coins == N_COINS + BASE_N_COINS - 1:
-        _base_pool: address = self.base_pool
-        xp_base: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-        v_price: uint256 = CurveBase(_base_pool).base_virtual_price()
-        for k in range(BASE_N_COINS):
-            xp_base[k] = xp[N_COINS+k-1]
-        xp[N_COINS-1] = Curve(self.meta_pool).balances(N_COINS-1) * v_price / 10**18
-        ratesp[N_COINS-1] = v_price
-        xp[N_COINS] = 0
-        ratesp[N_COINS] = 0
-        amp_base: uint256 = CurveBase(_base_pool).A_precise()
-        D_base_0: uint256 = self.get_D(BASE_N_COINS, xp_base, amp_base)
-        D: uint256 = self.get_D(n_coins, xp, amp)
-        base_fee: uint256 = CurveBase(_base_pool).fee()
-        base_supply: uint256 = 0
-        if i == 0 or j == 0:
-            base_fee = base_fee * BASE_N_COINS / (4 * (BASE_N_COINS - 1))
-            base_supply = ERC20(self.base_token).totalSupply()
-        # ... -> 0 - swap inside, withdraw from base
-        # 0 -> ... - withdraw from base, swap inside
-        # both i, j >= 1 - swap in base
-
-        for k in range(INPUT_SIZE):
-            if dy[k] == 0:
-                break
-            else:
-                if j == 0:
-                    # swap
-                    y_after_trade: uint256 = xp[j] - dy[k] * ratesp[j] / 10**18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
-                    _x: uint256 = self.get_y(D, N_COINS, xp, amp, 0, 1, y_after_trade)
-                    _dx: uint256 = (_x - xp[1] - 1) * 10**18 / ratesp[1]
-                    # TODO
-                    # deposit one coin: _dx tokens, coin is i-1
-                
-                elif i == 0:
-                    # coin j-1 from base pool is withdrawn 
-                    new_balances: uint256[MAX_COINS] = xp_base
-                    new_balances[j-1] -= dy[k] * ratesp[j-1] / 10**18
-                    # invariant after withdrawal
-                    D1: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
-                    # take fees into account
-                    for l in range(BASE_N_COINS):
-                        ideal_balance: uint256 = D1 * xp_base[i+1] / D_base_0
-                        difference: uint256 = 0
-                        if ideal_balance > new_balances[i+1]:
-                            difference = ideal_balance - new_balances[i+1]
-                        else:
-                            difference = new_balances[i+1] - ideal_balance
-                        new_balances[i+1] += base_fee * difference / FEE_DENOMINATOR
-                    D2: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
-                    dx_meta: uint256 = base_supply * (D_base_0 - D2) / D_base_0
-                    # swap dx_meta to coin i
-                    y_after_trade: uint256 = xp[1] - dx_meta * v_price / 10**18
-                    dx[k] = self.get_y(D, N_COINS, xp, amp, 1, 0, y_after_trade)
-                    dx[k] = (dx[k] - xp[0] - 1) * 10**18 / ratesp[0]
-
-                else:
-                    # swap in base pool
-                    y_after_trade: uint256 = xp[j] - dy[k] * ratesp[j] / 10**18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
-                    dx[k] = self.get_y(D_base_0, BASE_N_COINS, xp_base, amp_base, j-1, i-1, y_after_trade)
-                    dx[k] = (dx[k] - xp[i]) * 10 ** 18 / ratesp[i]
-
-    else:
-        raise "Unsupported pool size"
-
-    return dx

@@ -167,6 +167,11 @@ def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256):
     self._exchange(msg.sender, _from, self.underlying_coin_list[j], dx, min_dy)
 
 
+@external
+@view
+def A_precise() -> uint256:
+    return self.A
+
 # testing functions
 
 @external
@@ -202,6 +207,12 @@ def _set_fees_and_owner(
 @external
 def _set_balances(_new_balances: uint256[4]):
     self._balances = _new_balances
+
+
+@view
+@external
+def base_virtual_price() -> uint256:
+    return self.get_virtual_price
 
 
 @external

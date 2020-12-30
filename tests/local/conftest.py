@@ -21,7 +21,8 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     # add custom markers
-    config.addinivalue_line("markers", "once: only run this test once (no parametrization)")
+    config.addinivalue_line(
+        "markers", "once: only run this test once (no parametrization)")
     config.addinivalue_line("markers", "params: test parametrization filters")
     config.addinivalue_line(
         "markers",
@@ -91,7 +92,8 @@ def pytest_collection_modifyitems(config, items):
             seen[path].add(item.obj)
 
     # hacky magic to ensure the correct number of tests is shown in collection report
-    config.pluginmanager.get_plugin("terminalreporter")._numcollected = len(items)
+    config.pluginmanager.get_plugin(
+        "terminalreporter")._numcollected = len(items)
 
 
 @pytest.fixture(autouse=True)
@@ -167,7 +169,8 @@ def _underlying_coins(_underlying_decimals, alice):
     deployers = [ERC20, ERC20NoReturn, ERC20ReturnFalse]
     coins = []
     for i, (deployer, decimals) in enumerate(zip(deployers, _underlying_decimals)):
-        contract = deployer.deploy(f"Test Token {i}", f"TST{i}", decimals, {"from": alice})
+        contract = deployer.deploy(
+            f"Test Token {i}", f"TST{i}", decimals, {"from": alice})
         coins.append(contract)
     coins.append("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")
 
@@ -194,7 +197,8 @@ def _meta_coins(_meta_decimals, alice):
     deployers = [ERC20, ERC20NoReturn, ERC20ReturnFalse]
     coins = []
     for i, (deployer, decimals) in enumerate(zip(deployers, _meta_decimals)):
-        contract = deployer.deploy(f"MetaTest Token {i}", f"MT{i}", decimals, {"from": alice})
+        contract = deployer.deploy(
+            f"MetaTest Token {i}", f"MT{i}", decimals, {"from": alice})
         coins.append(contract)
 
     return coins
@@ -267,10 +271,12 @@ def swap(PoolMockV1, PoolMockV2, alice, underlying_coins, is_v1):
         deployer = PoolMockV2
 
     n_coins = len(underlying_coins)
-    underlying_coins = underlying_coins + [ZERO_ADDRESS] * (4 - len(underlying_coins))
+    underlying_coins = underlying_coins + \
+        [ZERO_ADDRESS] * (4 - len(underlying_coins))
 
     contract = deployer.deploy(
-        n_coins, underlying_coins, [ZERO_ADDRESS] * 4, 70, 4000000, {"from": alice}
+        n_coins, underlying_coins, [ZERO_ADDRESS] *
+        4, 70, 4000000, {"from": alice}
     )
     return contract
 
@@ -284,7 +290,8 @@ def lending_swap(PoolMockV1, PoolMockV2, alice, wrapped_coins, underlying_coins,
 
     n_coins = len(underlying_coins)
     wrapped_coins = wrapped_coins + [ZERO_ADDRESS] * (4 - len(wrapped_coins))
-    underlying_coins = underlying_coins + [ZERO_ADDRESS] * (4 - len(underlying_coins))
+    underlying_coins = underlying_coins + \
+        [ZERO_ADDRESS] * (4 - len(underlying_coins))
 
     contract = deployer.deploy(
         n_coins, wrapped_coins, underlying_coins, 70, 4000000, {"from": alice}
@@ -295,9 +302,11 @@ def lending_swap(PoolMockV1, PoolMockV2, alice, wrapped_coins, underlying_coins,
 @pytest.fixture(scope="module")
 def meta_swap(MetaPoolMock, alice, swap, meta_coins, underlying_coins, n_metacoins, n_coins):
     meta_coins = meta_coins + [ZERO_ADDRESS] * (4 - len(meta_coins))
-    underlying_coins = underlying_coins + [ZERO_ADDRESS] * (4 - len(underlying_coins))
+    underlying_coins = underlying_coins + \
+        [ZERO_ADDRESS] * (4 - len(underlying_coins))
     return MetaPoolMock.deploy(
-        n_metacoins, n_coins, swap, meta_coins, underlying_coins, 70, 4000000, {"from": alice}
+        n_metacoins, n_coins, swap, meta_coins, underlying_coins, 70, 4000000, {
+            "from": alice}
     )
 
 
@@ -313,3 +322,8 @@ def liquidity_gauge_meta(LiquidityGaugeMock, alice, gauge_controller, meta_lp_to
     gauge = LiquidityGaugeMock.deploy(meta_lp_token, {'from': alice})
     gauge_controller._set_gauge_type(gauge, 2, {'from': alice})
     yield gauge
+
+
+@pytest.fixture(scope="module")
+def calculatorMeta(CurveCalcMeta, swap, meta_lp_token, meta_swap, alice):
+    yield CurveCalcMeta.deploy(swap, meta_lp_token, meta_swap, {'from': alice})
