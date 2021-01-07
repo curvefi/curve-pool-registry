@@ -294,7 +294,7 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
                 elif j == 0:
                     # deposit to base pool (calc_token_amount)
                     new_balances: uint256[MAX_COINS] = xp_base
-                    new_balances[i+1] += dx[k] * ratesp[i+1] / 10**18
+                    new_balances[i-1] += dx[k] * ratesp_base[i-1] / 10**18
                     # invariant after deposit
                     D1: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
                     # take fees into account
