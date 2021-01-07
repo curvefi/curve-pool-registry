@@ -34,7 +34,6 @@ def test_meta_calc_get_dy_base_dx_base(accounts, swap, calculatorMeta, no_call_c
     # virtual LP token price is 1
     assert swap.get_virtual_price() == 1e18
     expected = [302936, 302680378, 836241086, 931038, 289803381]
-    # set LP token balance [1]
     meta_swap._set_balances(
         [2000000000, 6000000000, 0, 0])
     actual = calculatorMeta.get_dy.call(
@@ -59,9 +58,32 @@ def test_meta_calc_get_dy_meta_dx_base(accounts, swap, calculatorMeta, no_call_c
 
 
 @pytest.mark.params(n_coins=3, n_metacoins=2)
-def test_meta_calc_get_dy_base_dx_meta(accounts, swap, calculatorMeta, no_call_coverage, meta_swap, alice):
+def test_meta_calc_get_dy_base_dx_meta(accounts, swap, meta_lp_token, calculatorMeta, no_call_coverage, meta_swap, alice):
     # dx is meta pool token; dy is base pool token
-    pass
+    meta_swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
+    swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
+    meta_lp_token._mint_for_testing(ZERO_ADDRESS, 8e19)
+    assert meta_lp_token.total_supply() == 8e19
+    assert meta_swap.A_precise() == 10000
+    assert swap.A_precise() == 10000
+    assert swap.get_virtual_price() == 1e18
+    expected = [292589, 6376623, 763121, 261262965, 95299]
+    # set LP token balance for meta pool
+    meta_swap._set_balances(
+        [0, 6e19, 0, 0], {"from": alice})
+    actual = calculatorMeta.get_dy.call(
+        4,
+        (2000000000, 1873465287, 1921830293, 2204704420, 0, 0, 0, 0),
+        100,
+        4000000,
+        (1000000000000000000, 1000000000000000000,
+         1000000000000000000, 1000000000000000000, 0, 0, 0, 0),
+        (10000000000, 10000000000, 10000000000, 10000000000, 0, 0, 0, 0),
+        0,
+        2,
+        [383785, 8364882, 1000982, 343892002, 125002] + [0] * 95,
+    )
+    assert actual[:5] == expected
 
 
 @pytest.mark.params(n_coins=3, n_metacoins=2)
