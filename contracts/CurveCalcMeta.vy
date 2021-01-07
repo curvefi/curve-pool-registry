@@ -256,7 +256,7 @@ def get_dy(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
         ratesp[N_COINS] = 0
         amp_base: uint256 = CurveBase(_base_pool).A_precise()
         D_base_0: uint256 = self.get_D(BASE_N_COINS, xp_base, amp_base)
-        D: uint256 = self.get_D(n_coins, xp, amp)
+        D: uint256 = self.get_D(N_COINS, xp, amp)
         base_fee: uint256 = CurveBase(_base_pool).fee()
         base_supply: uint256 = 0
         if i == 0 or j == 0:
