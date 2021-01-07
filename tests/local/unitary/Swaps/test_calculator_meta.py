@@ -35,7 +35,7 @@ def test_meta_calc_get_dy_base_dx_base(accounts, swap, calculatorMeta, meta_swap
     assert swap.get_virtual_price() == 1e18
     expected = [302936, 302680378, 836241086, 931038, 289803381]
     meta_swap._set_balances(
-        [2000000000, 6000000000, 0, 0])
+        [0, 6e19, 0, 0])
     actual = calculatorMeta.get_dy.call(
         4,
         (2000000000, 1873465287, 1921830293, 2204704420, 0, 0, 0, 0),
@@ -110,7 +110,7 @@ def test_meta_calc_get_dy_base_dx_meta(accounts, swap, meta_lp_token, calculator
 
 
 @pytest.mark.params(n_coins=3, n_metacoins=2)
-def test_meta_calc_invalid_pool_size(accounts, calculatorMeta, no_call_coverage):
+def test_meta_calc_dy_invalid_pool_size(accounts, calculatorMeta, no_call_coverage):
     with brownie.reverts("Unsupported pool size"):
         calculatorMeta.get_dy.call(
             5,
@@ -135,3 +135,97 @@ def test_meta_calc_invalid_pool_size(accounts, calculatorMeta, no_call_coverage)
             1,
             [0] * 100
         )
+
+
+@pytest.mark.params(n_coins=3, n_metacoins=2)
+def test_meta_calc_dx_invalid_pool_size(accounts, calculatorMeta, no_call_coverage):
+    with brownie.reverts("Unsupported pool size"):
+        calculatorMeta.get_dx.call(
+            5,
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            0,
+            0,
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            0,
+            1,
+            [0] * 100
+        )
+    with brownie.reverts("Unsupported pool size"):
+        calculatorMeta.get_dx.call(
+            1,
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            0,
+            0,
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            (0, 0, 0, 0, 0, 0, 0, 0),
+            0,
+            1,
+            [0] * 100
+        )
+
+
+@pytest.mark.params(n_coins=3, n_metacoins=2)
+def test_dy_dx_meta_lp(accounts, calculatorMeta, meta_swap, alice):
+    # dx is meta pool token and dy lp token
+    meta_swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
+    assert meta_swap.A_precise() == 10000
+    dy = calculatorMeta.get_dy(
+        2,
+        (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
+        100,
+        4000000,
+        (1000000000000000000, 1000000000000000000, 0, 0, 0, 0, 0, 0),
+        (10000000000, 10000000000, 0, 0, 0, 0, 0, 0),
+        0,
+        1,
+        [89970746] + [0]*99,
+    )
+    assert calculatorMeta.get_dx(
+        2,
+        (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
+        100,
+        4000000,
+        (1000000000000000000, 1000000000000000000, 0, 0, 0, 0, 0, 0),
+        (10000000000, 10000000000, 0, 0, 0, 0, 0, 0),
+        0,
+        1,
+        dy
+    )[:1] == [89970746]
+
+
+@pytest.mark.params(n_coins=3, n_metacoins=2)
+def test_dy_dx_base(accounts, calculatorMeta, swap, meta_swap, alice):
+    # dx and dy in base pool
+    meta_swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
+    swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
+    assert meta_swap.A_precise() == 10000
+    assert swap.A_precise() == 10000
+    # virtual LP token price is 1
+    assert swap.get_virtual_price() == 1e18
+    meta_swap._set_balances(
+        [0, 6e19, 0, 0])
+    dy = calculatorMeta.get_dy.call(
+        4,
+        (2000000000, 1873465287, 1921830293, 2204704420, 0, 0, 0, 0),
+        100,
+        4000000,
+        (1000000000000000000, 1000000000000000000,
+         1000000000000000000, 1000000000000000000, 0, 0, 0, 0),
+        (10000000000, 10000000000, 10000000000, 10000000000, 0, 0, 0, 0),
+        2,
+        3,
+        [302654, 52362542, 839029380, 930174, 289928981] + [0] * 95,
+    )
+    assert calculatorMeta.get_dx.call(
+        4,
+        (2000000000, 1873465287, 1921830293, 2204704420, 0, 0, 0, 0),
+        100,
+        4000000,
+        (1000000000000000000, 1000000000000000000,
+         1000000000000000000, 1000000000000000000, 0, 0, 0, 0),
+        (10000000000, 10000000000, 10000000000, 10000000000, 0, 0, 0, 0),
+        2,
+        3,
+        dy
+    )[:5] == [302654, 52362542, 839029380, 930174, 289928981]
