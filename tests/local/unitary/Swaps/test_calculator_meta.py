@@ -61,7 +61,7 @@ def test_meta_calc_get_dy_meta_dx_base(accounts, swap, meta_lp_token, calculator
     assert meta_swap.A_precise() == 10000
     assert swap.A_precise() == 10000
     assert swap.get_virtual_price() == 1e18
-    expected = [1314330, 91281538, 655624, 964146705, 108630091]
+    expected = [1314276, 91277797, 655597, 964108535, 108625639]
     # set LP token balance for meta pool
     meta_swap._set_balances(
         [0, 6e19, 0, 0], {"from": alice})
@@ -201,7 +201,6 @@ def test_dy_dx_base(accounts, calculatorMeta, swap, meta_swap, alice):
     swap._set_A(10000, 0, 0, 0, 0, {"from": alice})
     assert meta_swap.A_precise() == 10000
     assert swap.A_precise() == 10000
-    # virtual LP token price is 1
     assert swap.get_virtual_price() == 1e18
     meta_swap._set_balances(
         [0, 6e19, 0, 0])
