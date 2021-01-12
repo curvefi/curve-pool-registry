@@ -39,7 +39,7 @@ interface CurveBase:
 
 
 MAX_COINS: constant(int128) = 8
-INPUT_SIZE: constant(int128) = 100
+INPUT_SIZE: constant(int128) = 80
 FEE_DENOMINATOR: constant(uint256) = 10 ** 10
 A_PRECISION: constant(uint256) = 100
 
@@ -411,24 +411,24 @@ def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], _amp: uint256, fee: u
                 elif i == 0:
                     # # coin j-1 from base pool is withdrawn 
                     new_balances: uint256[MAX_COINS] = xp_base
-                    # new_balances[j-1] -= dy[k] * ratesp_base[j-1] / 10**18
+                    new_balances[j-1] -= dy[k] * ratesp_base[j-1] / 10**18
                     # # invariant after withdrawal
-                    # D1: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
-                    # # take fees into account
-                    # for l in range(BASE_N_COINS):
-                    #     ideal_balance: uint256 = D1 * xp_base[l] / D_base_0
-                    #     difference: uint256 = 0
-                    #     if ideal_balance > new_balances[l]:
-                    #         difference = ideal_balance - new_balances[l]
-                    #     else:
-                    #         difference = new_balances[l] - ideal_balance
-                    #     new_balances[l] -= base_fee * difference / FEE_DENOMINATOR
-                    # D2: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
-                    # dx_meta: uint256 = base_supply * (D_base_0 - D2) / D_base_0
-                    # # swap dx_meta to coin i
-                    # y_after_trade: uint256 = xp[1] - dx_meta * v_price / 10**18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
-                    # dx[k] = self.get_y(D, N_COINS, xp, amp, 1, 0, y_after_trade)
-                    # dx[k] = (dx[k] - xp[0] - 1) * 10**18 / ratesp[0]
+                    D1: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
+                    # take fees into account
+                    for l in range(BASE_N_COINS):
+                        ideal_balance: uint256 = D1 * xp_base[l] / D_base_0
+                        difference: uint256 = 0
+                        if ideal_balance > new_balances[l]:
+                            difference = ideal_balance - new_balances[l]
+                        else:
+                            difference = new_balances[l] - ideal_balance
+                        new_balances[l] -= base_fee * difference / FEE_DENOMINATOR
+                    D2: uint256 = self.get_D(BASE_N_COINS, new_balances, amp_base)
+                    dx_meta: uint256 = base_supply * (D_base_0 - D2) / D_base_0
+                    # swap dx_meta to coin i
+                    y_after_trade: uint256 = xp[1] - dx_meta * v_price / 10**18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
+                    dx[k] = self.get_y(D, N_COINS, xp, amp, 1, 0, y_after_trade)
+                    dx[k] = (dx[k] - xp[0] - 1) * 10**18 / ratesp[0]
                 else:
                     # swap in base pool
                     y_after_trade: uint256 = xp_base[j-1] - dy[k] * ratesp_base[j-1] / 10**18 * FEE_DENOMINATOR / (FEE_DENOMINATOR - fee)
