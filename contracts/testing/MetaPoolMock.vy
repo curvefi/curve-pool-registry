@@ -104,6 +104,12 @@ def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
 
 @external
 @view
+def A_precise() -> uint256:
+    return self.A
+
+
+@external
+@view
 def get_dy_underlying(i: int128, j: int128, dx: uint256) -> uint256:
     _from: address = ZERO_ADDRESS
     _to: address = ZERO_ADDRESS

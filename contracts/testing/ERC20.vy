@@ -18,7 +18,7 @@ symbol: public(String[32])
 decimals: public(uint256)
 balanceOf: public(HashMap[address, uint256])
 allowances: HashMap[address, HashMap[address, uint256]]
-total_supply: uint256
+total_supply: public(uint256)
 
 
 @external
