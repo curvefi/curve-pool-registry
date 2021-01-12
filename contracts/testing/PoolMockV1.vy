@@ -220,6 +220,9 @@ def _set_balances(_new_balances: uint256[4]):
 def _set_virtual_price(_value: uint256):
     self.get_virtual_price = _value
 
+@external
+def _set_fee(_fee: uint256):
+    self.fee = _fee
 
 @external
 @payable
