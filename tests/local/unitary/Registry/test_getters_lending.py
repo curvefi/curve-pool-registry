@@ -1,4 +1,5 @@
 import pytest
+
 from scripts.utils import pack_values
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -30,7 +31,7 @@ def registry(
         is_v1,
         {"from": alice},
     )
-    provider.set_address(0, registry, {'from': alice})
+    provider.set_address(0, registry, {"from": alice})
     yield registry
 
 
@@ -51,7 +52,9 @@ def test_find_pool_underlying(registry, lending_swap, underlying_coins, send, re
 @pytest.mark.itercoins("idx")
 def test_find_pool_not_exists(registry, lending_swap, wrapped_coins, underlying_coins, idx):
     assert registry.find_pool_for_coins(wrapped_coins[idx], wrapped_coins[idx]) == ZERO_ADDRESS
-    assert registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    assert (
+        registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    )
     assert registry.find_pool_for_coins(wrapped_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
 
 
@@ -64,7 +67,9 @@ def test_get_coins(registry, lending_swap, wrapped_coins, n_coins):
 
 
 def test_get_underlying_coins(registry, lending_swap, underlying_coins, n_coins):
-    assert registry.get_underlying_coins(lending_swap) == underlying_coins + [ZERO_ADDRESS] * (8 - n_coins)
+    assert registry.get_underlying_coins(lending_swap) == underlying_coins + [ZERO_ADDRESS] * (
+        8 - n_coins
+    )
 
 
 def test_get_decimals(registry, registry_pool_info, lending_swap, wrapped_decimals, n_coins):
@@ -73,7 +78,9 @@ def test_get_decimals(registry, registry_pool_info, lending_swap, wrapped_decima
     assert registry_pool_info.get_pool_info(lending_swap)["decimals"] == expected
 
 
-def test_get_underlying_decimals(registry, registry_pool_info, lending_swap, underlying_decimals, n_coins):
+def test_get_underlying_decimals(
+    registry, registry_pool_info, lending_swap, underlying_decimals, n_coins
+):
     expected = underlying_decimals + [0] * (8 - n_coins)
     assert registry.get_underlying_decimals(lending_swap) == expected
     assert registry_pool_info.get_pool_info(lending_swap)["underlying_decimals"] == expected
@@ -160,9 +167,17 @@ def test_get_admin_balances(alice, registry, lending_swap, wrapped_coins, n_coin
 
 
 @pytest.mark.itercoins("send", "recv")
-def test_get_coin_indices(alice, registry, lending_swap, wrapped_coins, underlying_coins, send, recv):
-    assert registry.get_coin_indices(lending_swap, wrapped_coins[send], wrapped_coins[recv]) == (send, recv, False)
-    assert registry.get_coin_indices(lending_swap, underlying_coins[send], underlying_coins[recv]) == (send, recv, True)
+def test_get_coin_indices(
+    alice, registry, lending_swap, wrapped_coins, underlying_coins, send, recv
+):
+    assert registry.get_coin_indices(lending_swap, wrapped_coins[send], wrapped_coins[recv]) == (
+        send,
+        recv,
+        False,
+    )
+    assert registry.get_coin_indices(
+        lending_swap, underlying_coins[send], underlying_coins[recv]
+    ) == (send, recv, True)
 
 
 @pytest.mark.once

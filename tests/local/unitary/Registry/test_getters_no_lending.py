@@ -7,7 +7,15 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture(scope="module", autouse=True)
 def registry(
-    Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1, underlying_decimals,
+    Registry,
+    provider,
+    gauge_controller,
+    alice,
+    swap,
+    lp_token,
+    n_coins,
+    is_v1,
+    underlying_decimals,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -21,7 +29,7 @@ def registry(
         is_v1,
         {"from": alice},
     )
-    provider.set_address(0, registry, {'from': alice})
+    provider.set_address(0, registry, {"from": alice})
     yield registry
 
 
@@ -32,7 +40,9 @@ def test_find_pool(registry, swap, underlying_coins, send, recv):
 
 @pytest.mark.itercoins("idx")
 def test_find_pool_not_exists(registry, swap, underlying_coins, idx):
-    assert registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    assert (
+        registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    )
 
 
 def test_get_n_coins(registry, swap, n_coins):
@@ -103,7 +113,11 @@ def test_get_admin_balances(alice, registry, swap, underlying_coins, n_coins):
 
 @pytest.mark.itercoins("send", "recv")
 def test_get_coin_indices(alice, registry, swap, underlying_coins, send, recv):
-    assert registry.get_coin_indices(swap, underlying_coins[send], underlying_coins[recv]) == (send, recv, False)
+    assert registry.get_coin_indices(swap, underlying_coins[send], underlying_coins[recv]) == (
+        send,
+        recv,
+        False,
+    )
 
 
 @pytest.mark.once

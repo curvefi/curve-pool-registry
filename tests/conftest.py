@@ -1,6 +1,6 @@
-import pytest
-
 from pathlib import Path
+
+import pytest
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -23,6 +23,7 @@ def isolation_setup(fn_isolation):
 
 
 # account helpers
+
 
 @pytest.fixture(scope="session")
 def alice(accounts):
