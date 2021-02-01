@@ -11,11 +11,10 @@ RATE_METHOD_IDS = {
 
 # setup
 
+
 def pytest_addoption(parser):
     parser.addoption(
-        "--once",
-        action="store_true",
-        help="Only run each test once (no parametrization)"
+        "--once", action="store_true", help="Only run each test once (no parametrization)"
     )
 
 
@@ -26,12 +25,12 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "itercoins: parametrize a test with one or more ranges, "
-        "equal to `n_coins` for the active pool"
+        "equal to `n_coins` for the active pool",
     )
     config.addinivalue_line(
         "markers",
         "itermetacoins: parametrize a test with one or more ranges, "
-        "equal to `n_metacoins` for the active pool"
+        "equal to `n_metacoins` for the active pool",
     )
 
 
@@ -53,7 +52,7 @@ def pytest_collection_modifyitems(config, items):
         # remove excess `itercoins` parametrized tests
         marker = next(item.iter_markers(name="itercoins"), False)
         if marker:
-            n_coins = item.callspec.params['n_coins']
+            n_coins = item.callspec.params["n_coins"]
 
             limit = marker.kwargs.get("max", 9)
             values = [item.callspec.params[i] for i in marker.args]
@@ -64,7 +63,7 @@ def pytest_collection_modifyitems(config, items):
         # remove excess `itermetacoins` parametrized tests
         marker = next(item.iter_markers(name="itermetacoins"), False)
         if marker:
-            n_coins = item.callspec.params['n_metacoins']
+            n_coins = item.callspec.params["n_metacoins"]
 
             limit = marker.kwargs.get("max", 9)
             values = [item.callspec.params[i] for i in marker.args]
@@ -101,6 +100,7 @@ def isolation_setup(fn_isolation):
 
 # simple deployment fixtures (no parametrization)
 
+
 @pytest.fixture(scope="module")
 def gauge_controller(GaugeControllerMock, alice):
     yield GaugeControllerMock.deploy({"from": alice})
@@ -108,30 +108,30 @@ def gauge_controller(GaugeControllerMock, alice):
 
 @pytest.fixture(scope="module")
 def calculator(CurveCalc, alice):
-    yield CurveCalc.deploy({'from': alice})
+    yield CurveCalc.deploy({"from": alice})
 
 
 @pytest.fixture(scope="module")
 def provider(AddressProvider, alice):
-    yield AddressProvider.deploy(alice, {'from': alice})
+    yield AddressProvider.deploy(alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
 def registry(Registry, alice, provider, gauge_controller):
     contract = Registry.deploy(provider, gauge_controller, {"from": alice})
-    provider.set_address(0, contract, {'from': alice})
+    provider.set_address(0, contract, {"from": alice})
     yield contract
 
 
 @pytest.fixture(scope="module")
 def registry_pool_info(PoolInfo, alice, provider):
-    yield PoolInfo.deploy(provider, {'from': alice})
+    yield PoolInfo.deploy(provider, {"from": alice})
 
 
 @pytest.fixture(scope="module")
 def registry_swap(Swaps, alice, provider, registry, calculator):
-    provider.set_address(0, registry, {'from': alice})
-    yield Swaps.deploy(provider, calculator, {'from': alice})
+    provider.set_address(0, registry, {"from": alice})
+    yield Swaps.deploy(provider, calculator, {"from": alice})
 
 
 @pytest.fixture(scope="module")
@@ -146,6 +146,7 @@ def meta_lp_token(alice):
 
 # private deployments fixtures
 # deploying prior to parametrization of the public fixtures avoids excessive deployments
+
 
 @pytest.fixture(scope="module")
 def _underlying_decimals():
@@ -202,6 +203,7 @@ def _meta_coins(_meta_decimals, alice):
 
 # parametrized fixtures
 
+
 @pytest.fixture(scope="module", params=(True, False), ids=("v1", "v2"))
 def is_v1(request):
     return request.param
@@ -217,7 +219,9 @@ def n_coins(_underlying_coins, request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=range(4, 1, -1), ids=(f"{i} metacoins" for i in range(4, 1, -1)))
+@pytest.fixture(
+    scope="module", params=range(4, 1, -1), ids=(f"{i} metacoins" for i in range(4, 1, -1))
+)
 def n_metacoins(_meta_coins, request):
     return request.param
 
@@ -303,13 +307,13 @@ def meta_swap(MetaPoolMock, alice, swap, meta_coins, underlying_coins, n_metacoi
 
 @pytest.fixture(scope="module")
 def liquidity_gauge(LiquidityGaugeMock, alice, gauge_controller, lp_token):
-    gauge = LiquidityGaugeMock.deploy(lp_token, {'from': alice})
-    gauge_controller._set_gauge_type(gauge, 1, {'from': alice})
+    gauge = LiquidityGaugeMock.deploy(lp_token, {"from": alice})
+    gauge_controller._set_gauge_type(gauge, 1, {"from": alice})
     yield gauge
 
 
 @pytest.fixture(scope="module")
 def liquidity_gauge_meta(LiquidityGaugeMock, alice, gauge_controller, meta_lp_token):
-    gauge = LiquidityGaugeMock.deploy(meta_lp_token, {'from': alice})
-    gauge_controller._set_gauge_type(gauge, 2, {'from': alice})
+    gauge = LiquidityGaugeMock.deploy(meta_lp_token, {"from": alice})
+    gauge_controller._set_gauge_type(gauge, 2, {"from": alice})
     yield gauge

@@ -1,6 +1,6 @@
 import brownie
-import requests
 import pytest
+import requests
 from brownie import Contract
 from brownie.convert import to_address
 
@@ -26,7 +26,7 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "itercoins: parametrize a test with one or more ranges, "
-        "equal to `n_coins` for the active pool"
+        "equal to `n_coins` for the active pool",
     )
 
 
@@ -45,9 +45,9 @@ def pytest_collection_modifyitems(config, items):
     seen = {}
 
     for item in items.copy():
-        pool_name = item.callspec.params['pool_data']
+        pool_name = item.callspec.params["pool_data"]
         pool_data = _pooldata[pool_name]
-        base_pool = pool_data.get('base_pool')
+        base_pool = pool_data.get("base_pool")
         if target_pool and pool_name not in target_pool:
             items.remove(item)
             continue
@@ -67,12 +67,12 @@ def pytest_collection_modifyitems(config, items):
             is_underlying = marker.kwargs.get("underlying")
             if is_underlying and base_pool:
                 # for metacoins, underlying must include the base pool
-                n_coins = len(pool_data['coins']) + len(_pooldata[base_pool]["coins"]) - 1
+                n_coins = len(pool_data["coins"]) + len(_pooldata[base_pool]["coins"]) - 1
             else:
-                n_coins = len(pool_data['coins'])
+                n_coins = len(pool_data["coins"])
 
             # apply `max` kwarg
-            limit = min(n_coins-1, marker.kwargs.get("max", n_coins))
+            limit = min(n_coins - 1, marker.kwargs.get("max", n_coins))
 
             values = [item.callspec.params[i] for i in marker.args]
             if len(set(values)) < len(values) or max(values) > limit:
@@ -106,7 +106,7 @@ def pytest_collection_modifyitems(config, items):
 def pytest_collection_finish(session):
     # default to forked mainnet
     if session.items:
-        brownie.network.connect('mainnet-fork')
+        brownie.network.connect("mainnet-fork")
 
 
 @pytest.fixture(scope="session", params=_pooldata.keys())
@@ -125,12 +125,12 @@ def base_pool_data(pool_data):
 
 @pytest.fixture(scope="module")
 def provider(AddressProvider, alice):
-    yield AddressProvider.deploy(alice, {'from': alice})
+    yield AddressProvider.deploy(alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
 def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_controller):
-    registry = Registry.deploy(provider, gauge_controller, {'from': alice})
+    registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     if base_pool_data:
         add_pool(base_pool_data, registry, alice)
 
@@ -141,35 +141,35 @@ def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_control
 
 @pytest.fixture(scope="module")
 def registry_swap(Swaps, alice, registry, provider, calculator):
-    yield Swaps.deploy(provider, calculator, {'from': alice})
+    yield Swaps.deploy(provider, calculator, {"from": alice})
 
 
 @pytest.fixture(scope="module")
 def calculator(CurveCalc, alice):
-    yield CurveCalc.deploy({'from': alice})
+    yield CurveCalc.deploy({"from": alice})
 
 
 @pytest.fixture(scope="module")
 def swap(pool_data):
-    yield Contract(pool_data['swap_address'])
+    yield Contract(pool_data["swap_address"])
 
 
 @pytest.fixture(scope="module")
 def base_swap(base_pool_data):
     if base_pool_data:
-        return Contract(base_pool_data['swap_address'])
+        return Contract(base_pool_data["swap_address"])
     else:
         return None
 
 
 @pytest.fixture(scope="module")
 def lp_token(pool_data):
-    yield Contract(pool_data['lp_token_address'])
+    yield Contract(pool_data["lp_token_address"])
 
 
 @pytest.fixture(scope="module")
 def n_coins(pool_data):
-    yield len(pool_data['coins'])
+    yield len(pool_data["coins"])
 
 
 @pytest.fixture(scope="module")
@@ -201,7 +201,9 @@ class _MintableTestToken(Contract):
             self._rate_fn = next(getattr(self, i) for i in self._rate_methods if hasattr(self, i))
         else:
             if "base_pool_token" in coin_data:
-                base_pool = next(i for i in _pooldata.values() if i.get("lp_token_address") == self.address)
+                base_pool = next(
+                    i for i in _pooldata.values() if i.get("lp_token_address") == self.address
+                )
                 self._rate_fn = Contract(base_pool["swap_address"]).get_virtual_price
             else:
                 self._rate_fn = None
@@ -211,27 +213,27 @@ class _MintableTestToken(Contract):
         if address not in _holders:
             holders = requests.get(
                 f"https://api.ethplorer.io/getTopTokenHolders/{address}",
-                params={'apiKey': "freekey", 'limit': 50},
+                params={"apiKey": "freekey", "limit": 50},
             ).json()
-            _holders[address] = [to_address(i['address']) for i in holders['holders']]
+            _holders[address] = [to_address(i["address"]) for i in holders["holders"]]
 
     def _get_rate(self):
         if not self._rate_fn:
-            return 10**18
+            return 10 ** 18
         return self._rate_fn.call()
 
     def _mint_for_testing(self, target, amount, tx=None):
         if self.address == "0x674C6Ad92Fd080e4004b2312b45f796a192D27a0":
             # USDN
-            self.deposit(target, amount, {'from': "0x90f85042533F11b362769ea9beE20334584Dcd7D"})
+            self.deposit(target, amount, {"from": "0x90f85042533F11b362769ea9beE20334584Dcd7D"})
             return
         if self.address == "0x0E2EC54fC0B509F445631Bf4b91AB8168230C752":
             # LinkUSD
-            self.mint(target, amount, {'from': "0x62F31E08e279f3091d9755a09914DF97554eAe0b"})
+            self.mint(target, amount, {"from": "0x62F31E08e279f3091d9755a09914DF97554eAe0b"})
             return
         if self.address == "0x196f4727526eA7FB1e17b2071B3d8eAA38486988":
-            self.changeMaxSupply(2**128, {'from': self.owner()})
-            self.mint(target, amount, {'from': self.minter()})
+            self.changeMaxSupply(2 ** 128, {"from": self.owner()})
+            self.mint(target, amount, {"from": self.minter()})
             return
 
         for address in _holders[self.address].copy():
@@ -241,10 +243,10 @@ class _MintableTestToken(Contract):
 
             balance = self.balanceOf(address)
             if amount > balance:
-                self.transfer(target, balance, {'from': address})
+                self.transfer(target, balance, {"from": address})
                 amount -= balance
             else:
-                self.transfer(target, amount, {'from': address})
+                self.transfer(target, amount, {"from": address})
                 return
 
         raise ValueError(f"Insufficient tokens available to mint {self.name()}")
@@ -252,31 +254,31 @@ class _MintableTestToken(Contract):
 
 @pytest.fixture(scope="module")
 def wrapped_coins(pool_data):
-    yield [_MintableTestToken(i, True) for i in pool_data['coins']]
+    yield [_MintableTestToken(i, True) for i in pool_data["coins"]]
 
 
 @pytest.fixture(scope="module")
 def underlying_coins(pool_data, base_pool_data):
     if base_pool_data:
-        coins = [_MintableTestToken(i, False) for i in pool_data['coins'][:-1]]
+        coins = [_MintableTestToken(i, False) for i in pool_data["coins"][:-1]]
         coins += [_MintableTestToken(i, False) for i in base_pool_data["coins"]]
         yield coins
     else:
-        yield [_MintableTestToken(i, False) for i in pool_data['coins']]
+        yield [_MintableTestToken(i, False) for i in pool_data["coins"]]
 
 
 @pytest.fixture(scope="module")
 def underlying_decimals(pool_data, base_pool_data):
     # number of decimal places for each underlying coin in the active pool
-    decimals = [i.get('decimals', i.get('wrapped_decimals')) for i in pool_data['coins']]
+    decimals = [i.get("decimals", i.get("wrapped_decimals")) for i in pool_data["coins"]]
 
     if base_pool_data is None:
         return decimals
-    base_decimals = [i.get('decimals', i.get('wrapped_decimals')) for i in base_pool_data['coins']]
+    base_decimals = [i.get("decimals", i.get("wrapped_decimals")) for i in base_pool_data["coins"]]
     return decimals[:-1] + base_decimals
 
 
 @pytest.fixture(scope="module")
 def wrapped_decimals(pool_data):
     # number of decimal places for each wrapped coin in the active pool
-    yield [i.get('wrapped_decimals', i.get('decimals')) for i in pool_data['coins']]
+    yield [i.get("wrapped_decimals", i.get("decimals")) for i in pool_data["coins"]]

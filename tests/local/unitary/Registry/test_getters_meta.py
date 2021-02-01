@@ -1,5 +1,7 @@
 import itertools
+
 import pytest
+
 from scripts.utils import pack_values
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -36,7 +38,7 @@ def registry(
     registry.add_metapool(
         meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), {"from": alice}
     )
-    provider.set_address(0, registry, {'from': alice})
+    provider.set_address(0, registry, {"from": alice})
     yield registry
 
 
@@ -61,7 +63,9 @@ def test_find_pool_not_exists_lp_token_with_underlying(registry, meta_coins, und
 @pytest.mark.params(n_metacoins=4, n_coins=4)
 @pytest.mark.itercoins("idx")
 def test_find_pool_not_exists(registry, underlying_coins, idx):
-    assert registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    assert (
+        registry.find_pool_for_coins(underlying_coins[idx], underlying_coins[idx]) == ZERO_ADDRESS
+    )
 
 
 @pytest.mark.itermetacoins("idx")
@@ -89,7 +93,9 @@ def test_get_decimals(registry, registry_pool_info, meta_swap, meta_decimals, n_
     assert registry_pool_info.get_pool_info(meta_swap)["decimals"] == expected
 
 
-def test_get_underlying_decimals(registry, registry_pool_info, meta_swap, meta_decimals, underlying_decimals):
+def test_get_underlying_decimals(
+    registry, registry_pool_info, meta_swap, meta_decimals, underlying_decimals
+):
     expected = meta_decimals[:-1] + underlying_decimals
     expected += [0] * (8 - len(expected))
     assert registry.get_underlying_decimals(meta_swap) == expected
@@ -109,9 +115,15 @@ def test_get_pool_coins(
     coin_info = registry_pool_info.get_pool_coins(meta_swap)
     ul_trailing = 9 - n_coins - n_metacoins
     assert coin_info["coins"] == meta_coins + [ZERO_ADDRESS] * (8 - n_metacoins)
-    assert coin_info["underlying_coins"] == meta_coins[:-1] + underlying_coins + [ZERO_ADDRESS] * ul_trailing
+    assert (
+        coin_info["underlying_coins"]
+        == meta_coins[:-1] + underlying_coins + [ZERO_ADDRESS] * ul_trailing
+    )
     assert coin_info["decimals"] == meta_decimals + [0] * (8 - n_metacoins)
-    assert coin_info["underlying_decimals"] == meta_decimals[:-1] + underlying_decimals + [0] * ul_trailing
+    assert (
+        coin_info["underlying_decimals"]
+        == meta_decimals[:-1] + underlying_decimals + [0] * ul_trailing
+    )
 
 
 def test_get_rates(alice, registry, registry_pool_info, meta_swap, swap, n_metacoins):
@@ -171,7 +183,9 @@ def test_get_coin_indices(
         assert registry.get_coin_indices(meta_swap, meta_coins[i], meta_coins[j]) == (i, j, False)
 
     coins = meta_coins[:-1] + underlying_coins
-    for i, j in itertools.product(range(n_metacoins - 1), range(n_metacoins, n_coins + n_metacoins - 1)):
+    for i, j in itertools.product(
+        range(n_metacoins - 1), range(n_metacoins, n_coins + n_metacoins - 1)
+    ):
         assert registry.get_coin_indices(meta_swap, coins[i], coins[j]) == (i, j, True)
 
 

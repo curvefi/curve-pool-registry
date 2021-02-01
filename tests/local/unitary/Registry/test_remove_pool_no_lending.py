@@ -1,5 +1,6 @@
 import brownie
 import pytest
+
 from scripts.utils import pack_values
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -7,7 +8,15 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture(scope="module", autouse=True)
 def registry(
-    Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1, underlying_decimals,
+    Registry,
+    provider,
+    gauge_controller,
+    alice,
+    swap,
+    lp_token,
+    n_coins,
+    is_v1,
+    underlying_decimals,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -21,13 +30,15 @@ def registry(
         is_v1,
         {"from": alice},
     )
-    registry.remove_pool(swap, {'from': alice})
+    registry.remove_pool(swap, {"from": alice})
     yield registry
 
 
 @pytest.mark.itercoins("send", "recv")
 def test_find_pool(registry, underlying_coins, send, recv):
-    assert registry.find_pool_for_coins(underlying_coins[send], underlying_coins[recv]) == ZERO_ADDRESS
+    assert (
+        registry.find_pool_for_coins(underlying_coins[send], underlying_coins[recv]) == ZERO_ADDRESS
+    )
 
 
 def test_get_n_coins(registry, swap):

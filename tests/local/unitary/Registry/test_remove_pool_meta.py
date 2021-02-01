@@ -1,6 +1,8 @@
-import brownie
 import itertools
+
+import brownie
 import pytest
+
 from scripts.utils import pack_values
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -37,7 +39,7 @@ def registry(
     registry.add_metapool(
         meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), {"from": alice}
     )
-    registry.remove_pool(meta_swap, {'from': alice})
+    registry.remove_pool(meta_swap, {"from": alice})
     yield registry
 
 

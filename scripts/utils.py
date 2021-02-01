@@ -20,4 +20,4 @@ def pack_values(values: List[int]) -> bytes:
     """
     assert max(values) < 256
 
-    return sum(i << c*8 for c, i in enumerate(values))
+    return sum(i << c * 8 for c, i in enumerate(values))

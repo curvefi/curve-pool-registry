@@ -28,22 +28,24 @@ def registry(
 def test_set_liquidity_gauges(alice, registry, gauge_controller, liquidity_gauge, swap, lp_token):
     gauges = [liquidity_gauge] + [ZERO_ADDRESS] * 9
     gauge_types = [gauge_controller.gauge_types(liquidity_gauge)] + [0] * 9
-    registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+    registry.set_liquidity_gauges(swap, gauges, {"from": alice})
     assert registry.get_gauges(swap) == (gauges, gauge_types)
 
 
 def test_incorrect_gauge(LiquidityGaugeMock, alice, registry, gauge_controller, swap):
-    gauge = LiquidityGaugeMock.deploy(swap, {'from': alice})
+    gauge = LiquidityGaugeMock.deploy(swap, {"from": alice})
     gauges = [gauge] + [ZERO_ADDRESS] * 9
     with brownie.reverts("dev: wrong token"):
-        registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+        registry.set_liquidity_gauges(swap, gauges, {"from": alice})
 
 
-def test_incorrect_gauge_multiple(LiquidityGaugeMock, alice, registry, gauge_controller, liquidity_gauge, swap):
-    gauge = LiquidityGaugeMock.deploy(swap, {'from': alice})
+def test_incorrect_gauge_multiple(
+    LiquidityGaugeMock, alice, registry, gauge_controller, liquidity_gauge, swap
+):
+    gauge = LiquidityGaugeMock.deploy(swap, {"from": alice})
     gauges = [liquidity_gauge, gauge] + [ZERO_ADDRESS] * 8
     with brownie.reverts("dev: wrong token"):
-        registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+        registry.set_liquidity_gauges(swap, gauges, {"from": alice})
 
 
 def test_set_multiple(LiquidityGaugeMock, alice, registry, swap, lp_token, gauge_controller):
@@ -51,12 +53,12 @@ def test_set_multiple(LiquidityGaugeMock, alice, registry, swap, lp_token, gauge
     gauge_types = []
 
     for i in range(10):
-        gauge = LiquidityGaugeMock.deploy(lp_token, {'from': alice})
-        gauge_controller._set_gauge_type(gauge, i, {'from': alice})
+        gauge = LiquidityGaugeMock.deploy(lp_token, {"from": alice})
+        gauge_controller._set_gauge_type(gauge, i, {"from": alice})
         gauges.append(gauge)
         gauge_types.append(i)
 
-    registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+    registry.set_liquidity_gauges(swap, gauges, {"from": alice})
     assert registry.get_gauges(swap) == (gauges, gauge_types)
 
 
@@ -65,15 +67,15 @@ def test_unset_multiple(LiquidityGaugeMock, alice, registry, swap, lp_token, gau
     gauge_types = []
 
     for i in range(10):
-        gauge = LiquidityGaugeMock.deploy(lp_token, {'from': alice})
-        gauge_controller._set_gauge_type(gauge, i, {'from': alice})
+        gauge = LiquidityGaugeMock.deploy(lp_token, {"from": alice})
+        gauge_controller._set_gauge_type(gauge, i, {"from": alice})
         gauges.append(gauge)
         gauge_types.append(i)
 
-    registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+    registry.set_liquidity_gauges(swap, gauges, {"from": alice})
 
     gauges = gauges[2:5] + [ZERO_ADDRESS] * 7
     gauge_types = gauge_types[2:5] + [0] * 7
-    registry.set_liquidity_gauges(swap, gauges, {'from': alice})
+    registry.set_liquidity_gauges(swap, gauges, {"from": alice})
 
     assert registry.get_gauges(swap) == (gauges, gauge_types)
