@@ -8,17 +8,18 @@ See the [documentation](https://curve.readthedocs.io/) for information on how th
 
 ## Deployments
 
-* [`AddressProvider`](contracts/AddressProvider.vy): [0x0000000022D53366457F9d5E68Ec105046FC4383](https://etherscan.io/address/0x0000000022d53366457f9d5e68ec105046fc4383)
-* [`Registry`](contracts/Registry.vy): [0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c](https://etherscan.io/address/0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c)
-* [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
+- [`AddressProvider`](contracts/AddressProvider.vy): [0x0000000022D53366457F9d5E68Ec105046FC4383](https://etherscan.io/address/0x0000000022d53366457f9d5e68ec105046fc4383)
+- [`Registry`](contracts/Registry.vy): [0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c](https://etherscan.io/address/0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c)
+- [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
 
 ## Testing and Development
 
 ### Dependencies
 
-* [python3](https://www.python.org/downloads/release/python-368/) version 3.6 or greater, python3-dev
-* [brownie](https://github.com/iamdefinitelyahuman/brownie) - tested with version [1.13.0](https://github.com/eth-brownie/brownie/releases/tag/v1.13.0)
-* [ganache-cli](https://github.com/trufflesuite/ganache-cli) - tested with version [6.12.1](https://github.com/trufflesuite/ganache-cli/releases/tag/v6.12.1)
+- [python3](https://www.python.org/downloads/release/python-368/) version 3.6 or greater, python3-dev
+- [brownie](https://github.com/iamdefinitelyahuman/brownie) - tested with version [1.13.0](https://github.com/eth-brownie/brownie/releases/tag/v1.13.0)
+- [brownie-token-tester](https://github.com/iamdefinitelyahuman/brownie-token-tester) - version [0.1.0](https://github.com/iamdefinitelyahuman/brownie-token-tester/releases/tag/v0.1.0)
+- [ganache-cli](https://github.com/trufflesuite/ganache-cli) - tested with version [6.12.1](https://github.com/trufflesuite/ganache-cli/releases/tag/v6.12.1)
 
 Curve contracts are compiled using [Vyper](https://github.com/vyperlang/vyper), however installation of the required Vyper versions is handled by Brownie.
 
@@ -50,8 +51,7 @@ You can optionally include the `--once` flag to skip parametrization and run eac
 
 #### Forked tests
 
-The [forked test suite](tests/forked) is designed for use with a forked mainnet. These tests verify functionality within the registry against actual data from deployed pools.  The data is obtained from the [`pooldata.json`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools#adding-a-new-pool) file within each subdirectory in [`curvefi/curve-contract/contract/pools`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools).
-
+The [forked test suite](tests/forked) is designed for use with a forked mainnet. These tests verify functionality within the registry against actual data from deployed pools. The data is obtained from the [`pooldata.json`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools#adding-a-new-pool) file within each subdirectory in [`curvefi/curve-contract/contract/pools`](https://github.com/curvefi/curve-contract/tree/master/contracts/pools).
 
 To run the forked tests:
 
