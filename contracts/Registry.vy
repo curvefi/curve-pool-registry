@@ -34,6 +34,40 @@ struct PoolParams:
     future_A_time: uint256
 
 
+interface Registry:
+    def find_pool_for_coins(_from: address, _to: address, i: uint256) -> address: view
+    def get_n_coins(_pool: address) -> uint256[2]: view
+    def get_coins(_pool: address) -> address[8]: view
+    def get_underlying_coins(_pool: address) -> address[8]: view
+    def get_decimals(_pool: address) -> uint256[8]: view
+    def get_underlying_decimals(_pool: address) -> uint256[8]: view
+    def get_rates(_pool: address) -> uint256[8]: view
+    def get_gauges(_pool: address) -> (address[10], int128[10]): view
+    def get_balances(_pool: address) -> uint256[8]: view
+    def get_underlying_balances(_pool: address) -> uint256[8]: view
+    def get_virtual_price_from_lp_token(_token: address) -> uint256: view
+    def get_A(_pool: address) -> uint256: view
+    def get_parameters(_pool: address) -> PoolParams: view
+    def get_fees(_pool: address) -> uint256[2]: view
+    def get_admin_balances(_pool: address) -> uint256[8]: view
+    def get_coin_indices(_pool: address, _from: address, _to: address) -> (int128, int128, bool): view
+    def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256: view
+    def add_pool(_pool: address, _n_coins: uint256, _lp_token: address, _rate_method_id: bytes32, _decimals: uint256, _underlying_decimals: uint256, _has_initial_A: bool, _is_v1: bool): nonpayable
+    def add_pool_without_underlying(_pool: address, _n_coins: uint256, _lp_token: address, _rate_method_id: bytes32, _decimals: uint256, _use_rates: uint256, _has_initial_A: bool, _is_v1: bool): nonpayable
+    def add_metapool(_pool: address, _n_coins: uint256, _lp_token: address, _decimals: uint256): nonpayable
+    def remove_pool(_pool: address): nonpayable
+    def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]): nonpayable
+    def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]): nonpayable
+    def set_gas_estimate_contract(_pool: address, _estimator: address): nonpayable
+    def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]): nonpayable
+    def address_provider() -> address: view
+    def gauge_controller() -> address: view
+    def pool_list(arg0: uint256) -> address: view
+    def pool_count() -> uint256: view
+    def get_pool_from_lp_token(arg0: address) -> address: view
+    def get_lp_token(arg0: address) -> address: view
+
+
 interface AddressProvider:
     def admin() -> address: view
 

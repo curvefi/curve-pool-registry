@@ -5,6 +5,7 @@
 @author Curve.Fi
 """
 
+
 event NewAddressIdentifier:
     id: indexed(uint256)
     addr: address
@@ -29,6 +30,22 @@ struct AddressInfo:
     version: uint256
     last_modified: uint256
     description: String[64]
+
+
+interface AddressProvider:
+    def get_registry() -> address: view
+    def max_id() -> uint256: view
+    def get_address(_id: uint256) -> address: view
+    def add_new_id(_address: address, _description: String[64]) -> uint256: nonpayable
+    def set_address(_id: uint256, _address: address) -> bool: nonpayable
+    def unset_address(_id: uint256) -> bool: nonpayable
+    def commit_transfer_ownership(_new_admin: address) -> bool: nonpayable
+    def apply_transfer_ownership() -> bool: nonpayable
+    def revert_transfer_ownership() -> bool: nonpayable
+    def admin() -> address: view
+    def transfer_ownership_deadline() -> uint256: view
+    def future_admin() -> address: view
+    def get_id_info(arg0: uint256) -> AddressInfo: view
 
 
 registry: address
