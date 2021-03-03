@@ -52,12 +52,6 @@ struct PoolCoins:
     underlying_decimals: uint256[MAX_COINS]
 
 
-interface PoolInfoInterface:
-    def get_pool_coins(_pool: address) -> PoolCoins: view
-    def get_pool_info(_pool: address) -> PoolInfo: view
-    def address_provider() -> address: view
-
-
 address_provider: public(AddressProvider)
 
 

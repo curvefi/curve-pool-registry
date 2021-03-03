@@ -44,25 +44,6 @@ interface Calculator:
                i: int128, j: int128, dx: uint256[CALC_INPUT_SIZE]) -> uint256[CALC_INPUT_SIZE]: view
 
 
-interface Swaps:
-    def __default__(): payable
-    def exchange_with_best_rate(_from: address, _to: address, _amount: uint256, _expected: uint256, _receiver: address) -> uint256: payable
-    def exchange(_pool: address, _from: address, _to: address, _amount: uint256, _expected: uint256, _receiver: address) -> uint256: payable
-    def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256): view
-    def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256: view
-    def get_input_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256: view
-    def get_exchange_amounts(_pool: address, _from: address, _to: address, _amounts: uint256[100]) -> uint256[100]: view
-    def get_calculator(_pool: address) -> address: view
-    def update_registry_address() -> bool: nonpayable
-    def set_calculator(_pool: address, _calculator: address) -> bool: nonpayable
-    def set_default_calculator(_calculator: address) -> bool: nonpayable
-    def claim_balance(_token: address) -> bool: nonpayable
-    def set_killed(_is_killed: bool) -> bool: nonpayable
-    def registry() -> address: view
-    def default_calculator() -> address: view
-    def is_killed() -> bool: view
-
-
 event TokenExchange:
     buyer: indexed(address)
     receiver: indexed(address)

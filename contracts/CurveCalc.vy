@@ -6,11 +6,6 @@
 @notice Stateless bulk calculator of prices for stablecoin-to-stablecoin pools
 """
 
-interface CurveCalc:
-    def get_dy(n_coins: uint256, balances: uint256[8], amp: uint256, fee: uint256, rates: uint256[8], precisions: uint256[8], i: int128, j: int128, dx: uint256[100]) -> uint256[100]: view
-    def get_dx(n_coins: uint256, balances: uint256[8], amp: uint256, fee: uint256, rates: uint256[8], precisions: uint256[8], i: int128, j: int128, dy: uint256) -> uint256: view
-
-
 MAX_COINS: constant(int128) = 8
 INPUT_SIZE: constant(int128) = 100
 FEE_DENOMINATOR: constant(uint256) = 10 ** 10
