@@ -91,6 +91,9 @@ pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
 
+coin_count: public(uint256)  # total unique coins registered
+coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
+
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
 
@@ -694,6 +697,21 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
             break
 
 
+@internal
+def _register_coins(_coins: address[MAX_COINS], _is_registration: bool):
+    for i in range(MAX_COINS):
+        if _coins[i] == ZERO_ADDRESS:
+            break
+        if _is_registration:
+            if self.coin_register_counter[_coins[i]] == 0:
+                self.coin_count += 1
+            self.coin_register_counter[_coins[i]] += 1
+        else:
+            self.coin_register_counter[_coins[i]] -= 1
+            if self.coin_register_counter[_coins[i]] == 0:
+                self.coin_count -= 1
+
+
 # admin functions
 
 @external
@@ -729,12 +747,14 @@ def add_pool(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
+    self._register_coins(coins, True)
     decimals: uint256 = _decimals
     if decimals == 0:
         decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
 
     coins = self._get_new_pool_coins(_pool, _n_coins, True, _is_v1)
+    self._register_coins(coins, True)
     decimals = _underlying_decimals
     if decimals == 0:
         decimals = self._get_new_pool_decimals(coins, _n_coins)
@@ -774,6 +794,7 @@ def add_pool_without_underlying(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
+    self._register_coins(coins, True)
 
     decimals: uint256 = _decimals
     if decimals == 0:
@@ -824,6 +845,7 @@ def add_metapool(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
+    self._register_coins(coins, True)
 
     decimals: uint256 = _decimals
     if decimals == 0:
