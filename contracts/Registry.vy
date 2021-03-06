@@ -94,6 +94,9 @@ pool_data: HashMap[address, PoolArray]
 coin_count: public(uint256)  # total unique coins registered
 coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
 
+# unique list of registered coins
+get_swappable_coin: public(address[65536])
+
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
 
@@ -704,6 +707,7 @@ def _register_coins(_coins: address[MAX_COINS], _is_registration: bool):
             break
         if _is_registration:
             if self.coin_register_counter[_coins[i]] == 0:
+                self.get_swappable_coin[self.coin_count] = _coins[i]
                 self.coin_count += 1
             self.coin_register_counter[_coins[i]] += 1
         else:
