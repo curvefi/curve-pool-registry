@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 
 from scripts.utils import pack_values
@@ -218,3 +220,9 @@ def test_get_pool_from_lp_token(registry, lending_swap, lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, lending_swap, lp_token):
     assert registry.get_lp_token(lending_swap) == lp_token
+
+
+def test_coin_count_is_correct(registry, wrapped_coins, underlying_coins):
+    coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
+
+    assert registry.coin_count() == len(coin_set)

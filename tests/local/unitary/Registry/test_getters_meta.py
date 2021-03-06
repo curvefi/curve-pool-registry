@@ -222,3 +222,9 @@ def test_get_pool_from_lp_token(registry, swap, meta_swap, lp_token, meta_lp_tok
 def test_get_lp_token(registry, swap, meta_swap, lp_token, meta_lp_token):
     assert registry.get_lp_token(meta_swap) == meta_lp_token
     assert registry.get_lp_token(swap) == lp_token
+
+
+def test_coin_count_is_correct(registry, meta_coins, underlying_coins):
+    coin_set = set(map(str, itertools.chain(meta_coins, underlying_coins)))
+
+    assert registry.coin_count() == len(coin_set)
