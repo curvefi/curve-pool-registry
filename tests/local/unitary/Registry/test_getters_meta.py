@@ -1,4 +1,5 @@
 import itertools
+from collections import Counter
 
 import pytest
 
@@ -242,3 +243,18 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
     assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+
+
+def test_coin_swap_count(registry, meta_coins, underlying_coins):
+    counter = Counter()
+
+    meta_pairs = itertools.chain(*itertools.combinations(meta_coins, 2))
+    underlying_pairs = itertools.chain(*itertools.combinations(underlying_coins, 2))
+
+    counter.update(itertools.chain(meta_pairs, underlying_pairs))
+
+    for coin in meta_coins:
+        assert registry.coin_swap_count(coin) == counter[coin]
+
+    for coin in underlying_coins:
+        assert registry.coin_swap_count(coin) == counter[coin]
