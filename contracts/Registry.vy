@@ -121,6 +121,8 @@ market_counts: HashMap[uint256, uint256]
 
 liquidity_gauges: HashMap[address, address[10]]
 
+last_updated: public(uint256)
+
 
 @external
 def __init__(_address_provider: address, _gauge_controller: address):
@@ -615,6 +617,7 @@ def _add_pool(
     # update public mappings
     self.get_pool_from_lp_token[_lp_token] = _pool
     self.get_lp_token[_pool] = _lp_token
+    self.last_updated = block.timestamp
 
     log PoolAdded(_pool, slice(_rate_method_id, 28, 4))
 
