@@ -226,3 +226,12 @@ def test_coin_count_is_correct(registry, wrapped_coins, underlying_coins):
     coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
 
     assert registry.coin_count() == len(coin_set)
+
+
+def test_get_all_swappable_coins(registry, wrapped_coins, underlying_coins):
+    expected_coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
+    coin_count = registry.coin_count()
+
+    coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
+
+    assert coins == expected_coin_set
