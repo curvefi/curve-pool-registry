@@ -1,3 +1,5 @@
+import itertools
+
 import brownie
 import pytest
 
@@ -107,3 +109,12 @@ def test_get_lp_token(registry, lending_swap):
 def test_coin_count_is_correct(registry):
 
     assert registry.coin_count() == 0
+
+
+def test_get_all_swappable_coins(registry, wrapped_coins, underlying_coins):
+    coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
+    coin_count = len(coin_set)
+
+    coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
+
+    assert coins == {ZERO_ADDRESS}

@@ -94,3 +94,11 @@ def test_get_lp_token(registry, swap):
 def test_coin_count_is_correct(registry):
 
     assert registry.coin_count() == 0
+
+
+def test_get_all_swappable_coins(registry, underlying_coins):
+    coin_count = len(underlying_coins)
+
+    coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
+
+    assert coins == {ZERO_ADDRESS}
