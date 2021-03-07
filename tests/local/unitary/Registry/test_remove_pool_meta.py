@@ -1,4 +1,5 @@
 import itertools
+from collections import Counter
 
 import brownie
 import pytest
@@ -133,3 +134,19 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
     assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+
+
+def test_coin_swap_count(registry, meta_coins, underlying_coins):
+    meta_coins = list(map(str, meta_coins))
+    underlying_coins = list(map(str, underlying_coins))
+    counter = Counter()
+
+    underlying_pairs = itertools.chain(*itertools.combinations(underlying_coins, 2))
+
+    counter.update(underlying_pairs)
+
+    for coin in meta_coins:
+        assert registry.coin_swap_count(coin) == 0
+
+    for coin in underlying_coins:
+        assert registry.coin_swap_count(coin) == counter[coin]
