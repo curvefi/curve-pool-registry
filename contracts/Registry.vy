@@ -94,6 +94,7 @@ pool_data: HashMap[address, PoolArray]
 coin_count: public(uint256)  # total unique coins registered
 coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
 coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins available to swap for
+swap_coin_for: public(HashMap[address, address[65536]])
 
 # unique list of registered coins
 get_swappable_coin: public(address[65536])
@@ -663,7 +664,11 @@ def _get_new_pool_coins(
             length: uint256 = self.market_counts[key]
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
+
+            self.swap_coin_for[coin_list[i]][self.coin_swap_count[coin_list[i]]] = coin_list[x]
             self.coin_swap_count[coin_list[i]] += 1
+
+            self.swap_coin_for[coin_list[x]][self.coin_swap_count[coin_list[x]]] = coin_list[i]
             self.coin_swap_count[coin_list[x]] += 1
 
     return coin_list
