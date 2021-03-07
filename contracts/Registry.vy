@@ -95,6 +95,7 @@ coin_count: public(uint256)  # total unique coins registered
 coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
 coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins available to swap for
 swap_coin_for: public(HashMap[address, address[65536]])
+coin_swap_indexes: HashMap[address, HashMap[address, uint256]]
 
 # unique list of registered coins
 get_swappable_coin: public(address[65536])
@@ -675,9 +676,11 @@ def _get_new_pool_coins(
 
             # register the coin pair
             self.swap_coin_for[coin_list[i]][self.coin_swap_count[coin_list[i]]] = coin_list[x]
+            self.coin_swap_indexes[coin_list[i]][coin_list[x]] = self.coin_swap_count[coin_list[i]]
             self.coin_swap_count[coin_list[i]] += 1
 
             self.swap_coin_for[coin_list[x]][self.coin_swap_count[coin_list[x]]] = coin_list[i]
+            self.coin_swap_indexes[coin_list[x]][coin_list[i]] = self.coin_swap_count[coin_list[x]]
             self.coin_swap_count[coin_list[x]] += 1
 
     return coin_list
@@ -719,6 +722,17 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
             self.market_counts[key] = length
             self.coin_swap_count[_coina] -= 1
             self.coin_swap_count[_coinb] -= 1
+
+            coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
+            if coinb_index < self.coin_swap_count[_coina]:
+                self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
+            self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
+
+            coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
+            if coina_index < self.coin_swap_count[_coinb]:
+                self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
+            self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
+
             break
 
 
@@ -910,9 +924,11 @@ def add_metapool(
 
             # register the coin pair
             self.swap_coin_for[coins[i]][self.coin_swap_count[coins[i]]] = base_coins[x]
+            self.coin_swap_indexes[coins[i]][base_coins[x]] = self.coin_swap_count[coins[i]]
             self.coin_swap_count[coins[i]] += 1
 
             self.swap_coin_for[base_coins[x]][self.coin_swap_count[base_coins[x]]] = coins[i]
+            self.coin_swap_indexes[base_coins[x]][coins[i]] = self.coin_swap_count[base_coins[x]]
             self.coin_swap_count[base_coins[x]] += 1
 
 
