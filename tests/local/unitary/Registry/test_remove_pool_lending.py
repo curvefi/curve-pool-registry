@@ -21,6 +21,7 @@ def registry(
     rate_method_id,
     underlying_decimals,
     wrapped_decimals,
+    chain,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool(
@@ -34,6 +35,7 @@ def registry(
         is_v1,
         {"from": alice},
     )
+    chain.sleep(10)
     registry.remove_pool(lending_swap, {"from": alice})
     yield registry
 
@@ -118,3 +120,8 @@ def test_get_all_swappable_coins(registry, wrapped_coins, underlying_coins):
     coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
 
     assert coins == {ZERO_ADDRESS}
+
+
+@pytest.mark.once
+def test_last_updated_getter(registry, history):
+    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp

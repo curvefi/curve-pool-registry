@@ -23,6 +23,7 @@ def registry(
     is_v1,
     underlying_decimals,
     meta_decimals,
+    chain,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -39,6 +40,7 @@ def registry(
     registry.add_metapool(
         meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), {"from": alice}
     )
+    chain.sleep(10)
     registry.remove_pool(meta_swap, {"from": alice})
     yield registry
 
@@ -126,3 +128,8 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
     coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
 
     assert coins == {ZERO_ADDRESS}
+
+
+@pytest.mark.once
+def test_last_updated_getter(registry, history):
+    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
