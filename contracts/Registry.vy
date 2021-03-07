@@ -650,6 +650,12 @@ def _get_new_pool_coins(
             self.pool_data[_pool].coins[i] = coin
         coin_list[i] = coin
 
+        # register coin
+        if self.coin_register_counter[coin] == 0:
+            self.get_swappable_coin[self.coin_count] = coin
+            self.coin_count += 1
+        self.coin_register_counter[coin] += 1
+
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
@@ -665,6 +671,7 @@ def _get_new_pool_coins(
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
 
+            # register the coin pair
             self.swap_coin_for[coin_list[i]][self.coin_swap_count[coin_list[i]]] = coin_list[x]
             self.coin_swap_count[coin_list[i]] += 1
 
@@ -712,20 +719,13 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
 
 
 @internal
-def _register_coins(_coins: address[MAX_COINS], _is_registration: bool):
+def _unregister_coins(_coins: address[MAX_COINS]):
     for i in range(MAX_COINS):
         if _coins[i] == ZERO_ADDRESS:
             break
-        if _is_registration:
-            if self.coin_register_counter[_coins[i]] == 0:
-                self.get_swappable_coin[self.coin_count] = _coins[i]
-                self.coin_count += 1
-            self.coin_register_counter[_coins[i]] += 1
-        else:
-            self.coin_register_counter[_coins[i]] -= 1
-            if self.coin_register_counter[_coins[i]] == 0:
-                self.coin_count -= 1
-
+        self.coin_register_counter[_coins[i]] -= 1
+        if self.coin_register_counter[_coins[i]] == 0:
+            self.coin_count -= 1
 
 # admin functions
 
@@ -762,14 +762,12 @@ def add_pool(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
-    self._register_coins(coins, True)
     decimals: uint256 = _decimals
     if decimals == 0:
         decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
 
     coins = self._get_new_pool_coins(_pool, _n_coins, True, _is_v1)
-    self._register_coins(coins, True)
     decimals = _underlying_decimals
     if decimals == 0:
         decimals = self._get_new_pool_decimals(coins, _n_coins)
@@ -809,7 +807,6 @@ def add_pool_without_underlying(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
-    self._register_coins(coins, True)
 
     decimals: uint256 = _decimals
     if decimals == 0:
@@ -860,7 +857,6 @@ def add_metapool(
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
-    self._register_coins(coins, True)
 
     decimals: uint256 = _decimals
     if decimals == 0:
