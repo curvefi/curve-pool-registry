@@ -977,6 +977,7 @@ def remove_pool(_pool: address):
             if coin != ucoin or coinx != ucoinx:
                 self._remove_market(_pool, ucoin, ucoinx)
 
+    self.last_updated = block.timestamp
     log PoolRemoved(_pool)
 
 
@@ -994,6 +995,7 @@ def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
         if _pool == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_pool] = _amount[i]
+    self.last_updated = block.timestamp
 
 
 @external
@@ -1010,6 +1012,7 @@ def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
         if _coin == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_coin][0] = _amount[i]
+    self.last_updated = block.timestamp
 
 
 @external
@@ -1022,6 +1025,7 @@ def set_gas_estimate_contract(_pool: address, _estimator: address):
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.gas_estimate_contracts[_pool] = _estimator
+    self.last_updated = block.timestamp
 
 
 @external
@@ -1045,3 +1049,4 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
             self.liquidity_gauges[_pool][i] = ZERO_ADDRESS
         else:
             break
+    self.last_updated = block.timestamp
