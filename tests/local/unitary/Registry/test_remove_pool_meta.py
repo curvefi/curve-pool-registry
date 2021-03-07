@@ -112,3 +112,8 @@ def test_get_pool_from_lp_token(registry, meta_lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, meta_swap):
     assert registry.get_lp_token(meta_swap) == ZERO_ADDRESS
+
+
+def test_coin_count_is_correct(registry):
+
+    assert registry.coin_count() == 0

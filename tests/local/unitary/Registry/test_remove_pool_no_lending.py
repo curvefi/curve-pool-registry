@@ -8,15 +8,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture(scope="module", autouse=True)
 def registry(
-    Registry,
-    provider,
-    gauge_controller,
-    alice,
-    swap,
-    lp_token,
-    n_coins,
-    is_v1,
-    underlying_decimals,
+    Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1, underlying_decimals
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -97,3 +89,8 @@ def test_get_pool_from_lp_token(registry, lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, swap):
     assert registry.get_lp_token(swap) == ZERO_ADDRESS
+
+
+def test_coin_count_is_correct(registry):
+
+    assert registry.coin_count() == 0
