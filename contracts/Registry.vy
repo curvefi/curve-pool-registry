@@ -906,6 +906,13 @@ def add_metapool(
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
 
+            # register the coin pair
+            self.swap_coin_for[coins[i]][self.coin_swap_count[coins[i]]] = base_coins[x]
+            self.coin_swap_count[coins[i]] += 1
+
+            self.swap_coin_for[base_coins[x]][self.coin_swap_count[base_coins[x]]] = coins[i]
+            self.coin_swap_count[base_coins[x]] += 1
+
 
 @external
 def remove_pool(_pool: address):
