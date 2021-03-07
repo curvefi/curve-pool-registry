@@ -246,12 +246,18 @@ def test_last_updated_getter(registry, history):
 
 
 def test_coin_swap_count(registry, meta_coins, underlying_coins):
+    meta_coins = list(map(str, meta_coins))
+    underlying_coins = list(map(str, underlying_coins))
     counter = Counter()
 
     meta_pairs = itertools.chain(*itertools.combinations(meta_coins, 2))
     underlying_pairs = itertools.chain(*itertools.combinations(underlying_coins, 2))
 
-    counter.update(itertools.chain(meta_pairs, underlying_pairs))
+    meta_under_pairs = itertools.chain(
+        *((meta_coin, under) for meta_coin in meta_coins[:-1] for under in underlying_coins)
+    )
+
+    counter.update(itertools.chain(meta_pairs, underlying_pairs, meta_under_pairs))
 
     for coin in meta_coins:
         assert registry.coin_swap_count(coin) == counter[coin]
