@@ -723,6 +723,8 @@ def _unregister_coins(_coins: address[MAX_COINS]):
     for i in range(MAX_COINS):
         if _coins[i] == ZERO_ADDRESS:
             break
+        if self.coin_register_counter[_coins[i]] == 0:
+            continue
         self.coin_register_counter[_coins[i]] -= 1
         if self.coin_register_counter[_coins[i]] == 0:
             self.coin_count -= 1
@@ -941,10 +943,19 @@ def remove_pool(_pool: address):
         if coins[i] != ZERO_ADDRESS:
             # delete coin address from pool_data
             self.pool_data[_pool].coins[i] = ZERO_ADDRESS
+            # self.coin_register_counter[coins[i]] -= 1
+            # if self.coin_register_counter[coins[i]] == 0:
+            #     self.coin_count -= 1
         if ucoins[i] != ZERO_ADDRESS:
             # delete underlying_coin from pool_data
             self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
+            # if coins[i] != ucoins[i]:
+            #     self.coin_register_counter[ucoins[i]] -= 1
+            #     if self.coin_register_counter[ucoins[i]] == 0:
+            #         self.coin_count -= 1
 
+    self._unregister_coins(coins)
+    self._unregister_coins(ucoins)
     for i in range(MAX_COINS):
         coin: address = coins[i]
         ucoin: address = ucoins[i]
