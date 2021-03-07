@@ -98,6 +98,7 @@ swap_coin_for: public(HashMap[address, address[65536]])
 
 # unique list of registered coins
 get_swappable_coin: public(address[65536])
+coin_indexes: HashMap[address, uint256]
 
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
@@ -652,6 +653,7 @@ def _get_new_pool_coins(
 
         # register coin
         if self.coin_register_counter[coin] == 0:
+            self.coin_indexes[coin] = self.coin_count
             self.get_swappable_coin[self.coin_count] = coin
             self.coin_count += 1
         self.coin_register_counter[coin] += 1
@@ -728,6 +730,12 @@ def _unregister_coins(_coins: address[MAX_COINS]):
         self.coin_register_counter[_coins[i]] -= 1
         if self.coin_register_counter[_coins[i]] == 0:
             self.coin_count -= 1
+            location: uint256 = self.coin_indexes[_coins[i]]
+            if location < self.coin_count:
+                self.get_swappable_coin[location] = self.get_swappable_coin[self.coin_count]
+                self.coin_indexes[_coins[i]] = 0
+            self.get_swappable_coin[self.coin_count] = ZERO_ADDRESS
+
 
 # admin functions
 
@@ -943,16 +951,9 @@ def remove_pool(_pool: address):
         if coins[i] != ZERO_ADDRESS:
             # delete coin address from pool_data
             self.pool_data[_pool].coins[i] = ZERO_ADDRESS
-            # self.coin_register_counter[coins[i]] -= 1
-            # if self.coin_register_counter[coins[i]] == 0:
-            #     self.coin_count -= 1
         if ucoins[i] != ZERO_ADDRESS:
             # delete underlying_coin from pool_data
             self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
-            # if coins[i] != ucoins[i]:
-            #     self.coin_register_counter[ucoins[i]] -= 1
-            #     if self.coin_register_counter[ucoins[i]] == 0:
-            #         self.coin_count -= 1
 
     self._unregister_coins(coins)
     self._unregister_coins(ucoins)
