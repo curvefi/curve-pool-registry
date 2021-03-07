@@ -1,5 +1,5 @@
 import itertools
-from collections import Counter
+from collections import Counter, defaultdict
 
 import pytest
 
@@ -256,3 +256,20 @@ def test_coin_swap_count(registry, wrapped_coins, underlying_coins):
 
     for coin in underlying_coins:
         assert registry.coin_swap_count(coin) == counter[coin]
+
+
+def test_swap_coin_for(registry, wrapped_coins, underlying_coins):
+    pairings = defaultdict(set)
+
+    wrapped_pairs = itertools.combinations(map(str, wrapped_coins), 2)
+    underlying_pairs = itertools.combinations(map(str, underlying_coins), 2)
+
+    for coin_a, coin_b in itertools.chain(wrapped_pairs, underlying_pairs):
+        pairings[coin_a].add(coin_b)
+        pairings[coin_b].add(coin_a)
+
+    for coin in itertools.chain(wrapped_coins, underlying_coins):
+        coin_swap_count = registry.coin_swap_count(coin)
+        available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+
+        assert available_swaps == pairings[str(coin)]
