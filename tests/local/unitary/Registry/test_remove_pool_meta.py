@@ -1,5 +1,5 @@
 import itertools
-from collections import Counter
+from collections import Counter, defaultdict
 
 import brownie
 import pytest
@@ -150,3 +150,31 @@ def test_coin_swap_count(registry, meta_coins, underlying_coins):
 
     for coin in underlying_coins:
         assert registry.coin_swap_count(coin) == counter[coin]
+
+
+def test_swap_coin_for(registry, meta_coins, underlying_coins):
+    meta_coins = list(map(str, meta_coins))
+    underlying_coins = list(map(str, underlying_coins))
+    pairings = defaultdict(set)
+
+    meta_pairs = itertools.combinations(map(str, meta_coins), 2)
+    underlying_pairs = list(itertools.combinations(map(str, underlying_coins), 2))
+    meta_under_pairs = (
+        (meta_coin, under) for meta_coin in meta_coins[:-1] for under in underlying_coins
+    )
+
+    for coin_a, coin_b in itertools.chain(meta_pairs, underlying_pairs, meta_under_pairs):
+        pairings[coin_a].add(coin_b)
+        pairings[coin_b].add(coin_a)
+
+    for coin in itertools.chain(meta_coins):
+        coin_swap_count = len(pairings[coin])
+        available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+
+        assert available_swaps == {ZERO_ADDRESS}
+
+    for coin in underlying_coins:
+        coin_swap_count = len(pairings[coin])
+        available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+
+        assert available_swaps == (set(underlying_coins) - {coin}) | {ZERO_ADDRESS}

@@ -122,3 +122,13 @@ def test_last_updated_getter(registry, history):
 def test_coin_swap_count(registry, underlying_coins):
     for coin in underlying_coins:
         assert registry.coin_swap_count(coin) == 0
+
+
+def test_swap_coin_for(registry, underlying_coins):
+    coin_set = set(map(str, underlying_coins))
+
+    for coin in coin_set:
+        coin_swap_count = len(coin_set) - 1
+        swap_coins = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+
+        assert swap_coins == {ZERO_ADDRESS}
