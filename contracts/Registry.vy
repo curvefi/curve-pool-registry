@@ -717,6 +717,8 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
                 self.markets[key][i] = self.markets[key][length]
             self.markets[key][length] = ZERO_ADDRESS
             self.market_counts[key] = length
+            self.coin_swap_count[_coina] -= 1
+            self.coin_swap_count[_coinb] -= 1
             break
 
 
