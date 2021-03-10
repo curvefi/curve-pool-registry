@@ -638,6 +638,22 @@ def _register_coin_pair(_coina: address, _coinb: address):
 
 
 @internal
+def _unregister_coin_pair(_coina: address, _coinb: address):
+    self.coin_swap_count[_coina] -= 1
+    self.coin_swap_count[_coinb] -= 1
+
+    coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
+    if coinb_index < self.coin_swap_count[_coina]:
+        self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
+    self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
+
+    coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
+    if coina_index < self.coin_swap_count[_coinb]:
+        self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
+    self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
+
+
+@internal
 def _get_new_pool_coins(
     _pool: address,
     _n_coins: uint256,
@@ -725,18 +741,7 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
                 self.markets[key][i] = self.markets[key][length]
             self.markets[key][length] = ZERO_ADDRESS
             self.market_counts[key] = length
-            self.coin_swap_count[_coina] -= 1
-            self.coin_swap_count[_coinb] -= 1
-
-            coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-            if coinb_index < self.coin_swap_count[_coina]:
-                self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
-            self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
-
-            coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
-            if coina_index < self.coin_swap_count[_coinb]:
-                self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
-            self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
+            self._unregister_coin_pair(_coina, _coinb)
 
             break
 
