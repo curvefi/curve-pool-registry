@@ -627,6 +627,17 @@ def _add_pool(
 
 
 @internal
+def _register_coin_pair(_coina: address, _coinb: address):
+    self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = _coinb
+    self.coin_swap_indexes[_coina][_coinb] = self.coin_swap_count[_coina]
+    self.coin_swap_count[_coina] += 1
+
+    self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = _coina
+    self.coin_swap_indexes[_coinb][_coina] = self.coin_swap_count[_coinb]
+    self.coin_swap_count[_coinb] += 1
+
+
+@internal
 def _get_new_pool_coins(
     _pool: address,
     _n_coins: uint256,
@@ -675,13 +686,7 @@ def _get_new_pool_coins(
             self.market_counts[key] = length + 1
 
             # register the coin pair
-            self.swap_coin_for[coin_list[i]][self.coin_swap_count[coin_list[i]]] = coin_list[x]
-            self.coin_swap_indexes[coin_list[i]][coin_list[x]] = self.coin_swap_count[coin_list[i]]
-            self.coin_swap_count[coin_list[i]] += 1
-
-            self.swap_coin_for[coin_list[x]][self.coin_swap_count[coin_list[x]]] = coin_list[i]
-            self.coin_swap_indexes[coin_list[x]][coin_list[i]] = self.coin_swap_count[coin_list[x]]
-            self.coin_swap_count[coin_list[x]] += 1
+            self._register_coin_pair(coin_list[i], coin_list[x])
 
     return coin_list
 
@@ -923,13 +928,7 @@ def add_metapool(
             self.market_counts[key] = length + 1
 
             # register the coin pair
-            self.swap_coin_for[coins[i]][self.coin_swap_count[coins[i]]] = base_coins[x]
-            self.coin_swap_indexes[coins[i]][base_coins[x]] = self.coin_swap_count[coins[i]]
-            self.coin_swap_count[coins[i]] += 1
-
-            self.swap_coin_for[base_coins[x]][self.coin_swap_count[base_coins[x]]] = coins[i]
-            self.coin_swap_indexes[base_coins[x]][coins[i]] = self.coin_swap_count[base_coins[x]]
-            self.coin_swap_count[base_coins[x]] += 1
+            self._register_coin_pair(coins[i], base_coins[x])
 
 
 @external
