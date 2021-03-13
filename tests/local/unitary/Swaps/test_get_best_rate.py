@@ -49,8 +49,17 @@ def registry(ERC20, Registry, provider, gauge_controller, alice, swap1, swap2, s
 
 
 @pytest.fixture(scope="module")
-def registry_swap(Swaps, alice, registry, provider, calculator, underlying_coins):
+def factory(pm, alice):
+    yield pm("curvefi/curve-factory@2.0.0").Factory.deploy({"from": alice})
+
+
+@pytest.fixture(scope="module")
+def registry_swap(Swaps, alice, registry, provider, factory, calculator, underlying_coins):
     contract = Swaps.deploy(provider, calculator, {"from": alice})
+    provider.add_new_id(provider, "Filler", {"from": alice})
+    provider.add_new_id(contract, "Pool Swaps", {"from": alice})
+    provider.add_new_id(factory, "Factory", {"from": alice})
+    contract.update_registry_address({"from": alice})
 
     for coin in underlying_coins:
         if coin != ETH_ADDRESS:

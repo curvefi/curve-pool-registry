@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.11
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -6,8 +6,6 @@
 @notice Find pools, query exchange rates and perform swaps
 """
 
-MAX_COINS: constant(int128) = 8
-CALC_INPUT_SIZE: constant(uint256) = 100
 
 from vyper.interfaces import ERC20
 
@@ -15,6 +13,7 @@ from vyper.interfaces import ERC20
 interface AddressProvider:
     def admin() -> address: view
     def get_registry() -> address: view
+    def get_address(idx: uint256) -> address: view
 
 interface CurvePool:
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
@@ -34,6 +33,7 @@ interface Registry:
     def get_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def find_pool_for_coins(_from: address, _to: address, i: uint256) -> address: view
+    def get_lp_token(_pool: address) -> address: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -54,8 +54,15 @@ event TokenExchange:
     amount_bought: uint256
 
 
+ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+MAX_COINS: constant(int128) = 8
+CALC_INPUT_SIZE: constant(uint256) = 100
+
+
 address_provider: AddressProvider
 registry: public(address)
+factory_registry: public(address)
+
 default_calculator: public(address)
 is_killed: public(bool)
 pool_calculator: HashMap[address, address]
@@ -70,6 +77,7 @@ def __init__(_address_provider: address, _calculator: address):
     """
     self.address_provider = AddressProvider(_address_provider)
     self.registry = AddressProvider(_address_provider).get_registry()
+    self.factory_registry = AddressProvider(_address_provider).get_address(3)
     self.default_calculator = _calculator
 
 
@@ -81,9 +89,16 @@ def __default__():
 
 @view
 @internal
-def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+def _get_exchange_amount(
+    _registry: address,
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256
+) -> uint256:
     """
     @notice Get the current number of coins received in an exchange
+    @param _registry Registry address
     @param _pool Pool address
     @param _from Address of coin to be sent
     @param _to Address of coin to be received
@@ -93,7 +108,7 @@ def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: 
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to) # dev: no market
+    i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to) # dev: no market
 
     if is_underlying:
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
@@ -103,6 +118,7 @@ def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: 
 
 @internal
 def _exchange(
+    _registry: address,
     _pool: address,
     _from: address,
     _to: address,
@@ -121,16 +137,16 @@ def _exchange(
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
+    i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
-    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _to == ETH_ADDRESS:
         initial_balance = self.balance
     else:
         initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         eth_amount = _amount
     else:
         response: Bytes[32] = raw_call(
@@ -168,7 +184,7 @@ def _exchange(
         CurvePool(_pool).exchange(i, j, _amount, _expected, value=eth_amount)
 
     # perform output transfer
-    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _to == ETH_ADDRESS:
         received_amount = self.balance - initial_balance
         raw_call(_receiver, b"", value=received_amount)
     else:
@@ -204,6 +220,7 @@ def exchange_with_best_rate(
     @notice Perform an exchange using the pool that offers the best rate
     @dev Prior to calling this function, the caller must approve
          this contract to transfer `_amount` coins from `_from`
+         Does NOT check rates in factory-deployed pools
     @param _from Address of coin being sent
     @param _to Address of coin being received
     @param _amount Quantity of `_from` being sent
@@ -212,26 +229,24 @@ def exchange_with_best_rate(
     @param _receiver Address to transfer the received tokens to
     @return uint256 Amount received
     """
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         assert _amount == msg.value, "Incorrect ETH amount"
     else:
         assert msg.value == 0, "Incorrect ETH amount"
 
     registry: address = self.registry
-    best_pool: address = Registry(registry).find_pool_for_coins(_from, _to, 0)
+    best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    for i in range(1, 65536):
+    for i in range(65536):
         pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
         if pool == ZERO_ADDRESS:
             break
-        elif i == 1:
-            max_dy = self._get_exchange_amount(best_pool, _from, _to, _amount)
-        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
         if dy > max_dy:
             best_pool = pool
             max_dy = dy
 
-    return self._exchange(best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+    return self._exchange(registry, best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
 @payable
@@ -249,6 +264,7 @@ def exchange(
     @notice Perform an exchange using a specific pool
     @dev Prior to calling this function, the caller must approve
          this contract to transfer `_amount` coins from `_from`
+         Works for both regular and factory-deployed pools
     @param _pool Address of the pool to use for the swap
     @param _from Address of coin being sent
     @param _to Address of coin being received
@@ -258,12 +274,15 @@ def exchange(
     @param _receiver Address to transfer the received tokens to
     @return uint256 Amount received
     """
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         assert _amount == msg.value, "Incorrect ETH amount"
     else:
         assert msg.value == 0, "Incorrect ETH amount"
 
-    return self._exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+    registry: address = self.registry
+    if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
+        registry = self.factory_registry
+    return self._exchange(registry, _pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
 @view
@@ -271,6 +290,7 @@ def exchange(
 def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
     """
     @notice Find the pool offering the best rate for a given swap.
+    @dev Checks rates for regular and factory pools
     @param _from Address of coin being sent
     @param _to Address of coin being received
     @param _amount Quantity of `_from` being sent
@@ -278,15 +298,16 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    for i in range(65536):
-        pool: address = Registry(self.registry).find_pool_for_coins(_from, _to, i)
-        if pool == ZERO_ADDRESS:
-            break
+    for registry in [self.registry, self.factory_registry]:
+        for i in range(65536):
+            pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
+            if pool == ZERO_ADDRESS:
+                break
 
-        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
-        if dy > max_dy:
-            best_pool = pool
-            max_dy = dy
+            dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
+            if dy > max_dy:
+                best_pool = pool
+                max_dy = dy
 
     return best_pool, max_dy
 
@@ -296,13 +317,17 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
 def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
     """
     @notice Get the current number of coins received in an exchange
+    @dev Works for both regular and factory-deployed pools
     @param _pool Pool address
     @param _from Address of coin to be sent
     @param _to Address of coin to be received
     @param _amount Quantity of `_from` to be sent
     @return Quantity of `_to` to be received
     """
-    return self._get_exchange_amount(_pool, _from, _to, _amount)
+    registry: address = self.registry
+    if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
+        registry = self.factory_registry
+    return self._get_exchange_amount(registry, _pool, _from, _to, _amount)
 
 
 @view
@@ -430,7 +455,9 @@ def update_registry_address() -> bool:
          to update the local address from the address provider.
     @return bool success
     """
-    self.registry = self.address_provider.get_registry()
+    address_provider: address = self.address_provider.address
+    self.registry = AddressProvider(address_provider).get_registry()
+    self.factory_registry = AddressProvider(address_provider).get_address(3)
 
     return True
 
@@ -476,7 +503,7 @@ def claim_balance(_token: address) -> bool:
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
-    if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _token == ETH_ADDRESS:
         raw_call(msg.sender, b"", value=self.balance)
     else:
         amount: uint256 = ERC20(_token).balanceOf(self)

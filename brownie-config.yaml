@@ -2,3 +2,6 @@ reports:
   exclude_paths: contracts/testing/*
 
 autofetch_sources: true
+
+dependencies:
+  curvefi/curve-factory@2.0.0
