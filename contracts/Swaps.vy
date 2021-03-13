@@ -232,14 +232,12 @@ def exchange_with_best_rate(
         assert msg.value == 0, "Incorrect ETH amount"
 
     registry: address = self.registry
-    best_pool: address = Registry(registry).find_pool_for_coins(_from, _to, 0)
+    best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    for i in range(1, 65536):
+    for i in range(65536):
         pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
         if pool == ZERO_ADDRESS:
             break
-        elif i == 1:
-            max_dy = self._get_exchange_amount(registry, best_pool, _from, _to, _amount)
         dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
         if dy > max_dy:
             best_pool = pool
