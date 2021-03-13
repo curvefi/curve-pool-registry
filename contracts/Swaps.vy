@@ -13,6 +13,7 @@ from vyper.interfaces import ERC20
 interface AddressProvider:
     def admin() -> address: view
     def get_registry() -> address: view
+    def get_address(idx: uint256) -> address: view
 
 interface CurvePool:
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
@@ -59,6 +60,8 @@ CALC_INPUT_SIZE: constant(uint256) = 100
 
 address_provider: AddressProvider
 registry: public(address)
+factory_registry: public(address)
+
 default_calculator: public(address)
 is_killed: public(bool)
 pool_calculator: HashMap[address, address]
@@ -73,6 +76,7 @@ def __init__(_address_provider: address, _calculator: address):
     """
     self.address_provider = AddressProvider(_address_provider)
     self.registry = AddressProvider(_address_provider).get_registry()
+    self.factory_registry = AddressProvider(_address_provider).get_address(3)
     self.default_calculator = _calculator
 
 
@@ -433,7 +437,9 @@ def update_registry_address() -> bool:
          to update the local address from the address provider.
     @return bool success
     """
-    self.registry = self.address_provider.get_registry()
+    address_provider: address = self.address_provider.address
+    self.registry = AddressProvider(address_provider).get_registry()
+    self.factory_registry = AddressProvider(address_provider).get_address(3)
 
     return True
 
