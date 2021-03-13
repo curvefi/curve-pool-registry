@@ -220,6 +220,7 @@ def exchange_with_best_rate(
     @notice Perform an exchange using the pool that offers the best rate
     @dev Prior to calling this function, the caller must approve
          this contract to transfer `_amount` coins from `_from`
+         Does NOT check rates in factory-deployed pools
     @param _from Address of coin being sent
     @param _to Address of coin being received
     @param _amount Quantity of `_from` being sent
@@ -263,6 +264,7 @@ def exchange(
     @notice Perform an exchange using a specific pool
     @dev Prior to calling this function, the caller must approve
          this contract to transfer `_amount` coins from `_from`
+         Works for both regular and factory-deployed pools
     @param _pool Address of the pool to use for the swap
     @param _from Address of coin being sent
     @param _to Address of coin being received
@@ -315,6 +317,7 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
 def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
     """
     @notice Get the current number of coins received in an exchange
+    @dev Works for both regular and factory-deployed pools
     @param _pool Pool address
     @param _from Address of coin to be sent
     @param _to Address of coin to be received
