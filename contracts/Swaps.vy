@@ -285,6 +285,7 @@ def exchange(
 def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
     """
     @notice Find the pool offering the best rate for a given swap.
+    @dev Checks rates for regular and factory pools
     @param _from Address of coin being sent
     @param _to Address of coin being received
     @param _amount Quantity of `_from` being sent
@@ -292,16 +293,16 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    registry: address = self.registry
-    for i in range(65536):
-        pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
-        if pool == ZERO_ADDRESS:
-            break
+    for registry in [self.registry, self.factory_registry]:
+        for i in range(65536):
+            pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
+            if pool == ZERO_ADDRESS:
+                break
 
-        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
-        if dy > max_dy:
-            best_pool = pool
-            max_dy = dy
+            dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
+            if dy > max_dy:
+                best_pool = pool
+                max_dy = dy
 
     return best_pool, max_dy
 
