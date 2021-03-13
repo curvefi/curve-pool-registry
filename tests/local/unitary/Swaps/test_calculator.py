@@ -1,6 +1,6 @@
 import brownie
-
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+import pytest
+from brownie import ZERO_ADDRESS
 
 
 def test_admin_only(bob, registry_swap):
@@ -33,7 +33,8 @@ def test_set_default_calculator(alice, bob, registry_swap):
     assert registry_swap.default_calculator() == bob
 
 
-def test_calculator(accounts, calculator, no_call_coverage):
+@pytest.mark.no_call_coverage
+def test_calculator(accounts, calculator):
     expected = [89743074, 100065, 37501871, 90394938, 114182]
     actual = calculator.get_dy.call(
         2,
@@ -50,7 +51,8 @@ def test_calculator(accounts, calculator, no_call_coverage):
     assert actual[:5] == expected
 
 
-def test_dy_dx(accounts, calculator, no_call_coverage):
+@pytest.mark.no_call_coverage
+def test_dy_dx(accounts, calculator):
     dx = calculator.get_dx(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
@@ -78,7 +80,8 @@ def test_dy_dx(accounts, calculator, no_call_coverage):
     )
 
 
-def test_dx_dy(accounts, calculator, no_call_coverage):
+@pytest.mark.no_call_coverage
+def test_dx_dy(accounts, calculator):
     dy = calculator.get_dy(
         2,
         (2241857934, 1895960155, 0, 0, 0, 0, 0, 0),
