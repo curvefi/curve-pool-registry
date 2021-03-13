@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.11
 """
 @title Curve Registry Exchange Contract
 @license MIT
