@@ -654,6 +654,15 @@ def _unregister_coin_pair(_coina: address, _coinb: address):
 
 
 @internal
+def _register_coin(_coin: address):
+    if self.coin_register_counter[_coin] == 0:
+        self.coin_indexes[_coin] = self.coin_count
+        self.get_swappable_coin[self.coin_count] = _coin
+        self.coin_count += 1
+    self.coin_register_counter[_coin] += 1
+
+
+@internal
 def _get_new_pool_coins(
     _pool: address,
     _n_coins: uint256,
@@ -679,12 +688,7 @@ def _get_new_pool_coins(
             self.pool_data[_pool].coins[i] = coin
         coin_list[i] = coin
 
-        # register coin
-        if self.coin_register_counter[coin] == 0:
-            self.coin_indexes[coin] = self.coin_count
-            self.get_swappable_coin[self.coin_count] = coin
-            self.coin_count += 1
-        self.coin_register_counter[coin] += 1
+        self._register_coin(coin)
 
     for i in range(MAX_COINS):
         if i == _n_coins:
@@ -913,6 +917,7 @@ def add_metapool(
             coin = self.pool_data[base_pool].coins[x]
             base_coins[x] = coin
         self.pool_data[_pool].ul_coins[i] = coin
+        self._register_coin(coin)
 
     underlying_decimals: uint256 = shift(
         self.pool_data[base_pool].decimals, 8 * convert(base_coin_offset, int128)
