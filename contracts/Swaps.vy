@@ -118,6 +118,7 @@ def _get_exchange_amount(
 
 @internal
 def _exchange(
+    _registry: address,
     _pool: address,
     _from: address,
     _to: address,
@@ -136,7 +137,7 @@ def _exchange(
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
+    i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
     if _to == ETH_ADDRESS:
@@ -244,7 +245,7 @@ def exchange_with_best_rate(
             best_pool = pool
             max_dy = dy
 
-    return self._exchange(best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+    return self._exchange(registry, best_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
 @payable
@@ -276,7 +277,10 @@ def exchange(
     else:
         assert msg.value == 0, "Incorrect ETH amount"
 
-    return self._exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+    registry: address = self.registry
+    if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
+        registry = self.factory_registry
+    return self._exchange(registry, _pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
 @view
