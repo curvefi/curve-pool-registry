@@ -6,8 +6,6 @@
 @notice Find pools, query exchange rates and perform swaps
 """
 
-MAX_COINS: constant(int128) = 8
-CALC_INPUT_SIZE: constant(uint256) = 100
 
 from vyper.interfaces import ERC20
 
@@ -52,6 +50,11 @@ event TokenExchange:
     token_bought: address
     amount_sold: uint256
     amount_bought: uint256
+
+
+ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+MAX_COINS: constant(int128) = 8
+CALC_INPUT_SIZE: constant(uint256) = 100
 
 
 address_provider: AddressProvider
@@ -124,13 +127,13 @@ def _exchange(
     i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to)  # dev: no market
 
     # record initial balance
-    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _to == ETH_ADDRESS:
         initial_balance = self.balance
     else:
         initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         eth_amount = _amount
     else:
         response: Bytes[32] = raw_call(
@@ -168,7 +171,7 @@ def _exchange(
         CurvePool(_pool).exchange(i, j, _amount, _expected, value=eth_amount)
 
     # perform output transfer
-    if _to == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _to == ETH_ADDRESS:
         received_amount = self.balance - initial_balance
         raw_call(_receiver, b"", value=received_amount)
     else:
@@ -212,7 +215,7 @@ def exchange_with_best_rate(
     @param _receiver Address to transfer the received tokens to
     @return uint256 Amount received
     """
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         assert _amount == msg.value, "Incorrect ETH amount"
     else:
         assert msg.value == 0, "Incorrect ETH amount"
@@ -258,7 +261,7 @@ def exchange(
     @param _receiver Address to transfer the received tokens to
     @return uint256 Amount received
     """
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _from == ETH_ADDRESS:
         assert _amount == msg.value, "Incorrect ETH amount"
     else:
         assert msg.value == 0, "Incorrect ETH amount"
@@ -476,7 +479,7 @@ def claim_balance(_token: address) -> bool:
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
-    if _token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    if _token == ETH_ADDRESS:
         raw_call(msg.sender, b"", value=self.balance)
     else:
         amount: uint256 = ERC20(_token).balanceOf(self)
