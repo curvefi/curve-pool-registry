@@ -96,6 +96,7 @@ coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrati
 coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins available to swap for
 swap_coin_for: public(HashMap[address, address[65536]])
 coin_swap_indexes: HashMap[address, HashMap[address, uint256]]
+coin_swap_register_count: HashMap[address, HashMap[address, uint256]]
 
 # unique list of registered coins
 get_swappable_coin: public(address[65536])
@@ -628,29 +629,37 @@ def _add_pool(
 
 @internal
 def _register_coin_pair(_coina: address, _coinb: address):
-    self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = _coinb
-    self.coin_swap_indexes[_coina][_coinb] = self.coin_swap_count[_coina]
-    self.coin_swap_count[_coina] += 1
+    if self.coin_swap_register_count[_coina][_coinb] == 0:
+        self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = _coinb
+        self.coin_swap_indexes[_coina][_coinb] = self.coin_swap_count[_coina]
+        self.coin_swap_count[_coina] += 1
+    self.coin_swap_register_count[_coina][_coinb] += 1
 
-    self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = _coina
-    self.coin_swap_indexes[_coinb][_coina] = self.coin_swap_count[_coinb]
-    self.coin_swap_count[_coinb] += 1
+    if self.coin_swap_register_count[_coinb][_coina] == 0:
+        self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = _coina
+        self.coin_swap_indexes[_coinb][_coina] = self.coin_swap_count[_coinb]
+        self.coin_swap_count[_coinb] += 1
+    self.coin_swap_register_count[_coinb][_coina] += 1
 
 
 @internal
 def _unregister_coin_pair(_coina: address, _coinb: address):
-    self.coin_swap_count[_coina] -= 1
-    self.coin_swap_count[_coinb] -= 1
+    self.coin_swap_register_count[_coina][_coinb] -= 1
+    self.coin_swap_register_count[_coinb][_coina] -= 1
 
-    coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-    if coinb_index < self.coin_swap_count[_coina]:
-        self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
-    self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
+    if self.coin_swap_register_count[_coina][_coinb] == 0:
+        self.coin_swap_count[_coina] -= 1
+        coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
+        if coinb_index < self.coin_swap_count[_coina]:
+            self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
+        self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
 
-    coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
-    if coina_index < self.coin_swap_count[_coinb]:
-        self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
-    self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
+    if self.coin_swap_register_count[_coinb][_coina] == 0:
+        self.coin_swap_count[_coinb] -= 1
+        coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
+        if coina_index < self.coin_swap_count[_coinb]:
+            self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
+        self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
 
 
 @internal
