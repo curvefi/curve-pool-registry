@@ -88,9 +88,16 @@ def __default__():
 
 @view
 @internal
-def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: uint256) -> uint256:
+def _get_exchange_amount(
+    _registry: address,
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256
+) -> uint256:
     """
     @notice Get the current number of coins received in an exchange
+    @param _registry Registry address
     @param _pool Pool address
     @param _from Address of coin to be sent
     @param _to Address of coin to be received
@@ -100,7 +107,7 @@ def _get_exchange_amount(_pool: address, _from: address, _to: address, _amount: 
     i: int128 = 0
     j: int128 = 0
     is_underlying: bool = False
-    i, j, is_underlying = Registry(self.registry).get_coin_indices(_pool, _from, _to) # dev: no market
+    i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to) # dev: no market
 
     if is_underlying:
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
@@ -232,8 +239,8 @@ def exchange_with_best_rate(
         if pool == ZERO_ADDRESS:
             break
         elif i == 1:
-            max_dy = self._get_exchange_amount(best_pool, _from, _to, _amount)
-        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+            max_dy = self._get_exchange_amount(registry, best_pool, _from, _to, _amount)
+        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
         if dy > max_dy:
             best_pool = pool
             max_dy = dy
@@ -285,12 +292,13 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
+    registry: address = self.registry
     for i in range(65536):
-        pool: address = Registry(self.registry).find_pool_for_coins(_from, _to, i)
+        pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
         if pool == ZERO_ADDRESS:
             break
 
-        dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
         if dy > max_dy:
             best_pool = pool
             max_dy = dy
@@ -309,7 +317,7 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
     @param _amount Quantity of `_from` to be sent
     @return Quantity of `_to` to be received
     """
-    return self._get_exchange_amount(_pool, _from, _to, _amount)
+    return self._get_exchange_amount(self.registry, _pool, _from, _to, _amount)
 
 
 @view
