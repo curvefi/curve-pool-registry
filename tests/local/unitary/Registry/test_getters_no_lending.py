@@ -1,3 +1,6 @@
+import itertools as it
+from collections import Counter, defaultdict
+
 import pytest
 
 from scripts.utils import pack_values
@@ -162,19 +165,29 @@ def test_get_all_swappable_coins(registry, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+    assert history[-2].timestamp == registry.last_updated()
 
 
 def test_coin_swap_count(registry, underlying_coins):
+    underlying_coins = set(map(str, underlying_coins))
+    pairings = it.combinations(underlying_coins, 2)
+    counts = Counter(it.chain(*pairings))
+
     for coin in underlying_coins:
-        assert registry.coin_swap_count(coin) == len(underlying_coins) - 1
+        assert registry.coin_swap_count(coin) == counts[coin]
 
 
 def test_swap_coin_for(registry, underlying_coins):
-    coin_set = set(map(str, underlying_coins))
+    underlying_coins = set(map(str, underlying_coins))
+    pairings = it.combinations(underlying_coins, 2)
+    swaps = defaultdict(set)
 
-    for coin in coin_set:
+    for coina, coinb in pairings:
+        swaps[coina].add(coinb)
+        swaps[coinb].add(coina)
+
+    for coin in underlying_coins:
         coin_swap_count = registry.coin_swap_count(coin)
         swap_coins = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
 
-        assert swap_coins == coin_set - {coin}
+        assert swap_coins == swaps[coin]

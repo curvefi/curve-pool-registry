@@ -116,7 +116,7 @@ def test_get_all_swappable_coins(registry, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+    assert history[-1].timestamp == registry.last_updated()
 
 
 def test_coin_swap_count(registry, underlying_coins):

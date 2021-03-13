@@ -125,30 +125,30 @@ def test_get_all_swappable_coins(registry, wrapped_coins, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+    assert history[-1].timestamp == registry.last_updated()
 
 
 def test_coin_swap_count(registry, wrapped_coins, underlying_coins):
+    coins = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
 
-    for coin in wrapped_coins:
-        assert registry.coin_swap_count(coin) == 0
-
-    for coin in underlying_coins:
+    for coin in coins:
         assert registry.coin_swap_count(coin) == 0
 
 
 def test_swap_coin_for(registry, wrapped_coins, underlying_coins):
+    wrapped_coins = list(map(str, wrapped_coins))
+    underlying_coins = list(map(str, underlying_coins))
     pairings = defaultdict(set)
 
-    wrapped_pairs = itertools.combinations(map(str, wrapped_coins), 2)
-    underlying_pairs = itertools.combinations(map(str, underlying_coins), 2)
+    wrapped_pairs = itertools.combinations(wrapped_coins, 2)
+    underlying_pairs = itertools.combinations(underlying_coins, 2)
 
     for coin_a, coin_b in itertools.chain(wrapped_pairs, underlying_pairs):
         pairings[coin_a].add(coin_b)
         pairings[coin_b].add(coin_a)
 
-    for coin in itertools.chain(wrapped_coins, underlying_coins):
-        coin_swap_count = len(pairings[str(coin)])
+    for coin in pairings.keys():
+        coin_swap_count = len(pairings[coin])
         available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
 
         assert available_swaps == {ZERO_ADDRESS}

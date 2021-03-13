@@ -641,4 +641,14 @@ class StateMachine(BaseHelper):
 def test_simulate_coin_registry(
     state_machine, registry, alice, chain, ERC20, cERC20, PoolMockV2, MetaPoolMock
 ):
-    state_machine(StateMachine, registry, alice, chain, ERC20, cERC20, PoolMockV2, MetaPoolMock)
+    state_machine(
+        StateMachine,
+        registry,
+        alice,
+        chain,
+        ERC20,
+        cERC20,
+        PoolMockV2,
+        MetaPoolMock,
+        settings={"stateful_step_count": 25},
+    )

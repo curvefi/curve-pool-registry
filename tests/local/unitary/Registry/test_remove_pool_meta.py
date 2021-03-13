@@ -133,7 +133,7 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert history[-1].timestamp - 3 < registry.last_updated() <= history[-1].timestamp
+    assert history[-1].timestamp == registry.last_updated()
 
 
 def test_coin_swap_count(registry, meta_coins, underlying_coins):
@@ -157,24 +157,14 @@ def test_swap_coin_for(registry, meta_coins, underlying_coins):
     underlying_coins = list(map(str, underlying_coins))
     pairings = defaultdict(set)
 
-    meta_pairs = itertools.combinations(map(str, meta_coins), 2)
     underlying_pairs = list(itertools.combinations(map(str, underlying_coins), 2))
-    meta_under_pairs = (
-        (meta_coin, under) for meta_coin in meta_coins[:-1] for under in underlying_coins
-    )
 
-    for coin_a, coin_b in itertools.chain(meta_pairs, underlying_pairs, meta_under_pairs):
+    for coin_a, coin_b in underlying_pairs:
         pairings[coin_a].add(coin_b)
         pairings[coin_b].add(coin_a)
 
-    for coin in itertools.chain(meta_coins):
+    for coin in itertools.chain(meta_coins, underlying_coins):
         coin_swap_count = len(pairings[coin])
         available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
 
-        assert available_swaps == {ZERO_ADDRESS}
-
-    for coin in underlying_coins:
-        coin_swap_count = len(pairings[coin])
-        available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
-
-        assert available_swaps == (set(underlying_coins) - {coin}) | {ZERO_ADDRESS}
+        assert available_swaps == pairings[coin]
