@@ -33,6 +33,7 @@ interface Registry:
     def get_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def find_pool_for_coins(_from: address, _to: address, i: uint256) -> address: view
+    def get_lp_token(_pool: address) -> address: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -316,7 +317,10 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
     @param _amount Quantity of `_from` to be sent
     @return Quantity of `_to` to be received
     """
-    return self._get_exchange_amount(self.registry, _pool, _from, _to, _amount)
+    registry: address = self.registry
+    if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
+        registry = self.factory_registry
+    return self._get_exchange_amount(registry, _pool, _from, _to, _amount)
 
 
 @view
