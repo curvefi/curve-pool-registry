@@ -117,9 +117,9 @@ def test_get_lp_token(registry, meta_swap):
     assert registry.get_lp_token(meta_swap) == ZERO_ADDRESS
 
 
-def test_coin_count_is_correct(registry):
+def test_coin_count_is_correct(registry, underlying_coins):
 
-    assert registry.coin_count() == 0
+    assert registry.coin_count() == len(underlying_coins)
 
 
 def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
@@ -128,7 +128,7 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
 
     coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
 
-    assert coins == {ZERO_ADDRESS}
+    assert coins == set(map(str, underlying_coins)) | {ZERO_ADDRESS}
 
 
 @pytest.mark.once
