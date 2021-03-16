@@ -20,6 +20,7 @@ struct PoolArray:
     n_coins: uint256  # [coins, underlying coins] tightly packed as uint128[2]
     has_initial_A: bool
     is_v1: bool
+    is_meta: bool
 
 struct PoolParams:
     A: uint256
@@ -589,6 +590,16 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
 
     return total
 
+@view
+@external
+def is_meta(_pool: address) -> bool:
+    """
+    @notice Verify `_pool` is a metapool
+    @param _pool Pool address
+    @return True if `_pool` is a metapool
+    """
+    return self.pool_data[_pool].is_meta
+
 
 # internal functionality used in admin setters
 
@@ -921,6 +932,7 @@ def add_metapool(
     underlying_decimals += decimals % 256 ** base_coin_offset
 
     self.pool_data[_pool].underlying_decimals = underlying_decimals
+    self.pool_data[_pool].is_meta = True
 
     for i in range(MAX_COINS):
         if i == base_coin_offset:
