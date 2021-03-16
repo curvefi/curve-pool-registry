@@ -22,6 +22,7 @@ interface Registry:
     def get_rates(_pool: address) -> uint256[MAX_COINS]: view
     def get_lp_token(_pool: address) -> address: view
     def get_parameters(_pool: address) -> PoolParams: view
+    def is_meta(_pool: address) -> bool: view
 
 
 struct PoolParams:
@@ -44,6 +45,7 @@ struct PoolInfo:
     rates: uint256[MAX_COINS]
     lp_token: address
     params: PoolParams
+    is_meta: bool
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -99,4 +101,5 @@ def get_pool_info(_pool: address) -> PoolInfo:
         rates: Registry(registry).get_rates(_pool),
         lp_token: Registry(registry).get_lp_token(_pool),
         params: Registry(registry).get_parameters(_pool),
+        is_meta: Registry(registry).is_meta(_pool),
     })
