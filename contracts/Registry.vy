@@ -92,6 +92,8 @@ pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
 
+# TODO: Use a struct to eliminate most of this mess
+# something like pool_data uses PoolArray
 coin_count: public(uint256)  # total unique coins registered
 coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
 coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins available to swap for
