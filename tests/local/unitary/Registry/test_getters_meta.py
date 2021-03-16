@@ -283,3 +283,7 @@ def test_swap_coin_for(registry, meta_coins, underlying_coins):
         available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
 
         assert available_swaps == pairings[coin]
+
+
+def test_is_metapool(registry, meta_swap):
+    assert registry.is_meta(meta_swap) is True
