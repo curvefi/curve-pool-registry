@@ -97,9 +97,7 @@ coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins ava
 swap_coin_for: public(HashMap[address, address[65536]])
 coin_swap_indexes: HashMap[address, HashMap[address, uint256]]
 coin_swap_register_count: HashMap[address, HashMap[address, uint256]]
-
-# unique list of registered coins
-get_swappable_coin: public(address[65536])
+get_swappable_coin: public(address[65536])  # unique list of registered coins
 coin_indexes: HashMap[address, uint256]
 
 # lp token -> pool
@@ -628,6 +626,15 @@ def _add_pool(
 
 
 @internal
+def _register_coin(_coin: address):
+    if self.coin_register_counter[_coin] == 0:
+        self.coin_indexes[_coin] = self.coin_count
+        self.get_swappable_coin[self.coin_count] = _coin
+        self.coin_count += 1
+    self.coin_register_counter[_coin] += 1
+
+
+@internal
 def _register_coin_pair(_coina: address, _coinb: address):
     if self.coin_swap_register_count[_coina][_coinb] == 0:
         self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = _coinb
@@ -635,40 +642,37 @@ def _register_coin_pair(_coina: address, _coinb: address):
         self.coin_swap_count[_coina] += 1
     self.coin_swap_register_count[_coina][_coinb] += 1
 
-    if self.coin_swap_register_count[_coinb][_coina] == 0:
-        self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = _coina
-        self.coin_swap_indexes[_coinb][_coina] = self.coin_swap_count[_coinb]
-        self.coin_swap_count[_coinb] += 1
-    self.coin_swap_register_count[_coinb][_coina] += 1
+
+@internal
+def _unregister_coin(_coin: address):
+    if self.coin_register_counter[_coin] == 0:
+        return
+    self.coin_register_counter[_coin] -= 1
+    if self.coin_register_counter[_coin] == 0:
+        self.coin_count -= 1
+        location: uint256 = self.coin_indexes[_coin]
+        if location < self.coin_count:
+            coin_b: address = self.get_swappable_coin[self.coin_count]
+            self.get_swappable_coin[location] = coin_b
+            self.coin_indexes[coin_b] = location
+        self.coin_indexes[_coin] = 0
+        self.get_swappable_coin[self.coin_count] = ZERO_ADDRESS
 
 
 @internal
 def _unregister_coin_pair(_coina: address, _coinb: address):
     self.coin_swap_register_count[_coina][_coinb] -= 1
-    self.coin_swap_register_count[_coinb][_coina] -= 1
 
     if self.coin_swap_register_count[_coina][_coinb] == 0:
         self.coin_swap_count[_coina] -= 1
         coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-        if coinb_index < self.coin_swap_count[_coina]:
-            self.swap_coin_for[_coina][coinb_index] = self.swap_coin_for[_coina][self.coin_swap_count[_coina]]
-        self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = ZERO_ADDRESS
-
-    if self.coin_swap_register_count[_coinb][_coina] == 0:
-        self.coin_swap_count[_coinb] -= 1
-        coina_index: uint256 = self.coin_swap_indexes[_coinb][_coina]
-        if coina_index < self.coin_swap_count[_coinb]:
-            self.swap_coin_for[_coinb][coina_index] = self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]]
-        self.swap_coin_for[_coinb][self.coin_swap_count[_coinb]] = ZERO_ADDRESS
-
-
-@internal
-def _register_coin(_coin: address):
-    if self.coin_register_counter[_coin] == 0:
-        self.coin_indexes[_coin] = self.coin_count
-        self.get_swappable_coin[self.coin_count] = _coin
-        self.coin_count += 1
-    self.coin_register_counter[_coin] += 1
+        last_index: uint256 = self.coin_swap_count[_coina]
+        if coinb_index < last_index:
+            coin_c: address = self.swap_coin_for[_coina][last_index]
+            self.coin_swap_indexes[_coina][coin_c] = coinb_index
+            self.swap_coin_for[_coina][coinb_index] = coin_c
+        self.coin_swap_indexes[_coina][_coinb] = 0
+        self.swap_coin_for[_coina][last_index] = ZERO_ADDRESS
 
 
 @internal
@@ -697,12 +701,11 @@ def _get_new_pool_coins(
             self.pool_data[_pool].coins[i] = coin
         coin_list[i] = coin
 
-        self._register_coin(coin)
-
     for i in range(MAX_COINS):
         if i == _n_coins:
             break
 
+        self._register_coin(coin_list[i])
         # add pool to markets
         i2: uint256 = i + 1
         for x in range(i2, i2 + MAX_COINS):
@@ -716,6 +719,7 @@ def _get_new_pool_coins(
 
             # register the coin pair
             self._register_coin_pair(coin_list[i], coin_list[x])
+            self._register_coin_pair(coin_list[x], coin_list[i])
 
     return coin_list
 
@@ -755,25 +759,9 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
             self.markets[key][length] = ZERO_ADDRESS
             self.market_counts[key] = length
             self._unregister_coin_pair(_coina, _coinb)
+            self._unregister_coin_pair(_coinb, _coina)
 
             break
-
-
-@internal
-def _unregister_coins(_coins: address[MAX_COINS]):
-    for i in range(MAX_COINS):
-        if _coins[i] == ZERO_ADDRESS:
-            break
-        if self.coin_register_counter[_coins[i]] == 0:
-            continue
-        self.coin_register_counter[_coins[i]] -= 1
-        if self.coin_register_counter[_coins[i]] == 0:
-            self.coin_count -= 1
-            location: uint256 = self.coin_indexes[_coins[i]]
-            if location < self.coin_count:
-                self.get_swappable_coin[location] = self.get_swappable_coin[self.coin_count]
-                self.coin_indexes[_coins[i]] = 0
-            self.get_swappable_coin[self.coin_count] = ZERO_ADDRESS
 
 
 # admin functions
@@ -874,7 +862,6 @@ def add_pool_without_underlying(
     self.pool_data[_pool].underlying_decimals = udecimals
 
 
-
 @external
 def add_metapool(
     _pool: address,
@@ -925,8 +912,8 @@ def add_metapool(
             x: uint256 = i - base_coin_offset
             coin = self.pool_data[base_pool].coins[x]
             base_coins[x] = coin
+            self._register_coin(base_coins[x])
         self.pool_data[_pool].ul_coins[i] = coin
-        self._register_coin(coin)
 
     underlying_decimals: uint256 = shift(
         self.pool_data[base_pool].decimals, 8 * convert(base_coin_offset, int128)
@@ -948,6 +935,7 @@ def add_metapool(
 
             # register the coin pair
             self._register_coin_pair(coins[i], base_coins[x])
+            self._register_coin_pair(base_coins[x], coins[i])
 
 
 @external
@@ -994,12 +982,12 @@ def remove_pool(_pool: address):
         if coins[i] != ZERO_ADDRESS:
             # delete coin address from pool_data
             self.pool_data[_pool].coins[i] = ZERO_ADDRESS
+            self._unregister_coin(coins[i])
         if ucoins[i] != ZERO_ADDRESS:
             # delete underlying_coin from pool_data
             self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
+            self._unregister_coin(ucoins[i])
 
-    self._unregister_coins(coins)
-    self._unregister_coins(ucoins)
     for i in range(MAX_COINS):
         coin: address = coins[i]
         ucoin: address = ucoins[i]

@@ -9,379 +9,17 @@ With the unit tests we have confirmed basic functionality of removing pools and 
 however to further verify the functionality this stateful test will continually add and subtract
 pools, thereby verifying that functionality isn't lost as more pools are added/subtracted.
 """
-import itertools as it
-from collections import Counter, defaultdict
-from enum import IntEnum
 from typing import List
 
 from brownie.network.account import Account
 from brownie.network.contract import Contract, ContractContainer
 from brownie.network.state import Chain
 from brownie.test import strategy
+from coin_register_utils import Pool, PoolType, Registry
 
 from scripts.utils import pack_values
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
-
-class PoolType(IntEnum):
-
-    BASE = 0
-    LENDING = 1
-    META = 2
-
-
-class Pool:
-    def __init__(
-        self,
-        address: str,
-        coins: List[str],
-        lp_token: str,
-        underlying_coins: List[str] = None,
-        base_coins: List[str] = None,
-        pool_type: PoolType = PoolType.BASE,
-    ):
-        self.address = address
-        self.coins = coins
-        self.lp_token = lp_token
-        self.underlying_coins = underlying_coins
-        self.base_coins = base_coins
-        self.pool_type = pool_type
-
-    @classmethod
-    def base_pool(cls, address: str, coins: List[str], lp_token: str):
-        return cls(address, coins, lp_token)
-
-    @classmethod
-    def lending_pool(
-        cls, address: str, coins: List[str], lp_token: str, underlying_coins: List[str]
-    ):
-        return cls(address, coins, lp_token, underlying_coins, pool_type=PoolType.LENDING)
-
-    @classmethod
-    def meta_pool(cls, address: str, coins: List[str], lp_token: str, base_coins: List[str]):
-        return cls(address, coins, lp_token, base_coins=base_coins, pool_type=PoolType.META)
-
-
-class Registry:
-    """A Registry instance state emulator."""
-
-    def __init__(self):
-        # number of unique coins registered
-        self.coin_count = 0
-        # coin registration count
-        self._coin_register_counter = Counter()
-        # unique coins registered, if count < 0 then it doesn't exist
-        self.get_swappable_coin = set()
-        # coin -> # of unique coins available to swap with
-        self.coin_swap_count = Counter()
-        # coin_a -> coin_b -> # of time registered
-        self._coin_swap_register = defaultdict(Counter)
-        # unique set of coins (coin_b) which can swap against coin_a
-        self.swap_coin_for = defaultdict(set)
-        # timestamp of last update
-        self.last_updated = 0
-
-        # available pools with their type
-        self.pools = []
-
-    @property
-    def base_pools(self):
-        return [pool for pool in self.pools if pool.pool_type == PoolType.BASE]
-
-    @property
-    def lending_pools(self):
-        return [pool for pool in self.pools if pool.pool_type == PoolType.LENDING]
-
-    @property
-    def meta_pools(self):
-        return [pool for pool in self.pools if pool.pool_type == PoolType.META]
-
-    def add_pool_without_underlying(
-        self, address: str, coins: List[str], lp_token: str, timestamp: int
-    ):
-        """Add base pool and update state."""
-        # append pool to list of pools
-        base_pool = Pool.base_pool(address, coins, lp_token)
-        self.pools.append(base_pool)
-
-        # update coin counter
-        self._coin_register_counter.update(coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin.update(coins)
-        # for each pairing update amount of unique coins to swap for and the count for each pair
-        pairings = it.combinations(coins, 2)
-        for coin_a, coin_b in pairings:
-            # update unique set of counter coins to swap against
-            self.swap_coin_for[coin_a].add(coin_b)
-            self.swap_coin_for[coin_b].add(coin_a)
-
-            # update register counts
-            self._coin_swap_register[coin_a].update([coin_b])
-            self._coin_swap_register[coin_b].update([coin_a])
-
-        # update the count of unique coins available to swap coin_a against
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def add_pool(
-        self,
-        address: str,
-        wrapped_coins: List[str],
-        underlying_coins: List[str],
-        lp_token: str,
-        timestamp: int,
-    ):
-        """Add lending pool and update state."""
-        # append pool to list of pools
-        lending_pool = Pool.lending_pool(address, wrapped_coins, lp_token, underlying_coins)
-        self.pools.append(lending_pool)
-
-        # update coin counter
-        self._coin_register_counter.update(wrapped_coins)
-        self._coin_register_counter.update(underlying_coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin.update(wrapped_coins)
-        self.get_swappable_coin.update(underlying_coins)
-        # for each pairing update amount of unique coins to swap for and the count for each pair
-        pairings = it.combinations(wrapped_coins, 2)
-        for coin_a, coin_b in pairings:
-            # update unique set of counter coins to swap against
-            self.swap_coin_for[coin_a].add(coin_b)
-            self.swap_coin_for[coin_b].add(coin_a)
-
-            # update register counts
-            self._coin_swap_register[coin_a].update([coin_b])
-            self._coin_swap_register[coin_b].update([coin_a])
-
-        pairings = it.combinations(underlying_coins, 2)
-        for coin_a, coin_b in pairings:
-            # update unique set of counter coins to swap against
-            self.swap_coin_for[coin_a].add(coin_b)
-            self.swap_coin_for[coin_b].add(coin_a)
-
-            # update register counts
-            self._coin_swap_register[coin_a].update([coin_b])
-            self._coin_swap_register[coin_b].update([coin_a])
-
-        # update the count of unique coins available to swap coin_a against
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def add_metapool(
-        self,
-        address: str,
-        meta_coins: List[str],
-        lp_token: str,
-        base_coins: List[str],
-        timestamp: int,
-    ):
-        """Add metapool and update state."""
-        # append pool to list of pools
-        meta_pool = Pool.meta_pool(address, meta_coins, lp_token, base_coins)
-        self.pools.append(meta_pool)
-
-        # update coin counter
-        self._coin_register_counter.update(meta_coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin.update(meta_coins)
-        # for each pairing update amount of unique coins to swap for and the count for each pair
-        pairings = it.combinations(meta_coins, 2)
-        for coin_a, coin_b in pairings:
-            # update unique set of counter coins to swap against
-            self.swap_coin_for[coin_a].add(coin_b)
-            self.swap_coin_for[coin_b].add(coin_a)
-
-            # update register counts
-            self._coin_swap_register[coin_a].update([coin_b])
-            self._coin_swap_register[coin_b].update([coin_a])
-
-        pairings = (
-            (meta_coin, base_coin) for meta_coin in meta_coins[:-1] for base_coin in base_coins
-        )
-        for coin_a, coin_b in pairings:
-            # update unique set of counter coins to swap against
-            self.swap_coin_for[coin_a].add(coin_b)
-            self.swap_coin_for[coin_b].add(coin_a)
-
-            # update register counts
-            self._coin_swap_register[coin_a].update([coin_b])
-            self._coin_swap_register[coin_b].update([coin_a])
-
-        # update the count of unique coins available to swap coin_a against
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def _remove_pool_without_underlying(self, pool: Pool, timestamp: int):
-        """Remove pool and update state."""
-
-        coins = pool.coins
-
-        # update the register counts by subtracting the amount of times a coin is registered
-        self._coin_register_counter.subtract(coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin = set((+self._coin_register_counter).keys())
-
-        # now we need to remove the pairings, so first we will track how many times
-        # each coin is paired with another coin
-        pairings = it.combinations(coins, 2)
-        remove_counts = defaultdict(Counter)
-
-        # for each of the pairs update our local removal counter
-        for coin_a, coin_b in pairings:
-            # update our counts for each coin
-            remove_counts[coin_a].update([coin_b])
-            remove_counts[coin_b].update([coin_a])
-
-        # now we update our swap register, by removing the appropriate amount of
-        # swaps available for each coin with each of it's counter parts
-        for coin, counter in remove_counts.items():
-            self._coin_swap_register[coin].subtract(counter)
-
-        # update out swap_coin_for set, in this case we use our register
-        # which keeps track of how many times a swap pair has been registered
-        # if the pairing is no longer registered it obviously shouldn't be included.
-        # Note: the unary addition on a counter, only keeps values with a positive value
-        for coin in self.swap_coin_for:
-            self.swap_coin_for[coin] = set((+self._coin_swap_register[coin]).keys())
-
-        # lastly we update our count of unique coins we can swap against
-        # using the swap_coin_for dictionary.
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def _remove_pool(self, pool: Pool, timestamp: int):
-        """Remove pool and update state."""
-
-        wrapped_coins = pool.coins
-        underlying_coins = pool.underlying_coins
-
-        # update the register counts by subtracting the amount of times a coin is registered
-        self._coin_register_counter.subtract(wrapped_coins)
-        self._coin_register_counter.subtract(underlying_coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin = set((+self._coin_register_counter).keys())
-
-        for coins in (wrapped_coins, underlying_coins):
-            # now we need to remove the pairings, so first we will track how many times
-            # each coin is paired with another coin
-            pairings = it.combinations(coins, 2)
-            remove_counts = defaultdict(Counter)
-
-            # for each of the pairs update our local removal counter
-            for coin_a, coin_b in pairings:
-                # update our counts for each coin
-                remove_counts[coin_a].update([coin_b])
-                remove_counts[coin_b].update([coin_a])
-
-            # now we update our swap register, by removing the appropriate amount of
-            # swaps available for each coin with each of it's counter parts
-            for coin, counter in remove_counts.items():
-                self._coin_swap_register[coin].subtract(counter)
-
-        # update out swap_coin_for set, in this case we use our register
-        # which keeps track of how many times a swap pair has been registered
-        # if the pairing is no longer registered it obviously shouldn't be included.
-        # Note: the unary addition on a counter, only keeps values with a positive value
-        for coin in self.swap_coin_for:
-            self.swap_coin_for[coin] = set((+self._coin_swap_register[coin]).keys())
-
-        # lastly we update our count of unique coins we can swap against
-        # using the swap_coin_for dictionary.
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def _remove_metapool(self, pool: Pool, timestamp: int):
-        """Remove metapool and update state."""
-
-        meta_coins = pool.coins
-        base_coins = pool.base_coins
-
-        # update the register counts by subtracting the amount of times a coin is registered
-        self._coin_register_counter.subtract(meta_coins)
-        # update count of unique coins
-        self.coin_count = len(+self._coin_register_counter)  # unary addition removes <= 0 counts
-        # update set of registered coins
-        self.get_swappable_coin = set((+self._coin_register_counter).keys())
-
-        for i in [True, False]:
-            # now we need to remove the pairings, so first we will track how many times
-            # each coin is paired with another coin
-            if i:
-                pairings = it.combinations(meta_coins, 2)
-            else:
-                pairings = (
-                    (meta_coin, base_coin)
-                    for meta_coin in meta_coins[:-1]
-                    for base_coin in base_coins
-                )
-            remove_counts = defaultdict(Counter)
-
-            # for each of the pairs update our local removal counter
-            for coin_a, coin_b in pairings:
-                # update our counts for each coin
-                remove_counts[coin_a].update([coin_b])
-                remove_counts[coin_b].update([coin_a])
-
-            # now we update our swap register, by removing the appropriate amount of
-            # swaps available for each coin with each of it's counter parts
-            for coin, counter in remove_counts.items():
-                self._coin_swap_register[coin].subtract(counter)
-
-        # update out swap_coin_for set, in this case we use our register
-        # which keeps track of how many times a swap pair has been registered
-        # if the pairing is no longer registered it obviously shouldn't be included.
-        # Note: the unary addition on a counter, only keeps values with a positive value
-        for coin in self.swap_coin_for:
-            self.swap_coin_for[coin] = set((+self._coin_swap_register[coin]).keys())
-
-        # lastly we update our count of unique coins we can swap against
-        # using the swap_coin_for dictionary.
-        self.coin_swap_count = Counter(
-            {coin: len(coin_set) for coin, coin_set in self.swap_coin_for.items()}
-        )
-
-        # update timestamp
-        self.last_updated = timestamp
-
-    def remove_pool(self, pool: Pool, timestamp: int):
-        """Remove a pool and update state."""
-        if pool.pool_type == PoolType.BASE:
-            self._remove_pool_without_underlying(pool, timestamp)
-        elif pool.pool_type == PoolType.LENDING:
-            self._remove_pool(pool, timestamp)
-        else:
-            self._remove_metapool(pool, timestamp)
 
 
 class BaseHelper:
@@ -468,7 +106,8 @@ class BaseHelper:
 
 class StateMachine(BaseHelper):
 
-    st_random = strategy("uint256")
+    st_sleep = strategy("uint256", max_value=86400)
+    st_random = strategy("uint256", max_value=2 ** 32)
 
     def __init__(cls, registry: Contract, *args, **kwargs):
         super().__init__(cls, *args, **kwargs)
@@ -543,13 +182,13 @@ class StateMachine(BaseHelper):
         )
 
     def rule_add_metapool(self, st_random):
-        if len(self.state.pools) == 0:
+        if len(self.state.base_pools) == 0:
             return
 
         # select a random base pool
-        pool_index = st_random % len(self.state.pools)
+        pool_index = st_random % len(self.state.base_pools)
         # base_pool
-        base_pool: Pool = self.state.pools[pool_index]
+        base_pool: Pool = self.state.base_pools[pool_index]
         # deploy our coins
         meta_coins = self._batch_deploy_erc20() + [base_pool.lp_token]
         # number of coins
@@ -574,9 +213,8 @@ class StateMachine(BaseHelper):
             tx.timestamp,
         )
 
-    def rule_chain_sleep(self, st_random):
-        DAY = 60 * 60 * 24
-        self.chain.sleep(st_random % DAY)
+    def rule_chain_sleep(self, st_sleep):
+        self.chain.sleep(st_sleep)
 
     def rule_remove_pool(self, st_random):
         if len(self.state.pools) == 0:
@@ -585,26 +223,20 @@ class StateMachine(BaseHelper):
         random_index = st_random % len(self.state.pools)
 
         # verify our pool isn't the base of any meta_pools pools
-        pool = self.state.pools[random_index]
-        is_base = True
-        while is_base:
-            for meta_pool in self.state.meta_pools:
-                meta_pool: Pool = meta_pool
-                if pool.lp_token in meta_pool.coins:
-                    # make this meta_pool our new pool
-                    pool = meta_pool
-                    break
-            else:  # only run if the loop completes without finding anything
-                is_base = False
+        pool: Pool = self.state.pools[random_index]
 
-        pool_index = self.state.pools.index(pool)
-        pool: Pool = self.state.pools.pop(pool_index)  # remove the pool from our pool list
+        # if our pool is the base of a meta pool don't remove it
+        if pool.pool_type == PoolType.BASE:
+            for _pool in self.state.meta_pools:
+                if pool.lp_token in _pool.coins:
+                    return
 
         # remove from on chain registry
         tx = self.registry.remove_pool(pool.address)
 
         # update our state
         self.state.remove_pool(pool, tx.timestamp)
+        self.state.pools.remove(pool)
 
     def invariant_coin_count(self):
         assert self.registry.coin_count() == self.state.coin_count
@@ -617,25 +249,19 @@ class StateMachine(BaseHelper):
         assert registered_coins == self.state.get_swappable_coin
 
     def invariant_coin_swap_count(self):
-        counter = {
-            coin: self.registry.coin_swap_count(coin) for coin in self.state.get_swappable_coin
-        }
-
-        assert Counter(counter) == +self.state.coin_swap_count
+        for coin in self.state.get_swappable_coin:
+            assert self.registry.coin_swap_count(coin) == self.state.coin_swap_count[coin]
 
     def invariant_swap_coin_for(self):
-        coin_sets = {
-            coin: {self.registry.swap_coin_for(coin, i) for i in range(count)}
-            for coin, count in self.state.coin_swap_count.items()
-        }
-
-        for coin, coin_set in coin_sets.items():
-            assert coin_set == self.state.swap_coin_for[coin]
+        for coin, expected_coin_set in self.state.swap_coin_for.items():
+            coin_set = {
+                self.registry.swap_coin_for(coin, i)
+                for i in range(self.state.coin_swap_count[coin])
+            }
+            assert coin_set == expected_coin_set
 
     def invariant_last_updated(self):
-        assert (
-            self.state.last_updated - 1 <= self.registry.last_updated() <= self.state.last_updated
-        )
+        assert self.state.last_updated == self.registry.last_updated()
 
 
 def test_simulate_coin_registry(
