@@ -6,6 +6,18 @@
 @notice Find pools, query exchange rates and perform swaps
 """
 
+MAX_COINS: constant(int128) = 8
+CALC_INPUT_SIZE: constant(uint256) = 100
+EMPTY_POOL_LIST: constant(address[8]) = [
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
+]
 
 from vyper.interfaces import ERC20
 
@@ -287,13 +299,16 @@ def exchange(
 
 @view
 @external
-def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, uint256):
+def get_best_rate(
+    _from: address, _to: address, _amount: uint256, _exclude_pools: address[8] = EMPTY_POOL_LIST
+) -> (address, uint256):
     """
     @notice Find the pool offering the best rate for a given swap.
     @dev Checks rates for regular and factory pools
     @param _from Address of coin being sent
     @param _to Address of coin being received
     @param _amount Quantity of `_from` being sent
+    @param _exclude_pools A list of up to 8 addresses which shouldn't be returned
     @return Pool address, amount received
     """
     best_pool: address = ZERO_ADDRESS
@@ -303,9 +318,8 @@ def get_best_rate(_from: address, _to: address, _amount: uint256) -> (address, u
             pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
             if pool == ZERO_ADDRESS:
                 break
-
-            dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
-            if dy > max_dy:
+            dy: uint256 = self._get_exchange_amount(pool, _from, _to, _amount)
+            if dy > max_dy and not pool in _exclude_pools:
                 best_pool = pool
                 max_dy = dy
 
