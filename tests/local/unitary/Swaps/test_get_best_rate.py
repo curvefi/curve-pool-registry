@@ -91,6 +91,29 @@ def test_get_best_rate(registry_swap, swap1, swap2, swap3, underlying_coins, sen
 
 @pytest.mark.params(n_coins=4)
 @pytest.mark.itercoins("send", "recv")
+def test_get_best_rate_with_exclusion(
+    registry_swap, swap1, swap2, swap3, underlying_coins, send, recv
+):
+    send = underlying_coins[send]
+    recv = underlying_coins[recv]
+    exclude_list = [swap1] + [ZERO_ADDRESS] * 7
+
+    best_swap = ZERO_ADDRESS
+    best_rate = 0
+    for swap in (swap1, swap2, swap3):
+        try:
+            rate = registry_swap.get_exchange_amount(swap, send, recv, 10 ** 18)
+            if rate > best_rate and swap not in exclude_list:
+                best_rate = rate
+                best_swap = swap
+        except VirtualMachineError:
+            pass
+
+    assert registry_swap.get_best_rate(send, recv, 10 ** 18, exclude_list) == (best_swap, best_rate)
+
+
+@pytest.mark.params(n_coins=4)
+@pytest.mark.itercoins("send", "recv")
 def test_exchange_with_best_rate(
     alice, registry_swap, swap1, swap2, swap3, underlying_coins, underlying_decimals, send, recv
 ):
