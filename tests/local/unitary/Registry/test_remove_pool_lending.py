@@ -34,6 +34,7 @@ def registry(
         pack_values(underlying_decimals),
         hasattr(lending_swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
     chain.sleep(10)

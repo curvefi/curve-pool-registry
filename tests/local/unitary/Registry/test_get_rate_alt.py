@@ -73,6 +73,7 @@ def registry(
         pack_values(underlying_decimals),
         hasattr(aave_swap, "initial_A"),
         False,
+        "",
         {"from": alice},
     )
     registry.add_pool(
@@ -84,6 +85,7 @@ def registry(
         pack_values([18]),
         hasattr(ankr_swap, "initial_A"),
         False,
+        "",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})

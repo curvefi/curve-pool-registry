@@ -23,6 +23,7 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "Base Swap",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
@@ -194,5 +195,11 @@ def test_swap_coin_for(registry, underlying_coins):
         assert swap_coins == swaps[coin]
 
 
+@pytest.mark.once
 def test_is_metapool(registry, swap):
     assert registry.is_meta(swap) is False
+
+
+@pytest.mark.once
+def test_get_name(registry, swap):
+    assert registry.get_name(swap) == "Base Swap"

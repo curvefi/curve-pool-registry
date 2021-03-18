@@ -23,6 +23,7 @@ struct PoolArray:
     has_initial_A: bool
     is_v1: bool
     is_meta: bool
+    name: String[128]
 
 struct PoolParams:
     A: uint256
@@ -617,6 +618,17 @@ def is_meta(_pool: address) -> bool:
     return self.pool_data[_pool].is_meta
 
 
+@view
+@external
+def get_name(_pool: address) -> String[128]:
+    """
+    @notice Get the given name for a pool
+    @param _pool Pool address
+    @return The name of a pool
+    """
+    return self.pool_data[_pool].name
+
+
 # internal functionality used in admin setters
 
 @internal
@@ -628,6 +640,7 @@ def _add_pool(
     _rate_method_id: bytes32,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[128],
 ):
     assert _sender == self.address_provider.admin()  # dev: admin-only function
     assert _lp_token != ZERO_ADDRESS
@@ -643,6 +656,7 @@ def _add_pool(
     self.pool_data[_pool].has_initial_A = _has_initial_A
     self.pool_data[_pool].is_v1 = _is_v1
     self.pool_data[_pool].n_coins = _n_coins
+    self.pool_data[_pool].name = _name
 
     # update public mappings
     self.get_pool_from_lp_token[_lp_token] = _pool
@@ -803,6 +817,7 @@ def add_pool(
     _underlying_decimals: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[128],
 ):
     """
     @notice Add a pool to the registry
@@ -814,6 +829,7 @@ def add_pool(
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _underlying_decimals Underlying coin decimal values, tightly packed
                                 as uint8 in a little-endian bytes32
+    @param _name The name of the pool
     """
     self._add_pool(
         msg.sender,
@@ -823,6 +839,7 @@ def add_pool(
         _rate_method_id,
         _has_initial_A,
         _is_v1,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
@@ -848,6 +865,7 @@ def add_pool_without_underlying(
     _use_rates: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[128],
 ):
     """
     @notice Add a pool to the registry
@@ -868,6 +886,7 @@ def add_pool_without_underlying(
         _rate_method_id,
         _has_initial_A,
         _is_v1,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
@@ -895,6 +914,7 @@ def add_metapool(
     _n_coins: uint256,
     _lp_token: address,
     _decimals: uint256,
+    _name: String[128]
 ):
     """
     @notice Add a pool to the registry
@@ -917,6 +937,7 @@ def add_metapool(
         EMPTY_BYTES32,
         True,
         False,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
@@ -998,6 +1019,8 @@ def remove_pool(_pool: address):
     self.pool_data[_pool].decimals = 0
     self.pool_data[_pool].n_coins = 0
     self.pool_data[_pool].base_pool = ZERO_ADDRESS
+    self.pool_data[_pool].name = ""
+    self.pool_data[_pool].is_meta = False
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])

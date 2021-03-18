@@ -29,6 +29,7 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
     chain.sleep(10)

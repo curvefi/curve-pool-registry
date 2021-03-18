@@ -42,6 +42,7 @@ def registry(ERC20, Registry, provider, gauge_controller, alice, swap1, swap2, s
             0,  # use rates
             hasattr(swap, "initial_A"),
             False,
+            "",
             {"from": alice},
         )
 

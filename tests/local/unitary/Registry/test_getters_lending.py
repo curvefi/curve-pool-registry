@@ -33,6 +33,7 @@ def registry(
         pack_values(underlying_decimals),
         hasattr(lending_swap, "initial_A"),
         is_v1,
+        "Lending Swap",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
@@ -278,5 +279,11 @@ def test_swap_coin_for(registry, wrapped_coins, underlying_coins):
         assert available_swaps == pairings[coin]
 
 
+@pytest.mark.once
 def test_is_metapool(registry, lending_swap):
     assert registry.is_meta(lending_swap) is False
+
+
+@pytest.mark.once
+def test_get_name(registry, lending_swap):
+    assert registry.get_name(lending_swap) == "Lending Swap"

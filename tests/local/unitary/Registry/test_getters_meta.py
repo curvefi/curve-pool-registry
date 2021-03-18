@@ -35,10 +35,16 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
     registry.add_metapool(
-        meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), {"from": alice}
+        meta_swap,
+        n_metacoins,
+        meta_lp_token,
+        pack_values(meta_decimals),
+        "Meta Swap",
+        {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
     yield registry
@@ -286,5 +292,11 @@ def test_swap_coin_for(registry, meta_coins, underlying_coins):
         assert available_swaps == pairings[coin]
 
 
+@pytest.mark.once
 def test_is_metapool(registry, meta_swap):
     assert registry.is_meta(meta_swap) is True
+
+
+@pytest.mark.once
+def test_get_name(registry, meta_swap):
+    assert registry.get_name(meta_swap) == "Meta Swap"

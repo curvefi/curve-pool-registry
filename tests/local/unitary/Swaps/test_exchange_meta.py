@@ -28,9 +28,10 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
-    registry.add_metapool(meta_swap, n_metacoins, meta_lp_token, 0, {"from": alice})
+    registry.add_metapool(meta_swap, n_metacoins, meta_lp_token, 0, "", {"from": alice})
     yield registry
 
 

@@ -137,6 +137,7 @@ class StateMachine(BaseHelper):
             0,
             hasattr(base_pool, "initial_A"),
             False,  # is_v1
+            "",
             self.tx_params,
         )
 
@@ -169,6 +170,7 @@ class StateMachine(BaseHelper):
             pack_values([18] * n_coins),
             hasattr(lending_pool, "initial_A"),
             False,
+            "",
             self.tx_params,
         )
 
@@ -201,7 +203,7 @@ class StateMachine(BaseHelper):
 
         # add the pool on chain
         tx = self.registry.add_metapool(
-            meta_pool, n_coins, lp_token, pack_values([18] * n_coins), self.tx_params
+            meta_pool, n_coins, lp_token, pack_values([18] * n_coins), "", self.tx_params
         )
 
         # update state
@@ -276,5 +278,5 @@ def test_simulate_coin_registry(
         cERC20,
         PoolMockV2,
         MetaPoolMock,
-        settings={"stateful_step_count": 25},
+        # settings={"stateful_step_count": 25},
     )
