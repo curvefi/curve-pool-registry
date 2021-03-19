@@ -34,3 +34,16 @@ def test_set_pool_asset_type(registry_pool_info, alice, underlying_coins, swap):
 def test_get_pool_asset_type_reverts_on_fail(registry_pool_info, bob):
     with brownie.reverts("dev: admin-only function"):
         registry_pool_info.set_pool_asset_type(ZERO_ADDRESS, "USD", {"from": bob})
+
+
+@pytest.mark.once
+def test_batch_set_pool_asset_type(registry_pool_info, alice, underlying_coins, swap):
+    asset_types = ["USD"] + [""] * 31
+    asset_types = ["{0:32}".format(string) for string in asset_types]
+    registry_pool_info.batch_set_pool_asset_type(
+        [swap] + [ZERO_ADDRESS] * 31, "".join(asset_types), {"from": alice}
+    )
+
+    assert registry_pool_info.get_pool_asset_type(swap) == "{0:32}".format(
+        "USD"
+    )  # end user will need to strip text
