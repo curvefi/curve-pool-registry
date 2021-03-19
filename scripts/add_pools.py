@@ -12,17 +12,18 @@ REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
 GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
 
 RATE_METHOD_IDS = {
-    "ATokenMock": "0x00000000",
+    "ATokenMock": "0x4e4e197d",  # method_id("rate_method_id.aave")
     "cERC20": "0x182df0f5",  # exchangeRateStored
     "IdleToken": "0x7ff9b596",  # tokenPrice
     "renERC20": "0xbd6d894d",  # exchangeRateCurrent
     "yERC20": "0x77c7b8fc",  # getPricePerFullShare
+    "aETH": "0x267bee12",  # method_id("rate_method_id.ankr")
 }
 
 gas_strategy = GasNowScalingStrategy("standard", "fast")
 
 
-def add_pool(data, registry, deployer):
+def add_pool(data, registry, deployer, pool_name):
     swap = Contract(data["swap_address"])
     token = data["lp_token_address"]
     n_coins = len(data["coins"])
@@ -31,7 +32,7 @@ def add_pool(data, registry, deployer):
     if "base_pool" in data:
         # adding a metapool
         registry.add_metapool(
-            swap, n_coins, token, decimals, {"from": deployer, "gas_price": gas_strategy}
+            swap, n_coins, token, decimals, pool_name, {"from": deployer, "gas_price": gas_strategy}
         )
         return
 
@@ -54,6 +55,7 @@ def add_pool(data, registry, deployer):
             decimals,
             has_initial_A,
             is_v1,
+            pool_name,
             {"from": deployer, "gas_price": gas_strategy},
         )
     else:
@@ -67,6 +69,7 @@ def add_pool(data, registry, deployer):
             use_lending_rates,
             has_initial_A,
             is_v1,
+            pool_name,
             {"from": deployer, "gas_price": gas_strategy},
         )
 
