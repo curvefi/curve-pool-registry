@@ -190,7 +190,7 @@ def test_swap_coin_for(registry, underlying_coins):
 
     for coin in underlying_coins:
         coin_swap_count = registry.get_coin_swap_count(coin)
-        swap_coins = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+        swap_coins = {registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)}
 
         assert swap_coins == swaps[coin]
 

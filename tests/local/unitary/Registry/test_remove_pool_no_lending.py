@@ -130,6 +130,6 @@ def test_swap_coin_for(registry, underlying_coins):
 
     for coin in coin_set:
         coin_swap_count = len(coin_set) - 1
-        swap_coins = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+        swap_coins = {registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)}
 
         assert swap_coins == {ZERO_ADDRESS}

@@ -643,14 +643,13 @@ def get_coin_swap_count(_coin: address) -> uint256:
 
 @view
 @external
-def swap_coin_for(_coin: address, _index: uint256) -> address:
+def get_coin_swap_complement(_coin: address, _index: uint256) -> address:
     """
-    @notice Get the unique coin available to swap for at `_index` of
-        `_coin`s set of available counter coins
+    @notice Get the coin available to swap against `_coin` at `_index`
     @param _coin Coin address
     @param _index An index in the `_coin`'s set of available counter
         coin's
-    @return Address of a coin available to swap against `_coin`   
+    @return Address of a coin available to swap against `_coin`
     """
     return self.coins[_coin].swap_for[_index]
 

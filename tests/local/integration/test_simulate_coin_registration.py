@@ -253,9 +253,9 @@ class StateMachine(BaseHelper):
             assert self.registry.get_coin_swap_count(coin) == self.state.get_coin_swap_count[coin]
 
     def invariant_swap_coin_for(self):
-        for coin, expected_coin_set in self.state.swap_coin_for.items():
+        for coin, expected_coin_set in self.state.get_coin_swap_complement.items():
             coin_set = {
-                self.registry.swap_coin_for(coin, i)
+                self.registry.get_coin_swap_complement(coin, i)
                 for i in range(self.state.get_coin_swap_count[coin])
             }
             assert coin_set == expected_coin_set

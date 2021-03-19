@@ -274,7 +274,9 @@ def test_swap_coin_for(registry, wrapped_coins, underlying_coins):
 
     for coin in pairings.keys():
         coin_swap_count = registry.get_coin_swap_count(coin)
-        available_swaps = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
+        available_swaps = {
+            registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)
+        }
 
         assert available_swaps == pairings[coin]
 
