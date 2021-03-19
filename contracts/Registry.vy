@@ -1,4 +1,4 @@
-# @version 0.2.8
+# @version 0.2.11
 """
 @title Curve Registry
 @license MIT
@@ -10,6 +10,12 @@ CALC_INPUT_SIZE: constant(int128) = 100
 AAVE_RATE_METHOD_ID: constant(bytes32) = 0x000000000000000000000000000000000000000000000000000000004e4e197d  # method_id("rate_method_id.aave")
 ANKR_RATE_METHOD_ID: constant(bytes32) = 0x00000000000000000000000000000000000000000000000000000000267bee12  # method_id("rate_method_id.ankr")
 
+
+struct CoinInfo:
+    index: uint256
+    register_count: uint256
+    swap_count: uint256
+    swap_for: address[4096]
 
 struct PoolArray:
     location: uint256
@@ -95,16 +101,11 @@ pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
 
-# TODO: Use a struct to eliminate most of this mess
-# something like pool_data uses PoolArray
 coin_count: public(uint256)  # total unique coins registered
-coin_register_counter: HashMap[address, uint256]  # coin -> amount of registrations
-coin_swap_count: public(HashMap[address, uint256])  # amount of unique coins available to swap for
-swap_coin_for: public(HashMap[address, address[65536]])
-coin_swap_indexes: HashMap[address, HashMap[address, uint256]]
-coin_swap_register_count: HashMap[address, HashMap[address, uint256]]
+coins: HashMap[address, CoinInfo]
 get_swappable_coin: public(address[65536])  # unique list of registered coins
-coin_indexes: HashMap[address, uint256]
+coin_swap_indexes: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> pos in coin.swap_for
+coin_swap_register_count: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> times registered
 
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
@@ -629,6 +630,31 @@ def get_name(_pool: address) -> String[128]:
     return self.pool_data[_pool].name
 
 
+@view
+@external
+def coin_swap_count(_coin: address) -> uint256:
+    """
+    @notice Get the number of unique coins available to swap `_coin` against
+    @param _coin Coin address
+    @return The number of unique coins available to swap for
+    """
+    return self.coins[_coin].swap_count
+
+
+@view
+@external
+def swap_coin_for(_coin: address, _index: uint256) -> address:
+    """
+    @notice Get the unique coin available to swap for at `_index` of
+        `_coin`s set of available counter coins
+    @param _coin Coin address
+    @param _index An index in the `_coin`'s set of available counter
+        coin's
+    @return Address of a coin available to swap against `_coin`   
+    """
+    return self.coins[_coin].swap_for[_index]
+
+
 # internal functionality used in admin setters
 
 @internal
@@ -668,35 +694,36 @@ def _add_pool(
 
 @internal
 def _register_coin(_coin: address):
-    if self.coin_register_counter[_coin] == 0:
-        self.coin_indexes[_coin] = self.coin_count
+    if self.coins[_coin].register_count == 0:
+        self.coins[_coin].index = self.coin_count
         self.get_swappable_coin[self.coin_count] = _coin
         self.coin_count += 1
-    self.coin_register_counter[_coin] += 1
+    self.coins[_coin].register_count += 1
 
 
 @internal
 def _register_coin_pair(_coina: address, _coinb: address):
     if self.coin_swap_register_count[_coina][_coinb] == 0:
-        self.swap_coin_for[_coina][self.coin_swap_count[_coina]] = _coinb
-        self.coin_swap_indexes[_coina][_coinb] = self.coin_swap_count[_coina]
-        self.coin_swap_count[_coina] += 1
+        self.coins[_coina].swap_for[self.coins[_coina].swap_count] = _coinb
+        self.coin_swap_indexes[_coina][_coinb] = self.coins[_coina].swap_count
+        self.coins[_coina].swap_count += 1
     self.coin_swap_register_count[_coina][_coinb] += 1
 
 
 @internal
 def _unregister_coin(_coin: address):
-    if self.coin_register_counter[_coin] == 0:
+    if self.coins[_coin].register_count == 0:
+        # prevent underflow for base_coins
         return
-    self.coin_register_counter[_coin] -= 1
-    if self.coin_register_counter[_coin] == 0:
+    self.coins[_coin].register_count -= 1
+    if self.coins[_coin].register_count == 0:
         self.coin_count -= 1
-        location: uint256 = self.coin_indexes[_coin]
+        location: uint256 = self.coins[_coin].index
         if location < self.coin_count:
             coin_b: address = self.get_swappable_coin[self.coin_count]
             self.get_swappable_coin[location] = coin_b
-            self.coin_indexes[coin_b] = location
-        self.coin_indexes[_coin] = 0
+            self.coins[coin_b].index = location
+        self.coins[_coin].index = 0
         self.get_swappable_coin[self.coin_count] = ZERO_ADDRESS
 
 
@@ -705,15 +732,15 @@ def _unregister_coin_pair(_coina: address, _coinb: address):
     self.coin_swap_register_count[_coina][_coinb] -= 1
 
     if self.coin_swap_register_count[_coina][_coinb] == 0:
-        self.coin_swap_count[_coina] -= 1
+        self.coins[_coina].swap_count -= 1
         coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-        last_index: uint256 = self.coin_swap_count[_coina]
+        last_index: uint256 = self.coins[_coina].swap_count
         if coinb_index < last_index:
-            coin_c: address = self.swap_coin_for[_coina][last_index]
+            coin_c: address = self.coins[_coina].swap_for[last_index]
             self.coin_swap_indexes[_coina][coin_c] = coinb_index
-            self.swap_coin_for[_coina][coinb_index] = coin_c
+            self.coins[_coina].swap_for[coinb_index] = coin_c
         self.coin_swap_indexes[_coina][_coinb] = 0
-        self.swap_coin_for[_coina][last_index] = ZERO_ADDRESS
+        self.coins[_coina].swap_for[last_index] = ZERO_ADDRESS
 
 
 @internal
