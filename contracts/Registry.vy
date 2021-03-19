@@ -103,7 +103,7 @@ pool_data: HashMap[address, PoolArray]
 
 coin_count: public(uint256)  # total unique coins registered
 coins: HashMap[address, CoinInfo]
-get_swappable_coin: public(address[65536])  # unique list of registered coins
+get_coin: public(address[65536])  # unique list of registered coins
 coin_swap_indexes: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> pos in coin.swap_for
 coin_swap_register_count: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> times registered
 
@@ -696,7 +696,7 @@ def _add_pool(
 def _register_coin(_coin: address):
     if self.coins[_coin].register_count == 0:
         self.coins[_coin].index = self.coin_count
-        self.get_swappable_coin[self.coin_count] = _coin
+        self.get_coin[self.coin_count] = _coin
         self.coin_count += 1
     self.coins[_coin].register_count += 1
 
@@ -720,11 +720,11 @@ def _unregister_coin(_coin: address):
         self.coin_count -= 1
         location: uint256 = self.coins[_coin].index
         if location < self.coin_count:
-            coin_b: address = self.get_swappable_coin[self.coin_count]
-            self.get_swappable_coin[location] = coin_b
+            coin_b: address = self.get_coin[self.coin_count]
+            self.get_coin[location] = coin_b
             self.coins[coin_b].index = location
         self.coins[_coin].index = 0
-        self.get_swappable_coin[self.coin_count] = ZERO_ADDRESS
+        self.get_coin[self.coin_count] = ZERO_ADDRESS
 
 
 @internal

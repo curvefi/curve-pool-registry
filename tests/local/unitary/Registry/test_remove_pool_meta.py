@@ -127,7 +127,7 @@ def test_get_all_swappable_coins(registry, meta_coins, underlying_coins):
     coin_set = set(map(str, itertools.chain(meta_coins, underlying_coins)))
     coin_count = len(coin_set)
 
-    coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
+    coins = set(registry.get_coin(i) for i in range(coin_count))
 
     assert coins == set(map(str, underlying_coins)) | {ZERO_ADDRESS}
 

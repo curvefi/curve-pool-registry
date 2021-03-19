@@ -52,7 +52,7 @@ class Registry:
         # number of unique coins registered
         self.coin_count = 0
         # unique coins registered
-        self.get_swappable_coin = set()
+        self.get_coin = set()
         # coin_a -> coin_b -> # of time registered
         self._coin_swap_register = defaultdict(Counter)
         # coin -> # of unique coins available to swap with
@@ -79,8 +79,8 @@ class Registry:
 
     def _register_coins(self, coins: List[str]):
         self._coin_register_counter.update(coins)
-        self.get_swappable_coin = set((+self._coin_register_counter).keys())
-        self.coin_count = len(self.get_swappable_coin)
+        self.get_coin = set((+self._coin_register_counter).keys())
+        self.coin_count = len(self.get_coin)
 
     def _register_coin_pairs(self, pairings: List[Tuple[str, str]]):
         coins = set()
@@ -95,8 +95,8 @@ class Registry:
 
     def _unregister_coins(self, coins: List[str]):
         self._coin_register_counter.subtract(coins)
-        self.get_swappable_coin = set((+self._coin_register_counter).keys())
-        self.coin_count = len(self.get_swappable_coin)
+        self.get_coin = set((+self._coin_register_counter).keys())
+        self.coin_count = len(self.get_coin)
 
     def _unregister_coin_pairs(self, pairings: List[Tuple[str, str]]):
         coins = set()

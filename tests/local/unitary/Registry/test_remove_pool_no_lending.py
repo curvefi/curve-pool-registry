@@ -110,7 +110,7 @@ def test_coin_count_is_correct(registry):
 def test_get_all_swappable_coins(registry, underlying_coins):
     coin_count = len(underlying_coins)
 
-    coins = set(registry.get_swappable_coin(i) for i in range(coin_count))
+    coins = set(registry.get_coin(i) for i in range(coin_count))
 
     assert coins == {ZERO_ADDRESS}
 
