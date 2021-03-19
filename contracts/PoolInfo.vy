@@ -11,6 +11,7 @@ MAX_COINS: constant(int128) = 8
 
 interface AddressProvider:
     def get_registry() -> address: view
+    def admin() -> address: view
 
 interface Registry:
     def get_coins(_pool: address) -> address[MAX_COINS]: view
@@ -57,6 +58,8 @@ struct PoolCoins:
 
 
 address_provider: public(AddressProvider)
+
+get_pool_asset_type: public(HashMap[address, String[32]])
 
 
 @external
@@ -106,3 +109,16 @@ def get_pool_info(_pool: address) -> PoolInfo:
         is_meta: Registry(registry).is_meta(_pool),
         name: Registry(registry).get_pool_name(_pool),
     })
+
+
+@external
+def set_pool_asset_type(_pool: address, _asset_type: String[32]):
+    """
+    @notice Set the asset type name for a curve pool
+    @dev This is a simple way to setting the cache of categories instead of
+        performing some computation for no reason. Pool's don't necessarily
+        change once they are deployed.
+    """
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
+
+    self.get_pool_asset_type[_pool] = _asset_type
