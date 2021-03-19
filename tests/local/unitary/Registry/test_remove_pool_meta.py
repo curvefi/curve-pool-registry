@@ -147,10 +147,10 @@ def test_coin_swap_count(registry, meta_coins, underlying_coins):
     counter.update(underlying_pairs)
 
     for coin in meta_coins:
-        assert registry.coin_swap_count(coin) == 0
+        assert registry.get_coin_swap_count(coin) == 0
 
     for coin in underlying_coins:
-        assert registry.coin_swap_count(coin) == counter[coin]
+        assert registry.get_coin_swap_count(coin) == counter[coin]
 
 
 def test_swap_coin_for(registry, meta_coins, underlying_coins):

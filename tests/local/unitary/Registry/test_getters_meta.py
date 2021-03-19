@@ -267,7 +267,7 @@ def test_coin_swap_count(registry, meta_coins, underlying_coins):
     counter.update(itertools.chain(meta_pairs, underlying_pairs, meta_under_pairs))
 
     for coin in counter.keys():
-        assert registry.coin_swap_count(coin) == counter[coin]
+        assert registry.get_coin_swap_count(coin) == counter[coin]
 
 
 def test_swap_coin_for(registry, meta_coins, underlying_coins):

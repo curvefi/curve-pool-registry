@@ -56,7 +56,7 @@ class Registry:
         # coin_a -> coin_b -> # of time registered
         self._coin_swap_register = defaultdict(Counter)
         # coin -> # of unique coins available to swap with
-        self.coin_swap_count = Counter()
+        self.get_coin_swap_count = Counter()
         # unique set of coins (coin_b) which can swap against coin_a
         self.swap_coin_for = defaultdict(set)
         # timestamp of last update
@@ -91,7 +91,7 @@ class Registry:
 
         for coin in coins:
             self.swap_coin_for[coin] = set((+self._coin_swap_register[coin]).keys())
-            self.coin_swap_count[coin] = len(self.swap_coin_for[coin])
+            self.get_coin_swap_count[coin] = len(self.swap_coin_for[coin])
 
     def _unregister_coins(self, coins: List[str]):
         self._coin_register_counter.subtract(coins)
@@ -107,7 +107,7 @@ class Registry:
 
         for coin in coins:
             self.swap_coin_for[coin] = set((+self._coin_swap_register[coin]).keys())
-            self.coin_swap_count[coin] = len(self.swap_coin_for[coin])
+            self.get_coin_swap_count[coin] = len(self.swap_coin_for[coin])
 
     def add_pool(
         self,

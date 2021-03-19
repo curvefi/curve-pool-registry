@@ -176,7 +176,7 @@ def test_coin_swap_count(registry, underlying_coins):
     counts = Counter(it.chain(*pairings))
 
     for coin in underlying_coins:
-        assert registry.coin_swap_count(coin) == counts[coin]
+        assert registry.get_coin_swap_count(coin) == counts[coin]
 
 
 def test_swap_coin_for(registry, underlying_coins):
@@ -189,7 +189,7 @@ def test_swap_coin_for(registry, underlying_coins):
         swaps[coinb].add(coina)
 
     for coin in underlying_coins:
-        coin_swap_count = registry.coin_swap_count(coin)
+        coin_swap_count = registry.get_coin_swap_count(coin)
         swap_coins = {registry.swap_coin_for(coin, i) for i in range(coin_swap_count)}
 
         assert swap_coins == swaps[coin]

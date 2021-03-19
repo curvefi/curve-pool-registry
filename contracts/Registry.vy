@@ -632,7 +632,7 @@ def get_name(_pool: address) -> String[128]:
 
 @view
 @external
-def coin_swap_count(_coin: address) -> uint256:
+def get_coin_swap_count(_coin: address) -> uint256:
     """
     @notice Get the number of unique coins available to swap `_coin` against
     @param _coin Coin address

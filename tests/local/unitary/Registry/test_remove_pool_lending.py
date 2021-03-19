@@ -133,7 +133,7 @@ def test_coin_swap_count(registry, wrapped_coins, underlying_coins):
     coins = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
 
     for coin in coins:
-        assert registry.coin_swap_count(coin) == 0
+        assert registry.get_coin_swap_count(coin) == 0
 
 
 def test_swap_coin_for(registry, wrapped_coins, underlying_coins):

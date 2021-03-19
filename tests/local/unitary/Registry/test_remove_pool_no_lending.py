@@ -122,7 +122,7 @@ def test_last_updated_getter(registry, history):
 
 def test_coin_swap_count(registry, underlying_coins):
     for coin in underlying_coins:
-        assert registry.coin_swap_count(coin) == 0
+        assert registry.get_coin_swap_count(coin) == 0
 
 
 def test_swap_coin_for(registry, underlying_coins):
