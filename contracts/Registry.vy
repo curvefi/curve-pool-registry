@@ -621,7 +621,7 @@ def is_meta(_pool: address) -> bool:
 
 @view
 @external
-def get_name(_pool: address) -> String[128]:
+def get_pool_name(_pool: address) -> String[128]:
     """
     @notice Get the given name for a pool
     @param _pool Pool address

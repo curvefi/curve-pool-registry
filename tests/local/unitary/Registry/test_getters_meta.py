@@ -301,4 +301,4 @@ def test_is_metapool(registry, meta_swap):
 
 @pytest.mark.once
 def test_get_name(registry, meta_swap):
-    assert registry.get_name(meta_swap) == "Meta Swap"
+    assert registry.get_pool_name(meta_swap) == "Meta Swap"

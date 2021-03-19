@@ -288,4 +288,4 @@ def test_is_metapool(registry, lending_swap):
 
 @pytest.mark.once
 def test_get_name(registry, lending_swap):
-    assert registry.get_name(lending_swap) == "Lending Swap"
+    assert registry.get_pool_name(lending_swap) == "Lending Swap"
