@@ -28,7 +28,7 @@ struct PoolArray:
     n_coins: uint256  # [coins, underlying coins] tightly packed as uint128[2]
     has_initial_A: bool
     is_v1: bool
-    name: String[128]
+    name: String[64]
 
 struct PoolParams:
     A: uint256
@@ -620,7 +620,7 @@ def is_meta(_pool: address) -> bool:
 
 @view
 @external
-def get_pool_name(_pool: address) -> String[128]:
+def get_pool_name(_pool: address) -> String[64]:
     """
     @notice Get the given name for a pool
     @param _pool Pool address
@@ -664,7 +664,7 @@ def _add_pool(
     _rate_method_id: bytes32,
     _has_initial_A: bool,
     _is_v1: bool,
-    _name: String[128],
+    _name: String[64],
 ):
     assert _sender == self.address_provider.admin()  # dev: admin-only function
     assert _lp_token != ZERO_ADDRESS
@@ -842,7 +842,7 @@ def add_pool(
     _underlying_decimals: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
-    _name: String[128],
+    _name: String[64],
 ):
     """
     @notice Add a pool to the registry
@@ -890,7 +890,7 @@ def add_pool_without_underlying(
     _use_rates: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
-    _name: String[128],
+    _name: String[64],
 ):
     """
     @notice Add a pool to the registry
@@ -940,7 +940,7 @@ def add_metapool(
     _n_coins: uint256,
     _lp_token: address,
     _decimals: uint256,
-    _name: String[128]
+    _name: String[64]
 ):
     """
     @notice Add a pool to the registry
