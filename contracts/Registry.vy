@@ -28,7 +28,6 @@ struct PoolArray:
     n_coins: uint256  # [coins, underlying coins] tightly packed as uint128[2]
     has_initial_A: bool
     is_v1: bool
-    is_meta: bool
     name: String[128]
 
 struct PoolParams:
@@ -616,7 +615,7 @@ def is_meta(_pool: address) -> bool:
     @param _pool Pool address
     @return True if `_pool` is a metapool
     """
-    return self.pool_data[_pool].is_meta
+    return self.pool_data[_pool].base_pool != ZERO_ADDRESS
 
 
 @view
@@ -997,7 +996,6 @@ def add_metapool(
     underlying_decimals += decimals % 256 ** base_coin_offset
 
     self.pool_data[_pool].underlying_decimals = underlying_decimals
-    self.pool_data[_pool].is_meta = True
 
     for i in range(MAX_COINS):
         if i == base_coin_offset:
@@ -1048,7 +1046,6 @@ def remove_pool(_pool: address):
     self.pool_data[_pool].n_coins = 0
     self.pool_data[_pool].base_pool = ZERO_ADDRESS
     self.pool_data[_pool].name = ""
-    self.pool_data[_pool].is_meta = False
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
