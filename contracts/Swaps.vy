@@ -317,7 +317,7 @@ def get_best_rate(
                 break
             elif pool in _exclude_pools:
                 continue
-            dy: uint256 = self._get_exchange_amount(self.registry, pool, _from, _to, _amount)
+            dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
             if dy > max_dy:
                 best_pool = pool
                 max_dy = dy
