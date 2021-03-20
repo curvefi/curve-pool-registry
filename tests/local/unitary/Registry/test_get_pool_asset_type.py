@@ -20,30 +20,29 @@ def setup(registry, alice, swap, lp_token, n_coins, is_v1, underlying_decimals):
         "Base Swap",
         {"from": alice},
     )
-    yield registry
 
 
 @pytest.mark.once
-def test_set_pool_asset_type(registry_pool_info, alice, underlying_coins, swap):
-    registry_pool_info.set_pool_asset_type(swap, "USD", {"from": alice})
+def test_set_pool_asset_type(registry, alice, underlying_coins, swap):
+    registry.set_pool_asset_type(swap, "USD", {"from": alice})
 
-    assert registry_pool_info.get_pool_asset_type(swap) == "USD"
+    assert registry.get_pool_asset_type(swap) == "USD"
 
 
 @pytest.mark.once
-def test_get_pool_asset_type_reverts_on_fail(registry_pool_info, bob):
+def test_get_pool_asset_type_reverts_on_fail(registry, bob):
     with brownie.reverts("dev: admin-only function"):
-        registry_pool_info.set_pool_asset_type(ZERO_ADDRESS, "USD", {"from": bob})
+        registry.set_pool_asset_type(ZERO_ADDRESS, "USD", {"from": bob})
 
 
 @pytest.mark.once
-def test_batch_set_pool_asset_type(registry_pool_info, alice, underlying_coins, swap):
+def test_batch_set_pool_asset_type(registry, alice, underlying_coins, swap):
     asset_types = ["USD"] + [""] * 31
     asset_types = ["{0:32}".format(string) for string in asset_types]
-    registry_pool_info.batch_set_pool_asset_type(
+    registry.batch_set_pool_asset_type(
         [swap] + [ZERO_ADDRESS] * 31, "".join(asset_types), {"from": alice}
     )
 
-    assert registry_pool_info.get_pool_asset_type(swap) == "{0:32}".format(
+    assert registry.get_pool_asset_type(swap) == "{0:32}".format(
         "USD"
     )  # end user will need to strip text

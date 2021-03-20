@@ -59,8 +59,6 @@ struct PoolCoins:
 
 address_provider: public(AddressProvider)
 
-get_pool_asset_type: public(HashMap[address, String[32]])
-
 
 @external
 def __init__(_provider: address):
@@ -110,33 +108,3 @@ def get_pool_info(_pool: address) -> PoolInfo:
         name: Registry(registry).get_pool_name(_pool),
     })
 
-
-@external
-def set_pool_asset_type(_pool: address, _asset_type: String[32]):
-    """
-    @notice Set the asset type name for a curve pool
-    @dev This is a simple way to setting the cache of categories instead of
-        performing some computation for no reason. Pool's don't necessarily
-        change once they are deployed.
-    @param _pool Pool address
-    @param _asset_type String of asset type
-    """
-    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
-
-    self.get_pool_asset_type[_pool] = _asset_type
-
-
-@external
-def batch_set_pool_asset_type(_pools: address[32], _asset_types: String[1024]):
-    """
-    @notice Batch set the asset type name for curve pools
-    @dev This is a simple way of setting the cache of categories instead of
-        performing some computation for no reason. Pool's don't necessarily
-        change once they are deployed.
-    """
-    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
-
-    for i in range(32):
-        if _pools[i] == ZERO_ADDRESS:
-            break
-        self.get_pool_asset_type[_pools[i]] = slice(_asset_types, 32 * i, 32)
