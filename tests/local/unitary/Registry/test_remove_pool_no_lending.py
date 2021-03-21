@@ -1,3 +1,5 @@
+import math
+
 import brownie
 import pytest
 
@@ -117,7 +119,7 @@ def test_get_all_swappable_coins(registry, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert history[-1].timestamp == registry.last_updated()
+    assert math.isclose(history[-1].timestamp, registry.last_updated())
 
 
 def test_coin_swap_count(registry, underlying_coins):
