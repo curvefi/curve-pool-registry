@@ -7,8 +7,6 @@
 
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(int128) = 100
-AAVE_RATE_METHOD_ID: constant(bytes32) = 0x000000000000000000000000000000000000000000000000000000004e4e197d  # method_id("rate_method_id.aave")
-ANKR_RATE_METHOD_ID: constant(bytes32) = 0x00000000000000000000000000000000000000000000000000000000267bee12  # method_id("rate_method_id.ankr")
 
 
 struct CoinInfo:
@@ -167,7 +165,7 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
     rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     base_pool: address = self.pool_data[_pool].base_pool
     if base_pool == ZERO_ADDRESS:
-        rate_method_id: bytes32 = self.pool_data[_pool].rate_method_id
+        rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 28, 4)
 
         for i in range(MAX_COINS):
             coin: address = self.pool_data[_pool].coins[i]
@@ -175,21 +173,10 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
                 break
             if coin == self.pool_data[_pool].ul_coins[i]:
                 rates[i] = 10 ** 18
-            elif rate_method_id == AAVE_RATE_METHOD_ID:
-                rates[i] = 10 ** 18  # aave pegs coins 1:1 w/ underlying asset
-            elif rate_method_id == ANKR_RATE_METHOD_ID:
-                rates[i] = 10 ** 36 / convert(
-                    raw_call(
-                        coin, method_id("ratio()"), max_outsize=32, is_static_call=True
-                    ),  # dev: bad response
-                    uint256,
-                )
             else:
                 rates[i] = convert(
-                    raw_call(
-                        coin, slice(rate_method_id, 28, 4), max_outsize=32, is_static_call=True
-                    ),  # dev: bad response
-                    uint256,
+                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True), # dev: bad response
+                    uint256
                 )
     else:
         base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
@@ -200,7 +187,6 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
             rates[i] = 10 ** 18
 
     return rates
-
 
 @view
 @internal
