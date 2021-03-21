@@ -119,7 +119,10 @@ def test_get_all_swappable_coins(registry, underlying_coins):
 
 @pytest.mark.once
 def test_last_updated_getter(registry, history):
-    assert math.isclose(history[-1].timestamp, registry.last_updated())
+    registry_txs = history.filter(receiver=registry.address)
+    assert math.isclose(
+        registry_txs[-1].timestamp, registry.last_updated(), rel_tol=0.001, abs_tol=4
+    )
 
 
 def test_coin_swap_count(registry, underlying_coins):
