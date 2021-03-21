@@ -27,6 +27,7 @@ struct PoolArray:
     has_initial_A: bool
     is_v1: bool
     name: String[64]
+    asset_type: String[32]
 
 struct PoolParams:
     A: uint256
@@ -132,9 +133,6 @@ market_counts: HashMap[uint256, uint256]
 liquidity_gauges: HashMap[address, address[10]]
 
 last_updated: public(uint256)
-
-get_pool_asset_type: public(HashMap[address, String[32]])
-
 
 
 @external
@@ -641,6 +639,17 @@ def get_coin_swap_complement(_coin: address, _index: uint256) -> address:
     @return Address of a coin available to swap against `_coin`
     """
     return self.coins[_coin].swap_for[_index]
+
+
+@view
+@external
+def get_pool_asset_type(_pool: address) -> String[32]:
+    """
+    @notice Query the asset type of `_pool`
+    @param _pool Pool Address
+    @return The asset type as an unstripped string
+    """
+    return self.pool_data[_pool].asset_type
 
 
 # internal functionality used in admin setters
@@ -1171,7 +1180,7 @@ def set_pool_asset_type(_pool: address, _asset_type: String[32]):
     """
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
-    self.get_pool_asset_type[_pool] = _asset_type
+    self.pool_data[_pool].asset_type = _asset_type
 
 
 @external
@@ -1187,4 +1196,4 @@ def batch_set_pool_asset_type(_pools: address[32], _asset_types: String[1024]):
     for i in range(32):
         if _pools[i] == ZERO_ADDRESS:
             break
-        self.get_pool_asset_type[_pools[i]] = slice(_asset_types, 32 * i, 32)
+        self.pool_data[_pools[i]].asset_type = slice(_asset_types, 32 * i, 32)
