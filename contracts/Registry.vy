@@ -695,8 +695,9 @@ def _add_pool(
 @internal
 def _register_coin(_coin: address):
     if self.coins[_coin].register_count == 0:
-        self.coins[_coin].index = self.coin_count
-        self.get_coin[self.coin_count] = _coin
+        coin_count: uint256 = self.coin_count
+        self.coins[_coin].index = coin_count
+        self.get_coin[coin_count] = _coin
         self.coin_count += 1
     self.coins[_coin].register_count += 1
 
@@ -711,19 +712,20 @@ def _register_coin_pair(_coina: address, _coinb: address):
 
 @internal
 def _unregister_coin(_coin: address):
-    if self.coins[_coin].register_count == 0:
-        # prevent underflow for base_coins
-        return
     self.coins[_coin].register_count -= 1
+
     if self.coins[_coin].register_count == 0:
         self.coin_count -= 1
+        coin_count: uint256 = self.coin_count
         location: uint256 = self.coins[_coin].index
-        if location < self.coin_count:
-            coin_b: address = self.get_coin[self.coin_count]
+
+        if location < coin_count:
+            coin_b: address = self.get_coin[coin_count]
             self.get_coin[location] = coin_b
             self.coins[coin_b].index = location
+
         self.coins[_coin].index = 0
-        self.get_coin[self.coin_count] = ZERO_ADDRESS
+        self.get_coin[coin_count] = ZERO_ADDRESS
 
 
 @internal
@@ -1066,7 +1068,8 @@ def remove_pool(_pool: address):
         if ucoins[i] != ZERO_ADDRESS:
             # delete underlying_coin from pool_data
             self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
-            self._unregister_coin(ucoins[i])
+            if self.coins[ucoins[i]].register_count != 0:
+                self._unregister_coin(ucoins[i])
 
     for i in range(MAX_COINS):
         coin: address = coins[i]
