@@ -8,30 +8,35 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 @pytest.fixture(scope="module")
-def aave_wrapped_coins(_underlying_coins, _wrapped_decimals, alice, n_coins):
+def coins(alice, ERC20NoReturn):
     coins = []
-    for i, (coin, decimals) in enumerate(zip(_underlying_coins, _wrapped_decimals)):
+    for i in range(3):
+        contract = alice.deploy(ERC20NoReturn, "", "", 18)
+        coins.append(contract)
+    coins.append("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE")
+    return coins
+
+
+@pytest.fixture(scope="module")
+def aave_wrapped_coins(alice, coins):
+    wrapped_coins = []
+    for i, (coin, decimals) in enumerate(zip(coins, len(coins) * [18])):
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-            coins.append(coin)
+            wrapped_coins.append(coin)
             continue
         contract = aToken.deploy(
             f"Wrapped Test Token {i}", f"wTST{i}", decimals, coin, 10 ** 18, {"from": alice}
         )
-        coins.append(contract)
+        wrapped_coins.append(contract)
 
-    return coins[:n_coins]
-
-
-@pytest.fixture(scope="module")
-def aave_wrapped_decimals(_wrapped_decimals, n_coins):
-    return _wrapped_decimals[:n_coins]
+    return wrapped_coins
 
 
 @pytest.fixture(scope="module")
-def aave_swap(PoolMockV2, alice, aave_wrapped_coins, underlying_coins):
-    n_coins = len(underlying_coins)
+def aave_swap(PoolMockV2, alice, aave_wrapped_coins, coins):
+    n_coins = len(coins)
     wrapped_coins = aave_wrapped_coins + [ZERO_ADDRESS] * (4 - len(aave_wrapped_coins))
-    underlying_coins = underlying_coins + [ZERO_ADDRESS] * (4 - len(underlying_coins))
+    underlying_coins = coins + [ZERO_ADDRESS] * (4 - len(coins))
 
     contract = PoolMockV2.deploy(
         n_coins, wrapped_coins, underlying_coins, 70, 4000000, {"from": alice}
@@ -53,6 +58,7 @@ def ankr_swap(PoolMockV2, alice):
 def registry(
     ERC20,
     Registry,
+    RateCalc,
     provider,
     gauge_controller,
     alice,
@@ -60,17 +66,17 @@ def registry(
     ankr_swap,
     lp_token,
     n_coins,
-    underlying_decimals,
-    aave_wrapped_decimals,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
+    rate_calc = alice.deploy(RateCalc)
+
     registry.add_pool(
         aave_swap,
         n_coins,
         lp_token,
-        "0x4e4e197d",
-        pack_values(aave_wrapped_decimals),
-        pack_values(underlying_decimals),
+        "0x00",
+        pack_values([18] * 3),
+        pack_values([18] * 3),
         hasattr(aave_swap, "initial_A"),
         False,
         "",
@@ -80,7 +86,7 @@ def registry(
         ankr_swap,
         1,
         ERC20.deploy("", "", 18, {"from": alice}),
-        "0x267bee12",
+        "0x71ca337d",
         pack_values([18]),
         pack_values([18]),
         hasattr(ankr_swap, "initial_A"),
@@ -89,9 +95,12 @@ def registry(
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
+    for _ in range(4):
+        provider.add_new_id(rate_calc, "", {"from": alice})
     yield registry
 
 
+@pytest.mark.once
 def test_get_rates_aave(registry, registry_pool_info, aave_swap, aave_wrapped_coins):
     rates = [10 ** 18] * len(aave_wrapped_coins)
     rates += [0] * (8 - len(rates))
