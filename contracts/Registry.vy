@@ -43,6 +43,7 @@ struct PoolParams:
 
 interface AddressProvider:
     def admin() -> address: view
+    def get_address(_id: uint256) -> address: view
 
 interface ERC20:
     def balanceOf(_addr: address) -> uint256: view
@@ -81,6 +82,9 @@ interface LiquidityGauge:
 
 interface GaugeController:
     def gauge_types(gauge: address) -> int128: view
+
+interface RateCalc:
+    def get_rate(_coin: address, _rate_method_id: Bytes[4]) -> uint256: view
 
 
 event PoolAdded:
@@ -162,6 +166,7 @@ def _unpack_decimals(_packed: uint256, _n_coins: uint256) -> uint256[MAX_COINS]:
 @view
 @internal
 def _get_rates(_pool: address) -> uint256[MAX_COINS]:
+    rate_calc_addr: address = self.address_provider.get_address(4)
     rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     base_pool: address = self.pool_data[_pool].base_pool
     if base_pool == ZERO_ADDRESS:
@@ -171,13 +176,10 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
             coin: address = self.pool_data[_pool].coins[i]
             if coin == ZERO_ADDRESS:
                 break
-            if coin == self.pool_data[_pool].ul_coins[i]:
+            if coin == self.pool_data[_pool].ul_coins[i] or rate_method_id == 0x00000000:
                 rates[i] = 10 ** 18
             else:
-                rates[i] = convert(
-                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True), # dev: bad response
-                    uint256
-                )
+                rates[i] = RateCalc(rate_calc_addr).get_rate(coin, rate_method_id)  # dev: bad response
     else:
         base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
         rates[base_coin_idx] = CurvePool(base_pool).get_virtual_price()
