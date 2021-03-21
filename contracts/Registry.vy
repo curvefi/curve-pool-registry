@@ -104,7 +104,6 @@ coin_count: public(uint256)  # total unique coins registered
 coins: HashMap[address, CoinInfo]
 get_coin: public(address[65536])  # unique list of registered coins
 coin_swap_indexes: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> pos in coin.swap_for
-coin_swap_register_count: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> times registered
 
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
@@ -704,11 +703,10 @@ def _register_coin(_coin: address):
 
 @internal
 def _register_coin_pair(_coina: address, _coinb: address):
-    if self.coin_swap_register_count[_coina][_coinb] == 0:
-        self.coins[_coina].swap_for[self.coins[_coina].swap_count] = _coinb
-        self.coin_swap_indexes[_coina][_coinb] = self.coins[_coina].swap_count
-        self.coins[_coina].swap_count += 1
-    self.coin_swap_register_count[_coina][_coinb] += 1
+    swap_count: uint256 = self.coins[_coina].swap_count
+    self.coins[_coina].swap_for[swap_count] = _coinb
+    self.coin_swap_indexes[_coina][_coinb] = swap_count
+    self.coins[_coina].swap_count += 1
 
 
 @internal
@@ -730,18 +728,18 @@ def _unregister_coin(_coin: address):
 
 @internal
 def _unregister_coin_pair(_coina: address, _coinb: address):
-    self.coin_swap_register_count[_coina][_coinb] -= 1
+    self.coins[_coina].swap_count -= 1
 
-    if self.coin_swap_register_count[_coina][_coinb] == 0:
-        self.coins[_coina].swap_count -= 1
-        coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-        last_index: uint256 = self.coins[_coina].swap_count
-        if coinb_index < last_index:
-            coin_c: address = self.coins[_coina].swap_for[last_index]
-            self.coin_swap_indexes[_coina][coin_c] = coinb_index
-            self.coins[_coina].swap_for[coinb_index] = coin_c
-        self.coin_swap_indexes[_coina][_coinb] = 0
-        self.coins[_coina].swap_for[last_index] = ZERO_ADDRESS
+    coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
+    last_index: uint256 = self.coins[_coina].swap_count
+
+    if coinb_index < last_index:
+        coin_c: address = self.coins[_coina].swap_for[last_index]
+        self.coin_swap_indexes[_coina][coin_c] = coinb_index
+        self.coins[_coina].swap_for[coinb_index] = coin_c
+
+    self.coin_swap_indexes[_coina][_coinb] = 0
+    self.coins[_coina].swap_for[last_index] = ZERO_ADDRESS
 
 
 @internal
@@ -787,8 +785,9 @@ def _get_new_pool_coins(
             self.market_counts[key] = length + 1
 
             # register the coin pair
-            self._register_coin_pair(coin_list[i], coin_list[x])
-            self._register_coin_pair(coin_list[x], coin_list[i])
+            if length == 0:
+                self._register_coin_pair(coin_list[i], coin_list[x])
+                self._register_coin_pair(coin_list[x], coin_list[i])
 
     return coin_list
 
@@ -819,6 +818,9 @@ def _get_new_pool_decimals(_coins: address[MAX_COINS], _n_coins: uint256) -> uin
 def _remove_market(_pool: address, _coina: address, _coinb: address):
     key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
     length: uint256 = self.market_counts[key] - 1
+    if length == 0:
+        self._unregister_coin_pair(_coina, _coinb)
+        self._unregister_coin_pair(_coinb, _coina)
     for i in range(65536):
         if i > length:
             break
@@ -827,9 +829,6 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
                 self.markets[key][i] = self.markets[key][length]
             self.markets[key][length] = ZERO_ADDRESS
             self.market_counts[key] = length
-            self._unregister_coin_pair(_coina, _coinb)
-            self._unregister_coin_pair(_coinb, _coina)
-
             break
 
 
@@ -1012,8 +1011,9 @@ def add_metapool(
             self.market_counts[key] = length + 1
 
             # register the coin pair
-            self._register_coin_pair(coins[i], base_coins[x])
-            self._register_coin_pair(base_coins[x], coins[i])
+            if length == 0:
+                self._register_coin_pair(coins[i], base_coins[x])
+                self._register_coin_pair(base_coins[x], coins[i])
 
 
 @external
@@ -1033,6 +1033,7 @@ def remove_pool(_pool: address):
     # remove _pool from pool_list
     location: uint256 = self.pool_data[_pool].location
     length: uint256 = self.pool_count - 1
+    is_meta: bool = self.pool_data[_pool].base_pool != ZERO_ADDRESS
 
     if location < length:
         # replace _pool with final value in pool_list
@@ -1086,6 +1087,11 @@ def remove_pool(_pool: address):
 
             if coin != ucoin or coinx != ucoinx:
                 self._remove_market(_pool, ucoin, ucoinx)
+
+            if is_meta and not ucoin in coins:
+                self._register_coin_pair(ucoin, ucoinx)
+                self._register_coin_pair(ucoinx, ucoin)
+
 
     self.last_updated = block.timestamp
     log PoolRemoved(_pool)
