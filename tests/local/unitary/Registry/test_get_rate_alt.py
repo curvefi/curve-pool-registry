@@ -68,7 +68,6 @@ def registry(
     n_coins,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
-    rate_calc = alice.deploy(RateCalc)
 
     registry.add_pool(
         aave_swap,
@@ -95,8 +94,6 @@ def registry(
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
-    for _ in range(4):
-        provider.add_new_id(rate_calc, "", {"from": alice})
     yield registry
 
 
