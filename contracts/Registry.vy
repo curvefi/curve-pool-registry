@@ -174,7 +174,7 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
             coin: address = self.pool_data[_pool].coins[i]
             if coin == ZERO_ADDRESS:
                 break
-            if coin == self.pool_data[_pool].ul_coins[i] or rate_method_id == 0x00000000:
+            if rate_method_id == 0x00000000 or coin == self.pool_data[_pool].ul_coins[i]:
                 rates[i] = 10 ** 18
             else:
                 rates[i] = RateCalc(rate_calc_addr).get_rate(coin, rate_method_id)  # dev: bad response
