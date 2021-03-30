@@ -1032,7 +1032,6 @@ def remove_pool(_pool: address):
     # remove _pool from pool_list
     location: uint256 = self.pool_data[_pool].location
     length: uint256 = self.pool_count - 1
-    is_meta: bool = self.pool_data[_pool].base_pool != ZERO_ADDRESS
 
     if location < length:
         # replace _pool with final value in pool_list
@@ -1047,7 +1046,6 @@ def remove_pool(_pool: address):
     self.pool_data[_pool].underlying_decimals = 0
     self.pool_data[_pool].decimals = 0
     self.pool_data[_pool].n_coins = 0
-    self.pool_data[_pool].base_pool = ZERO_ADDRESS
     self.pool_data[_pool].name = ""
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
@@ -1068,6 +1066,7 @@ def remove_pool(_pool: address):
             if self.coins[ucoins[i]].register_count != 0:
                 self._unregister_coin(ucoins[i])
 
+    is_meta: bool = self.pool_data[_pool].base_pool != ZERO_ADDRESS
     for i in range(MAX_COINS):
         coin: address = coins[i]
         ucoin: address = ucoins[i]
@@ -1092,7 +1091,7 @@ def remove_pool(_pool: address):
                 self._register_coin_pair(ucoin, ucoinx)
                 self._register_coin_pair(ucoinx, ucoin)
 
-
+    self.pool_data[_pool].base_pool = ZERO_ADDRESS
     self.last_updated = block.timestamp
     log PoolRemoved(_pool)
 
