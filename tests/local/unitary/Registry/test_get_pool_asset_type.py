@@ -23,26 +23,29 @@ def setup(registry, alice, swap, lp_token, n_coins, is_v1, underlying_decimals):
 
 
 @pytest.mark.once
-def test_set_pool_asset_type(registry, alice, underlying_coins, swap):
-    registry.set_pool_asset_type(swap, "USD", {"from": alice})
+def test_set_pool_asset_type(registry, alice, swap):
+    registry.set_pool_asset_type(swap, 42, {"from": alice})
 
-    assert registry.get_pool_asset_type(swap) == "USD"
+    assert registry.get_pool_asset_type(swap) == 42
 
 
 @pytest.mark.once
 def test_get_pool_asset_type_reverts_on_fail(registry, bob):
     with brownie.reverts("dev: admin-only function"):
-        registry.set_pool_asset_type(ZERO_ADDRESS, "USD", {"from": bob})
+        registry.set_pool_asset_type(ZERO_ADDRESS, 42, {"from": bob})
 
 
 @pytest.mark.once
-def test_batch_set_pool_asset_type(registry, alice, underlying_coins, swap):
-    asset_types = ["USD"] + [""] * 31
-    asset_types = ["{0:32}".format(string) for string in asset_types]
-    registry.batch_set_pool_asset_type(
-        [swap] + [ZERO_ADDRESS] * 31, "".join(asset_types), {"from": alice}
-    )
+def test_batch_set_pool_asset_type(registry, alice, swap):
+    asset_types = [42] + [0] * 31
+    registry.batch_set_pool_asset_type([swap] + [ZERO_ADDRESS] * 31, asset_types, {"from": alice})
 
-    assert registry.get_pool_asset_type(swap) == "{0:32}".format(
-        "USD"
-    )  # end user will need to strip text
+    assert registry.get_pool_asset_type(swap) == 42
+
+
+@pytest.mark.once
+def test_asset_type_removed_after_pool_removal(registry, swap, alice):
+    registry.set_pool_asset_type(swap, 42, {"from": alice})
+    registry.remove_pool(swap, {"from": alice})
+
+    assert registry.get_pool_asset_type(swap) == 0
