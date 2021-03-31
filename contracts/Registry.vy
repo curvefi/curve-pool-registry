@@ -27,7 +27,7 @@ struct PoolArray:
     has_initial_A: bool
     is_v1: bool
     name: String[64]
-    asset_type: String[32]
+    asset_type: uint256
 
 struct PoolParams:
     A: uint256
@@ -643,7 +643,7 @@ def get_coin_swap_complement(_coin: address, _index: uint256) -> address:
 
 @view
 @external
-def get_pool_asset_type(_pool: address) -> String[32]:
+def get_pool_asset_type(_pool: address) -> uint256:
     """
     @notice Query the asset type of `_pool`
     @param _pool Pool Address
@@ -1047,6 +1047,7 @@ def remove_pool(_pool: address):
     self.pool_data[_pool].decimals = 0
     self.pool_data[_pool].n_coins = 0
     self.pool_data[_pool].name = ""
+    self.pool_data[_pool].asset_type = 0
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
@@ -1168,7 +1169,7 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
 
 
 @external
-def set_pool_asset_type(_pool: address, _asset_type: String[32]):
+def set_pool_asset_type(_pool: address, _asset_type: uint256):
     """
     @notice Set the asset type name for a curve pool
     @dev This is a simple way to setting the cache of categories instead of
@@ -1183,7 +1184,7 @@ def set_pool_asset_type(_pool: address, _asset_type: String[32]):
 
 
 @external
-def batch_set_pool_asset_type(_pools: address[32], _asset_types: String[1024]):
+def batch_set_pool_asset_type(_pools: address[32], _asset_types: uint256[32]):
     """
     @notice Batch set the asset type name for curve pools
     @dev This is a simple way of setting the cache of categories instead of
@@ -1195,4 +1196,4 @@ def batch_set_pool_asset_type(_pools: address[32], _asset_types: String[1024]):
     for i in range(32):
         if _pools[i] == ZERO_ADDRESS:
             break
-        self.pool_data[_pools[i]].asset_type = slice(_asset_types, 32 * i, 32)
+        self.pool_data[_pools[i]].asset_type = _asset_types[i]
