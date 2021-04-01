@@ -12,12 +12,11 @@ REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
 GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
 
 RATE_METHOD_IDS = {
-    "ATokenMock": "0x4e4e197d",  # method_id("rate_method_id.aave")
+    "ATokenMock": "0x00000000",
     "cERC20": "0x182df0f5",  # exchangeRateStored
     "IdleToken": "0x7ff9b596",  # tokenPrice
     "renERC20": "0xbd6d894d",  # exchangeRateCurrent
     "yERC20": "0x77c7b8fc",  # getPricePerFullShare
-    "aETH": "0x267bee12",  # method_id("rate_method_id.ankr")
 }
 
 gas_strategy = GasNowScalingStrategy("standard", "fast")
@@ -38,9 +37,12 @@ def add_pool(data, registry, deployer, pool_name):
 
     is_v1 = data["lp_contract"] == "CurveTokenV1"
     has_initial_A = hasattr(swap, "intitial_A")
-    rate_method_id = "0x00"
+    rate_info = "0x00000000"
     if "wrapped_contract" in data:
-        rate_method_id = RATE_METHOD_IDS[data["wrapped_contract"]]
+        rate_info = RATE_METHOD_IDS[data["wrapped_contract"]]
+    if "rate_calculator_address" in data:
+        # 24-bytes = 20-byte address + 4-byte fn sig
+        rate_info = data["rate_calculator_address"] + rate_info[2:]
 
     if hasattr(swap, "exchange_underlying"):
         wrapped_decimals = pack_values(
@@ -50,7 +52,7 @@ def add_pool(data, registry, deployer, pool_name):
             swap,
             n_coins,
             token,
-            rate_method_id,
+            rate_info,
             wrapped_decimals,
             decimals,
             has_initial_A,
@@ -64,7 +66,7 @@ def add_pool(data, registry, deployer, pool_name):
             swap,
             n_coins,
             token,
-            rate_method_id,
+            rate_info,
             decimals,
             use_lending_rates,
             has_initial_A,
@@ -99,7 +101,7 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
         pool = data["swap_address"]
         if registry.get_n_coins(pool)[0] == 0:
             print(f"\nAdding {name}...")
-            add_pool(data, registry, deployer)
+            add_pool(data, registry, deployer, name)
         else:
             print(f"\n{name} has already been added to registry")
 
