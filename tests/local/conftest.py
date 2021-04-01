@@ -135,12 +135,6 @@ def registry_swap(Swaps, alice, provider, registry, calculator):
 
 
 @pytest.fixture(scope="module")
-def rate_calc(RateCalc, alice):
-    contract = alice.deploy(RateCalc)
-    return contract
-
-
-@pytest.fixture(scope="module")
 def lp_token(alice):
     return ERC20.deploy("MetaTest Token", "MTST", 18, {"from": alice})
 

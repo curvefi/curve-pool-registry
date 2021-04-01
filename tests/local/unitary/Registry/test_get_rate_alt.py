@@ -18,28 +18,26 @@ def ankr_swap(PoolMockV2, alice):
 
 
 @pytest.fixture(scope="module")
-def registry(
-    ERC20, Registry, RateCalc, provider, gauge_controller, alice, ankr_swap, lp_token, n_coins
-):
+def registry(ERC20, Registry, RateCalcMock, provider, gauge_controller, alice, ankr_swap, lp_token):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
+    rate_calc = RateCalcMock.deploy({"from": alice})
 
     registry.add_pool(
         ankr_swap,
         1,
-        ERC20.deploy("", "", 18, {"from": alice}),
-        "0x71ca337d",
+        lp_token,
+        rate_calc.address + "71ca337d",
         pack_values([18]),
         pack_values([18]),
         hasattr(ankr_swap, "initial_A"),
         False,
-        "",
+        "Test pool",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
     yield registry
 
 
-@pytest.mark.once
 @given(new_ratio=strategy("uint256", min_value=1, max_value=10 ** 18 - 1))
 def test_get_rates(alice, registry, registry_pool_info, new_ratio, ankr_swap):
     ankrETH[0].update_ratio(new_ratio, {"from": alice})
@@ -49,3 +47,17 @@ def test_get_rates(alice, registry, registry_pool_info, new_ratio, ankr_swap):
 
     assert registry.get_rates(ankr_swap) == rates
     assert registry_pool_info.get_pool_info(ankr_swap)["rates"] == rates
+
+
+def test_call_to_rate_calculator(alice, ankr_swap, registry, RateCalcMock):
+    rate_calc = RateCalcMock[0]
+    coin = ankrETH[0]
+    tx = registry.get_rates.transact(ankr_swap, {"from": alice})
+
+    expected = {
+        "function": "get_rate(address)",
+        "inputs": dict(_coin=coin.address),
+        "op": "STATICCALL",
+        "to": rate_calc.address,
+    }
+    assert all(tx.subcalls[0][k] == expected[k] for k in expected.keys())
