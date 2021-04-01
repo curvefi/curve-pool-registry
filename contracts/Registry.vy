@@ -19,7 +19,7 @@ struct PoolArray:
     location: uint256
     decimals: uint256
     underlying_decimals: uint256
-    rate_method_id: bytes32
+    rate_info: bytes32
     base_pool: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
@@ -85,7 +85,7 @@ interface GaugeController:
     def gauge_types(gauge: address) -> int128: view
 
 interface RateCalc:
-    def get_rate(_coin: address, _rate_method_id: Bytes[4]) -> uint256: view
+    def get_rate(_coin: address) -> uint256: view
 
 
 event PoolAdded:
@@ -164,20 +164,26 @@ def _unpack_decimals(_packed: uint256, _n_coins: uint256) -> uint256[MAX_COINS]:
 @view
 @internal
 def _get_rates(_pool: address) -> uint256[MAX_COINS]:
-    rate_calc_addr: address = self.address_provider.get_address(4)
     rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     base_pool: address = self.pool_data[_pool].base_pool
     if base_pool == ZERO_ADDRESS:
-        rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 28, 4)
+        rate_info: bytes32 = self.pool_data[_pool].rate_info
+        rate_calc_addr: uint256 = convert(slice(rate_info, 8, 20), uint256)
+        rate_method_id: Bytes[4] = slice(rate_info, 28, 4)
 
         for i in range(MAX_COINS):
             coin: address = self.pool_data[_pool].coins[i]
             if coin == ZERO_ADDRESS:
                 break
-            if rate_method_id == 0x00000000 or coin == self.pool_data[_pool].ul_coins[i]:
+            if rate_info == EMPTY_BYTES32 or coin == self.pool_data[_pool].ul_coins[i]:
                 rates[i] = 10 ** 18
+            elif rate_calc_addr != 0:
+                rates[i] = RateCalc(convert(rate_calc_addr, address)).get_rate(coin)
             else:
-                rates[i] = RateCalc(rate_calc_addr).get_rate(coin, rate_method_id)  # dev: bad response
+                rates[i] = convert(
+                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True),  # dev: bad response
+                    uint256
+                )
     else:
         base_coin_idx: uint256 = shift(self.pool_data[_pool].n_coins, -128) - 1
         rates[base_coin_idx] = CurvePool(base_pool).get_virtual_price()
@@ -660,7 +666,7 @@ def _add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _has_initial_A: bool,
     _is_v1: bool,
     _name: String[64],
@@ -675,7 +681,7 @@ def _add_pool(
     self.pool_list[length] = _pool
     self.pool_count = length + 1
     self.pool_data[_pool].location = length
-    self.pool_data[_pool].rate_method_id = _rate_method_id
+    self.pool_data[_pool].rate_info = _rate_info
     self.pool_data[_pool].has_initial_A = _has_initial_A
     self.pool_data[_pool].is_v1 = _is_v1
     self.pool_data[_pool].n_coins = _n_coins
@@ -686,7 +692,7 @@ def _add_pool(
     self.get_lp_token[_pool] = _lp_token
     self.last_updated = block.timestamp
 
-    log PoolAdded(_pool, slice(_rate_method_id, 28, 4))
+    log PoolAdded(_pool, slice(_rate_info, 28, 4))
 
 
 @internal
@@ -838,7 +844,7 @@ def add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _decimals: uint256,
     _underlying_decimals: uint256,
     _has_initial_A: bool,
@@ -851,7 +857,8 @@ def add_pool(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded four-byte function signature to query coin rates
+    @param _rate_info Encoded twenty-byte rate calculator address and/or four-byte
+        function signature to query coin rates
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _underlying_decimals Underlying coin decimal values, tightly packed
                                 as uint8 in a little-endian bytes32
@@ -862,7 +869,7 @@ def add_pool(
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
-        _rate_method_id,
+        _rate_info,
         _has_initial_A,
         _is_v1,
         _name,
@@ -886,7 +893,7 @@ def add_pool_without_underlying(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _decimals: uint256,
     _use_rates: uint256,
     _has_initial_A: bool,
@@ -899,7 +906,8 @@ def add_pool_without_underlying(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded four-byte function signature to query coin rates
+    @param _rate_info Encoded twenty-byte rate calculator address and/or four-byte
+        function signature to query coin rates
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _use_rates Boolean array indicating which coins use lending rates,
                       tightly packed in a little-endian bytes32
@@ -910,7 +918,7 @@ def add_pool_without_underlying(
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
-        _rate_method_id,
+        _rate_info,
         _has_initial_A,
         _is_v1,
         _name,
