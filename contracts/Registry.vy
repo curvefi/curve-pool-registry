@@ -764,7 +764,8 @@ def _unregister_coin_pair(_coina: address, _coinb: address, _coinb_idx: uint256)
 
         # update the pairing's indexes
         if convert(_coina, uint256) < convert(coin_c, uint256):
-            self.coin_swap_indexes[key] = indexes / 2 ** 128 + _coinb_idx
+            # least complicated most readable way of shifting twice to remove the lower order bits
+            self.coin_swap_indexes[key] = shift(shift(indexes, -128), 128) + _coinb_idx
         else:
             self.coin_swap_indexes[key] = shift(_coinb_idx, 128) + indexes % 2 ** 128
         # set _coinb_idx in coina's array to coin_c
