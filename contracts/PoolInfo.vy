@@ -48,7 +48,7 @@ struct PoolInfo:
     lp_token: address
     params: PoolParams
     is_meta: bool
-    name: String[128]
+    name: String[64]
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -107,4 +107,3 @@ def get_pool_info(_pool: address) -> PoolInfo:
         is_meta: Registry(registry).is_meta(_pool),
         name: Registry(registry).get_pool_name(_pool),
     })
-
