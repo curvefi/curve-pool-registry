@@ -24,7 +24,7 @@ interface Registry:
     def get_lp_token(_pool: address) -> address: view
     def get_parameters(_pool: address) -> PoolParams: view
     def is_meta(_pool: address) -> bool: view
-    def get_pool_name(_pool: address) -> String[128]: view
+    def get_pool_name(_pool: address) -> String[64]: view
 
 
 struct PoolParams:
