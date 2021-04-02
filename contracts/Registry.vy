@@ -106,7 +106,9 @@ pool_data: HashMap[address, PoolArray]
 coin_count: public(uint256)  # total unique coins registered
 coins: HashMap[address, CoinInfo]
 get_coin: public(address[65536])  # unique list of registered coins
-coin_swap_indexes: HashMap[address, HashMap[address, uint256]]  # coina -> coinb -> pos in coin.swap_for
+# bitwise_xor(coina, coinb) -> (coina_pos, coinb_pos) sorted
+# stored as uint128[2]
+coin_swap_indexes: HashMap[uint256, uint256]
 
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
@@ -706,11 +708,24 @@ def _register_coin(_coin: address):
 
 
 @internal
-def _register_coin_pair(_coina: address, _coinb: address):
-    swap_count: uint256 = self.coins[_coina].swap_count
-    self.coins[_coina].swap_for[swap_count] = _coinb
-    self.coin_swap_indexes[_coina][_coinb] = swap_count
+def _register_coin_pair(_coina: address, _coinb: address, _key: uint256):
+    """
+    @dev When calling this function, arguments should be ordered such that
+        _coina < _coinb
+    """
+    # register _coinb in _coina's array of coins
+    coin_b_pos: uint256 = self.coins[_coina].swap_count
+    self.coins[_coina].swap_for[coin_b_pos] = _coinb
     self.coins[_coina].swap_count += 1
+    # register _coina in _coinb's array of coins
+    coin_a_pos: uint256 = self.coins[_coinb].swap_count
+    self.coins[_coinb].swap_for[coin_a_pos] = _coina
+    self.coins[_coinb].swap_count += 1
+    # register indexes (coina pos in coinb array, coinb pos in coina array)
+    if convert(_coina, uint256) < convert(_coinb, uint256): 
+        self.coin_swap_indexes[_key] = shift(coin_a_pos, 128) + coin_b_pos
+    else:
+        self.coin_swap_indexes[_key] = shift(coin_b_pos, 128) + coin_a_pos
 
 
 @internal
@@ -732,19 +747,35 @@ def _unregister_coin(_coin: address):
 
 
 @internal
-def _unregister_coin_pair(_coina: address, _coinb: address):
+def _unregister_coin_pair(_coina: address, _coinb: address, _coinb_idx: uint256):
+    """
+    @dev When calling this function, arguments should be ordered such that
+        _coina < _coinb
+    """
+    # decrement swap counts for both coins
     self.coins[_coina].swap_count -= 1
 
-    coinb_index: uint256 = self.coin_swap_indexes[_coina][_coinb]
-    last_index: uint256 = self.coins[_coina].swap_count
+    # retrieve the last currently occupied index in coina's array
+    coina_arr_last_idx: uint256 = self.coins[_coina].swap_count
 
-    if coinb_index < last_index:
-        coin_c: address = self.coins[_coina].swap_for[last_index]
-        self.coin_swap_indexes[_coina][coin_c] = coinb_index
-        self.coins[_coina].swap_for[coinb_index] = coin_c
+    # if coinb's index in coina's array is less than the last
+    # overwrite it's position with the last coin
+    if _coinb_idx < coina_arr_last_idx:
+        # here's our last coin in coina's array
+        coin_c: address = self.coins[_coina].swap_for[coina_arr_last_idx]
+        # get the bitwise_xor of the pair to retrieve their indexes
+        key: uint256 = bitwise_xor(convert(_coina, uint256), convert(coin_c, uint256))
+        indexes: uint256 = self.coin_swap_indexes[key]
 
-    self.coin_swap_indexes[_coina][_coinb] = 0
-    self.coins[_coina].swap_for[last_index] = ZERO_ADDRESS
+        # update the pairing's indexes
+        if convert(_coina, uint256) < convert(coin_c, uint256):
+            self.coin_swap_indexes[key] = indexes / 2 ** 128 + _coinb_idx
+        else:
+            self.coin_swap_indexes[key] = shift(_coinb_idx, 128) + indexes % 2 ** 128
+        # set _coinb_idx in coina's array to coin_c
+        self.coins[_coina].swap_for[_coinb_idx] = coin_c
+
+    self.coins[_coina].swap_for[coina_arr_last_idx] = ZERO_ADDRESS
 
 
 @internal
@@ -791,8 +822,7 @@ def _get_new_pool_coins(
 
             # register the coin pair
             if length == 0:
-                self._register_coin_pair(coin_list[i], coin_list[x])
-                self._register_coin_pair(coin_list[x], coin_list[i])
+                self._register_coin_pair(coin_list[x], coin_list[i], key)
 
     return coin_list
 
@@ -824,8 +854,14 @@ def _remove_market(_pool: address, _coina: address, _coinb: address):
     key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
     length: uint256 = self.market_counts[key] - 1
     if length == 0:
-        self._unregister_coin_pair(_coina, _coinb)
-        self._unregister_coin_pair(_coinb, _coina)
+        indexes: uint256 = self.coin_swap_indexes[key]
+        if convert(_coina, uint256) < convert(_coinb, uint256):
+            self._unregister_coin_pair(_coina, _coinb, indexes % 2 ** 128)
+            self._unregister_coin_pair(_coinb, _coina, shift(indexes, -128))
+        else:
+            self._unregister_coin_pair(_coina, _coinb, shift(indexes, -128))
+            self._unregister_coin_pair(_coinb, _coina, indexes % 2 ** 128)
+        self.coin_swap_indexes[key] = 0
     for i in range(65536):
         if i > length:
             break
@@ -1019,8 +1055,7 @@ def add_metapool(
 
             # register the coin pair
             if length == 0:
-                self._register_coin_pair(coins[i], base_coins[x])
-                self._register_coin_pair(base_coins[x], coins[i])
+                self._register_coin_pair(coins[i], base_coins[x], key)
 
 
 @external
@@ -1097,8 +1132,8 @@ def remove_pool(_pool: address):
                 self._remove_market(_pool, ucoin, ucoinx)
 
             if is_meta and not ucoin in coins:
-                self._register_coin_pair(ucoin, ucoinx)
-                self._register_coin_pair(ucoinx, ucoin)
+                key: uint256 = bitwise_xor(convert(ucoin, uint256), convert(ucoinx, uint256))
+                self._register_coin_pair(ucoin, ucoinx, key)
 
     self.pool_data[_pool].base_pool = ZERO_ADDRESS
     self.last_updated = block.timestamp
