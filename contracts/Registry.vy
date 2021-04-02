@@ -13,7 +13,7 @@ struct CoinInfo:
     index: uint256
     register_count: uint256
     swap_count: uint256
-    swap_for: address[4096]
+    swap_for: address[MAX_INT128]
 
 struct PoolArray:
     location: uint256
@@ -709,10 +709,6 @@ def _register_coin(_coin: address):
 
 @internal
 def _register_coin_pair(_coina: address, _coinb: address, _key: uint256):
-    """
-    @dev When calling this function, arguments should be ordered such that
-        _coina < _coinb
-    """
     # register _coinb in _coina's array of coins
     coin_b_pos: uint256 = self.coins[_coina].swap_count
     self.coins[_coina].swap_for[coin_b_pos] = _coinb
@@ -749,8 +745,7 @@ def _unregister_coin(_coin: address):
 @internal
 def _unregister_coin_pair(_coina: address, _coinb: address, _coinb_idx: uint256):
     """
-    @dev When calling this function, arguments should be ordered such that
-        _coina < _coinb
+    @param _coinb_idx the index of _coinb in _coina's array of unique coin's 
     """
     # decrement swap counts for both coins
     self.coins[_coina].swap_count -= 1
