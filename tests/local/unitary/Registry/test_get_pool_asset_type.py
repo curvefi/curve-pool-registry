@@ -24,9 +24,10 @@ def setup(registry, alice, swap, lp_token, n_coins, is_v1, underlying_decimals):
 
 @pytest.mark.once
 def test_set_pool_asset_type(registry, alice, swap):
-    registry.set_pool_asset_type(swap, 42, {"from": alice})
+    tx = registry.set_pool_asset_type(swap, 42, {"from": alice})
 
     assert registry.get_pool_asset_type(swap) == 42
+    assert registry.last_updated() == tx.timestamp
 
 
 @pytest.mark.once
@@ -38,9 +39,12 @@ def test_get_pool_asset_type_reverts_on_fail(registry, bob):
 @pytest.mark.once
 def test_batch_set_pool_asset_type(registry, alice, swap):
     asset_types = [42] + [0] * 31
-    registry.batch_set_pool_asset_type([swap] + [ZERO_ADDRESS] * 31, asset_types, {"from": alice})
+    tx = registry.batch_set_pool_asset_type(
+        [swap] + [ZERO_ADDRESS] * 31, asset_types, {"from": alice}
+    )
 
     assert registry.get_pool_asset_type(swap) == 42
+    assert registry.last_updated() == tx.timestamp
 
 
 @pytest.mark.once

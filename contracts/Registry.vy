@@ -1220,6 +1220,7 @@ def set_pool_asset_type(_pool: address, _asset_type: uint256):
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.pool_data[_pool].asset_type = _asset_type
+    self.last_updated = block.timestamp
 
 
 @external
@@ -1236,3 +1237,4 @@ def batch_set_pool_asset_type(_pools: address[32], _asset_types: uint256[32]):
         if _pools[i] == ZERO_ADDRESS:
             break
         self.pool_data[_pools[i]].asset_type = _asset_types[i]
+    self.last_updated = block.timestamp
