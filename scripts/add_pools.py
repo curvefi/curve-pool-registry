@@ -13,6 +13,7 @@ GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
 
 RATE_METHOD_IDS = {
     "ATokenMock": "0x00000000",
+    "aETH": "0x71ca337d",  # ratio - requires a rate calculator deployment
     "cERC20": "0x182df0f5",  # exchangeRateStored
     "IdleToken": "0x7ff9b596",  # tokenPrice
     "renERC20": "0xbd6d894d",  # exchangeRateCurrent
@@ -93,11 +94,12 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
     """
     balance = deployer.balance()
     registry = Registry.at(registry)
-    pool_data = get_pool_data()
+    # sort keys leaving metapools last
+    pool_data = sorted(get_pool_data().items(), key=lambda item: item[1].get("base_pool", ""))
 
     print("Adding pools to registry...")
 
-    for name, data in pool_data.items():
+    for name, data in pool_data:
         pool = data["swap_address"]
         if registry.get_n_coins(pool)[0] == 0:
             print(f"\nAdding {name}...")
