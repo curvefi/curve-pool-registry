@@ -981,7 +981,8 @@ def add_metapool(
     _n_coins: uint256,
     _lp_token: address,
     _decimals: uint256,
-    _name: String[64]
+    _name: String[64],
+    _base_pool: address = ZERO_ADDRESS
 ):
     """
     @notice Add a pool to the registry
@@ -993,7 +994,10 @@ def add_metapool(
     @param _name The name of the pool
     """
     base_coin_offset: uint256 = _n_coins - 1
-    base_pool: address = CurveMetapool(_pool).base_pool()
+
+    base_pool: address = _base_pool
+    if base_pool == ZERO_ADDRESS:
+        base_pool = CurveMetapool(_pool).base_pool()
     base_n_coins: uint256 = shift(self.pool_data[base_pool].n_coins, -128)
     assert base_n_coins > 0  # dev: base pool unknown
 
