@@ -43,7 +43,7 @@ def pytest_collection_modifyitems(config, items):
     seen = {}
 
     for item in items.copy():
-        pool_name = item.callspec.params["pool_data"]
+        pool_name = item.callspec.params["pool_name"]
         pool_data = _pooldata[pool_name]
         base_pool = pool_data.get("base_pool")
         if target_pool and pool_name not in target_pool:
@@ -107,9 +107,14 @@ def pytest_collection_finish(session):
 
 
 @pytest.fixture(scope="session", params=_pooldata.keys())
-def pool_data(request):
+def pool_name(request):
+    return request.param
+
+
+@pytest.fixture(scope="session")
+def pool_data(pool_name):
     # main parametrization fixture, pulls pool data from `./pooldata.json`
-    return _pooldata[request.param]
+    return _pooldata[pool_name]
 
 
 @pytest.fixture(scope="session")
@@ -126,12 +131,12 @@ def provider(AddressProvider, alice):
 
 
 @pytest.fixture(scope="module")
-def registry(Registry, pool_data, base_pool_data, alice, provider, gauge_controller):
+def registry(Registry, pool_name, pool_data, base_pool_data, alice, provider, gauge_controller):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     if base_pool_data:
-        add_pool(base_pool_data, registry, alice)
+        add_pool(base_pool_data, registry, alice, pool_data["base_pool"])
 
-    add_pool(pool_data, registry, alice)
+    add_pool(pool_data, registry, alice, pool_name)
 
     yield registry
 
