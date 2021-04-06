@@ -992,6 +992,7 @@ def add_metapool(
     @param _lp_token Pool deposit token address
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _name The name of the pool
+    @param _base_pool Address of the base_pool useful for adding factory pools
     """
     base_coin_offset: uint256 = _n_coins - 1
 
