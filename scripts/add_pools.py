@@ -6,7 +6,7 @@ from scripts.get_pool_data import get_pool_data
 from scripts.utils import pack_values
 
 # modify this prior to mainnet use
-DEPLOYER = accounts.at("0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a", force=True)
+DEPLOYER = "0x7EeAC6CDdbd1D0B8aF061742D41877D7F707289a"
 
 REGISTRY = "0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c"
 GAUGE_CONTROLLER = "0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB"
@@ -92,6 +92,7 @@ def main(registry=REGISTRY, deployer=DEPLOYER):
     * Add new pools to the existing registry deployment
     * Add / update pool gauges within the registry
     """
+    deployer = accounts.at(deployer, force=True)
     balance = deployer.balance()
     registry = Registry.at(registry)
     # sort keys leaving metapools last
