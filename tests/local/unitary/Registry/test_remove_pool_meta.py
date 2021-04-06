@@ -10,7 +10,7 @@ from scripts.utils import pack_values
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module", autouse=True, params=["meta", "factory"])
 def registry(
     Registry,
     provider,
@@ -26,6 +26,7 @@ def registry(
     underlying_decimals,
     meta_decimals,
     chain,
+    request,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -41,7 +42,13 @@ def registry(
         {"from": alice},
     )
     registry.add_metapool(
-        meta_swap, n_metacoins, meta_lp_token, pack_values(meta_decimals), "", {"from": alice}
+        meta_swap,
+        n_metacoins,
+        meta_lp_token,
+        pack_values(meta_decimals),
+        "",
+        ZERO_ADDRESS if request.param == "meta" else swap,
+        {"from": alice},
     )
     chain.sleep(10)
     registry.remove_pool(meta_swap, {"from": alice})

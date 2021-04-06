@@ -9,7 +9,7 @@ from scripts.utils import pack_values
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module", autouse=True, params=["meta", "factory"])
 def registry(
     Registry,
     provider,
@@ -24,6 +24,7 @@ def registry(
     is_v1,
     underlying_decimals,
     meta_decimals,
+    request,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -38,12 +39,16 @@ def registry(
         "",
         {"from": alice},
     )
+    # A factory pool is essentially a metapool, the default for base_pool arg
+    # is ZERO_ADDRESS so we can use a ternary to just switch between testing
+    # explicitly setting the base_pool arg
     registry.add_metapool(
         meta_swap,
         n_metacoins,
         meta_lp_token,
         pack_values(meta_decimals),
         "Meta Swap",
+        ZERO_ADDRESS if request.param == "meta" else swap,
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
