@@ -1,3 +1,7 @@
+import itertools as it
+import math
+from collections import Counter, defaultdict
+
 import pytest
 
 from scripts.utils import pack_values
@@ -7,15 +11,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture(scope="module", autouse=True)
 def registry(
-    Registry,
-    provider,
-    gauge_controller,
-    alice,
-    swap,
-    lp_token,
-    n_coins,
-    is_v1,
-    underlying_decimals,
+    Registry, provider, gauge_controller, alice, swap, lp_token, n_coins, is_v1, underlying_decimals
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -27,6 +23,7 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "Base Swap",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
@@ -151,3 +148,59 @@ def test_get_pool_from_lp_token(registry, swap, lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, swap, lp_token):
     assert registry.get_lp_token(swap) == lp_token
+
+
+def test_coin_count_is_correct(registry, underlying_coins):
+    coin_set = set(map(str, underlying_coins))
+
+    assert registry.coin_count() == len(coin_set)
+
+
+def test_get_all_swappable_coins(registry, underlying_coins):
+    expected_coin_set = set(map(str, underlying_coins))
+    coin_count = registry.coin_count()
+
+    coins = set(registry.get_coin(i) for i in range(coin_count))
+
+    assert coins == expected_coin_set
+
+
+@pytest.mark.once
+def test_last_updated_getter(registry, history):
+    registry_txs = history.filter(receiver=registry.address)
+    assert math.isclose(registry_txs[-1].timestamp, registry.last_updated())
+
+
+def test_coin_swap_count(registry, underlying_coins):
+    underlying_coins = set(map(str, underlying_coins))
+    pairings = it.combinations(underlying_coins, 2)
+    counts = Counter(it.chain(*pairings))
+
+    for coin in underlying_coins:
+        assert registry.get_coin_swap_count(coin) == counts[coin]
+
+
+def test_swap_coin_for(registry, underlying_coins):
+    underlying_coins = set(map(str, underlying_coins))
+    pairings = it.combinations(underlying_coins, 2)
+    swaps = defaultdict(set)
+
+    for coina, coinb in pairings:
+        swaps[coina].add(coinb)
+        swaps[coinb].add(coina)
+
+    for coin in underlying_coins:
+        coin_swap_count = registry.get_coin_swap_count(coin)
+        swap_coins = {registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)}
+
+        assert swap_coins == swaps[coin]
+
+
+@pytest.mark.once
+def test_is_metapool(registry, swap):
+    assert registry.is_meta(swap) is False
+
+
+@pytest.mark.once
+def test_get_name(registry, swap):
+    assert registry.get_pool_name(swap) == "Base Swap"

@@ -1,3 +1,7 @@
+import itertools
+import math
+from collections import Counter, defaultdict
+
 import pytest
 
 from scripts.utils import pack_values
@@ -29,6 +33,7 @@ def registry(
         pack_values(underlying_decimals),
         hasattr(lending_swap, "initial_A"),
         is_v1,
+        "Lending Swap",
         {"from": alice},
     )
     provider.set_address(0, registry, {"from": alice})
@@ -218,3 +223,70 @@ def test_get_pool_from_lp_token(registry, lending_swap, lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, lending_swap, lp_token):
     assert registry.get_lp_token(lending_swap) == lp_token
+
+
+def test_coin_count_is_correct(registry, wrapped_coins, underlying_coins):
+    coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
+
+    assert registry.coin_count() == len(coin_set)
+
+
+def test_get_all_swappable_coins(registry, wrapped_coins, underlying_coins):
+    expected_coin_set = set(map(str, itertools.chain(wrapped_coins, underlying_coins)))
+    coin_count = registry.coin_count()
+
+    coins = set(registry.get_coin(i) for i in range(coin_count))
+
+    assert coins == expected_coin_set
+
+
+@pytest.mark.once
+def test_last_updated_getter(registry, history):
+    registry_txs = history.filter(receiver=registry.address)
+    assert math.isclose(registry_txs[-1].timestamp, registry.last_updated())
+
+
+def test_coin_swap_count(registry, wrapped_coins, underlying_coins):
+    wrapped_coins = list(map(str, wrapped_coins))
+    underlying_coins = list(map(str, underlying_coins))
+
+    counter = Counter()
+
+    wrapped_pairs = itertools.chain(*itertools.combinations(wrapped_coins, 2))
+    underlying_pairs = itertools.chain(*itertools.combinations(underlying_coins, 2))
+
+    counter.update(itertools.chain(wrapped_pairs, underlying_pairs))
+
+    for coin in counter.keys():
+        assert registry.get_coin_swap_count(coin) == counter[coin]
+
+
+def test_swap_coin_for(registry, wrapped_coins, underlying_coins):
+    wrapped_coins = list(map(str, wrapped_coins))
+    underlying_coins = list(map(str, underlying_coins))
+    pairings = defaultdict(set)
+
+    wrapped_pairs = itertools.combinations(wrapped_coins, 2)
+    underlying_pairs = itertools.combinations(underlying_coins, 2)
+
+    for coin_a, coin_b in itertools.chain(wrapped_pairs, underlying_pairs):
+        pairings[coin_a].add(coin_b)
+        pairings[coin_b].add(coin_a)
+
+    for coin in pairings.keys():
+        coin_swap_count = registry.get_coin_swap_count(coin)
+        available_swaps = {
+            registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)
+        }
+
+        assert available_swaps == pairings[coin]
+
+
+@pytest.mark.once
+def test_is_metapool(registry, lending_swap):
+    assert registry.is_meta(lending_swap) is False
+
+
+@pytest.mark.once
+def test_get_name(registry, lending_swap):
+    assert registry.get_pool_name(lending_swap) == "Lending Swap"

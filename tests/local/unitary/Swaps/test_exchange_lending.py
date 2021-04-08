@@ -27,6 +27,7 @@ def registry(
         0,
         hasattr(lending_swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
     yield registry

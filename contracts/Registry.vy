@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.11
 """
 @title Curve Registry
 @license MIT
@@ -9,17 +9,25 @@ MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(int128) = 100
 
 
+struct CoinInfo:
+    index: uint256
+    register_count: uint256
+    swap_count: uint256
+    swap_for: address[MAX_INT128]
+
 struct PoolArray:
     location: uint256
     decimals: uint256
     underlying_decimals: uint256
-    rate_method_id: bytes32
+    rate_info: bytes32
     base_pool: address
     coins: address[MAX_COINS]
     ul_coins: address[MAX_COINS]
     n_coins: uint256  # [coins, underlying coins] tightly packed as uint128[2]
     has_initial_A: bool
     is_v1: bool
+    name: String[64]
+    asset_type: uint256
 
 struct PoolParams:
     A: uint256
@@ -36,6 +44,7 @@ struct PoolParams:
 
 interface AddressProvider:
     def admin() -> address: view
+    def get_address(_id: uint256) -> address: view
 
 interface ERC20:
     def balanceOf(_addr: address) -> uint256: view
@@ -75,6 +84,9 @@ interface LiquidityGauge:
 interface GaugeController:
     def gauge_types(gauge: address) -> int128: view
 
+interface RateCalc:
+    def get_rate(_coin: address) -> uint256: view
+
 
 event PoolAdded:
     pool: indexed(address)
@@ -90,6 +102,13 @@ pool_list: public(address[65536])   # master list of pools
 pool_count: public(uint256)         # actual length of pool_list
 
 pool_data: HashMap[address, PoolArray]
+
+coin_count: public(uint256)  # total unique coins registered
+coins: HashMap[address, CoinInfo]
+get_coin: public(address[65536])  # unique list of registered coins
+# bitwise_xor(coina, coinb) -> (coina_pos, coinb_pos) sorted
+# stored as uint128[2]
+coin_swap_indexes: HashMap[uint256, uint256]
 
 # lp token -> pool
 get_pool_from_lp_token: public(HashMap[address, address])
@@ -114,6 +133,8 @@ markets: HashMap[uint256, address[65536]]
 market_counts: HashMap[uint256, uint256]
 
 liquidity_gauges: HashMap[address, address[10]]
+
+last_updated: public(uint256)
 
 
 @external
@@ -148,17 +169,21 @@ def _get_rates(_pool: address) -> uint256[MAX_COINS]:
     rates: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
     base_pool: address = self.pool_data[_pool].base_pool
     if base_pool == ZERO_ADDRESS:
-        rate_method_id: Bytes[4] = slice(self.pool_data[_pool].rate_method_id, 28, 4)
+        rate_info: bytes32 = self.pool_data[_pool].rate_info
+        rate_calc_addr: uint256 = convert(slice(rate_info, 8, 20), uint256)
+        rate_method_id: Bytes[4] = slice(rate_info, 28, 4)
 
         for i in range(MAX_COINS):
             coin: address = self.pool_data[_pool].coins[i]
             if coin == ZERO_ADDRESS:
                 break
-            if coin == self.pool_data[_pool].ul_coins[i]:
+            if rate_info == EMPTY_BYTES32 or coin == self.pool_data[_pool].ul_coins[i]:
                 rates[i] = 10 ** 18
+            elif rate_calc_addr != 0:
+                rates[i] = RateCalc(convert(rate_calc_addr, address)).get_rate(coin)
             else:
                 rates[i] = convert(
-                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True), # dev: bad response
+                    raw_call(coin, rate_method_id, max_outsize=32, is_static_call=True),  # dev: bad response
                     uint256
                 )
     else:
@@ -578,6 +603,62 @@ def estimate_gas_used(_pool: address, _from: address, _to: address) -> uint256:
 
     return total
 
+@view
+@external
+def is_meta(_pool: address) -> bool:
+    """
+    @notice Verify `_pool` is a metapool
+    @param _pool Pool address
+    @return True if `_pool` is a metapool
+    """
+    return self.pool_data[_pool].base_pool != ZERO_ADDRESS
+
+
+@view
+@external
+def get_pool_name(_pool: address) -> String[64]:
+    """
+    @notice Get the given name for a pool
+    @param _pool Pool address
+    @return The name of a pool
+    """
+    return self.pool_data[_pool].name
+
+
+@view
+@external
+def get_coin_swap_count(_coin: address) -> uint256:
+    """
+    @notice Get the number of unique coins available to swap `_coin` against
+    @param _coin Coin address
+    @return The number of unique coins available to swap for
+    """
+    return self.coins[_coin].swap_count
+
+
+@view
+@external
+def get_coin_swap_complement(_coin: address, _index: uint256) -> address:
+    """
+    @notice Get the coin available to swap against `_coin` at `_index`
+    @param _coin Coin address
+    @param _index An index in the `_coin`'s set of available counter
+        coin's
+    @return Address of a coin available to swap against `_coin`
+    """
+    return self.coins[_coin].swap_for[_index]
+
+
+@view
+@external
+def get_pool_asset_type(_pool: address) -> uint256:
+    """
+    @notice Query the asset type of `_pool`
+    @param _pool Pool Address
+    @return The asset type as an unstripped string
+    """
+    return self.pool_data[_pool].asset_type
+
 
 # internal functionality used in admin setters
 
@@ -587,9 +668,10 @@ def _add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[64],
 ):
     assert _sender == self.address_provider.admin()  # dev: admin-only function
     assert _lp_token != ZERO_ADDRESS
@@ -601,16 +683,95 @@ def _add_pool(
     self.pool_list[length] = _pool
     self.pool_count = length + 1
     self.pool_data[_pool].location = length
-    self.pool_data[_pool].rate_method_id = _rate_method_id
+    self.pool_data[_pool].rate_info = _rate_info
     self.pool_data[_pool].has_initial_A = _has_initial_A
     self.pool_data[_pool].is_v1 = _is_v1
     self.pool_data[_pool].n_coins = _n_coins
+    self.pool_data[_pool].name = _name
 
     # update public mappings
     self.get_pool_from_lp_token[_lp_token] = _pool
     self.get_lp_token[_pool] = _lp_token
+    self.last_updated = block.timestamp
 
-    log PoolAdded(_pool, slice(_rate_method_id, 28, 4))
+    log PoolAdded(_pool, slice(_rate_info, 28, 4))
+
+
+@internal
+def _register_coin(_coin: address):
+    if self.coins[_coin].register_count == 0:
+        coin_count: uint256 = self.coin_count
+        self.coins[_coin].index = coin_count
+        self.get_coin[coin_count] = _coin
+        self.coin_count += 1
+    self.coins[_coin].register_count += 1
+
+
+@internal
+def _register_coin_pair(_coina: address, _coinb: address, _key: uint256):
+    # register _coinb in _coina's array of coins
+    coin_b_pos: uint256 = self.coins[_coina].swap_count
+    self.coins[_coina].swap_for[coin_b_pos] = _coinb
+    self.coins[_coina].swap_count += 1
+    # register _coina in _coinb's array of coins
+    coin_a_pos: uint256 = self.coins[_coinb].swap_count
+    self.coins[_coinb].swap_for[coin_a_pos] = _coina
+    self.coins[_coinb].swap_count += 1
+    # register indexes (coina pos in coinb array, coinb pos in coina array)
+    if convert(_coina, uint256) < convert(_coinb, uint256): 
+        self.coin_swap_indexes[_key] = shift(coin_a_pos, 128) + coin_b_pos
+    else:
+        self.coin_swap_indexes[_key] = shift(coin_b_pos, 128) + coin_a_pos
+
+
+@internal
+def _unregister_coin(_coin: address):
+    self.coins[_coin].register_count -= 1
+
+    if self.coins[_coin].register_count == 0:
+        self.coin_count -= 1
+        coin_count: uint256 = self.coin_count
+        location: uint256 = self.coins[_coin].index
+
+        if location < coin_count:
+            coin_b: address = self.get_coin[coin_count]
+            self.get_coin[location] = coin_b
+            self.coins[coin_b].index = location
+
+        self.coins[_coin].index = 0
+        self.get_coin[coin_count] = ZERO_ADDRESS
+
+
+@internal
+def _unregister_coin_pair(_coina: address, _coinb: address, _coinb_idx: uint256):
+    """
+    @param _coinb_idx the index of _coinb in _coina's array of unique coin's 
+    """
+    # decrement swap counts for both coins
+    self.coins[_coina].swap_count -= 1
+
+    # retrieve the last currently occupied index in coina's array
+    coina_arr_last_idx: uint256 = self.coins[_coina].swap_count
+
+    # if coinb's index in coina's array is less than the last
+    # overwrite it's position with the last coin
+    if _coinb_idx < coina_arr_last_idx:
+        # here's our last coin in coina's array
+        coin_c: address = self.coins[_coina].swap_for[coina_arr_last_idx]
+        # get the bitwise_xor of the pair to retrieve their indexes
+        key: uint256 = bitwise_xor(convert(_coina, uint256), convert(coin_c, uint256))
+        indexes: uint256 = self.coin_swap_indexes[key]
+
+        # update the pairing's indexes
+        if convert(_coina, uint256) < convert(coin_c, uint256):
+            # least complicated most readable way of shifting twice to remove the lower order bits
+            self.coin_swap_indexes[key] = shift(shift(indexes, -128), 128) + _coinb_idx
+        else:
+            self.coin_swap_indexes[key] = shift(_coinb_idx, 128) + indexes % 2 ** 128
+        # set _coinb_idx in coina's array to coin_c
+        self.coins[_coina].swap_for[_coinb_idx] = coin_c
+
+    self.coins[_coina].swap_for[coina_arr_last_idx] = ZERO_ADDRESS
 
 
 @internal
@@ -643,6 +804,7 @@ def _get_new_pool_coins(
         if i == _n_coins:
             break
 
+        self._register_coin(coin_list[i])
         # add pool to markets
         i2: uint256 = i + 1
         for x in range(i2, i2 + MAX_COINS):
@@ -653,6 +815,10 @@ def _get_new_pool_coins(
             length: uint256 = self.market_counts[key]
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
+
+            # register the coin pair
+            if length == 0:
+                self._register_coin_pair(coin_list[x], coin_list[i], key)
 
     return coin_list
 
@@ -683,6 +849,15 @@ def _get_new_pool_decimals(_coins: address[MAX_COINS], _n_coins: uint256) -> uin
 def _remove_market(_pool: address, _coina: address, _coinb: address):
     key: uint256 = bitwise_xor(convert(_coina, uint256), convert(_coinb, uint256))
     length: uint256 = self.market_counts[key] - 1
+    if length == 0:
+        indexes: uint256 = self.coin_swap_indexes[key]
+        if convert(_coina, uint256) < convert(_coinb, uint256):
+            self._unregister_coin_pair(_coina, _coinb, indexes % 2 ** 128)
+            self._unregister_coin_pair(_coinb, _coina, shift(indexes, -128))
+        else:
+            self._unregister_coin_pair(_coina, _coinb, shift(indexes, -128))
+            self._unregister_coin_pair(_coinb, _coina, indexes % 2 ** 128)
+        self.coin_swap_indexes[key] = 0
     for i in range(65536):
         if i > length:
             break
@@ -701,11 +876,12 @@ def add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _decimals: uint256,
     _underlying_decimals: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[64],
 ):
     """
     @notice Add a pool to the registry
@@ -713,19 +889,22 @@ def add_pool(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded four-byte function signature to query coin rates
+    @param _rate_info Encoded twenty-byte rate calculator address and/or four-byte
+        function signature to query coin rates
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _underlying_decimals Underlying coin decimal values, tightly packed
                                 as uint8 in a little-endian bytes32
+    @param _name The name of the pool
     """
     self._add_pool(
         msg.sender,
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
-        _rate_method_id,
+        _rate_info,
         _has_initial_A,
         _is_v1,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
@@ -746,11 +925,12 @@ def add_pool_without_underlying(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
-    _rate_method_id: bytes32,
+    _rate_info: bytes32,
     _decimals: uint256,
     _use_rates: uint256,
     _has_initial_A: bool,
     _is_v1: bool,
+    _name: String[64],
 ):
     """
     @notice Add a pool to the registry
@@ -758,19 +938,22 @@ def add_pool_without_underlying(
     @param _pool Pool address to add
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
-    @param _rate_method_id Encoded four-byte function signature to query coin rates
+    @param _rate_info Encoded twenty-byte rate calculator address and/or four-byte
+        function signature to query coin rates
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
     @param _use_rates Boolean array indicating which coins use lending rates,
                       tightly packed in a little-endian bytes32
+    @param _name The name of the pool
     """
     self._add_pool(
         msg.sender,
         _pool,
         _n_coins + shift(_n_coins, 128),
         _lp_token,
-        _rate_method_id,
+        _rate_info,
         _has_initial_A,
         _is_v1,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, _is_v1)
@@ -792,13 +975,14 @@ def add_pool_without_underlying(
     self.pool_data[_pool].underlying_decimals = udecimals
 
 
-
 @external
 def add_metapool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
     _decimals: uint256,
+    _name: String[64],
+    _base_pool: address = ZERO_ADDRESS
 ):
     """
     @notice Add a pool to the registry
@@ -807,9 +991,14 @@ def add_metapool(
     @param _n_coins Number of coins in the pool
     @param _lp_token Pool deposit token address
     @param _decimals Coin decimal values, tightly packed as uint8 in a little-endian bytes32
+    @param _name The name of the pool
+    @param _base_pool Address of the base_pool useful for adding factory pools
     """
     base_coin_offset: uint256 = _n_coins - 1
-    base_pool: address = CurveMetapool(_pool).base_pool()
+
+    base_pool: address = _base_pool
+    if base_pool == ZERO_ADDRESS:
+        base_pool = CurveMetapool(_pool).base_pool()
     base_n_coins: uint256 = shift(self.pool_data[base_pool].n_coins, -128)
     assert base_n_coins > 0  # dev: base pool unknown
 
@@ -821,6 +1010,7 @@ def add_metapool(
         EMPTY_BYTES32,
         True,
         False,
+        _name,
     )
 
     coins: address[MAX_COINS] = self._get_new_pool_coins(_pool, _n_coins, False, False)
@@ -843,6 +1033,7 @@ def add_metapool(
             x: uint256 = i - base_coin_offset
             coin = self.pool_data[base_pool].coins[x]
             base_coins[x] = coin
+            self._register_coin(base_coins[x])
         self.pool_data[_pool].ul_coins[i] = coin
 
     underlying_decimals: uint256 = shift(
@@ -862,6 +1053,10 @@ def add_metapool(
             length: uint256 = self.market_counts[key]
             self.markets[key][length] = _pool
             self.market_counts[key] = length + 1
+
+            # register the coin pair
+            if length == 0:
+                self._register_coin_pair(coins[i], base_coins[x], key)
 
 
 @external
@@ -895,7 +1090,8 @@ def remove_pool(_pool: address):
     self.pool_data[_pool].underlying_decimals = 0
     self.pool_data[_pool].decimals = 0
     self.pool_data[_pool].n_coins = 0
-    self.pool_data[_pool].base_pool = ZERO_ADDRESS
+    self.pool_data[_pool].name = ""
+    self.pool_data[_pool].asset_type = 0
 
     coins: address[MAX_COINS] = empty(address[MAX_COINS])
     ucoins: address[MAX_COINS] = empty(address[MAX_COINS])
@@ -908,10 +1104,14 @@ def remove_pool(_pool: address):
         if coins[i] != ZERO_ADDRESS:
             # delete coin address from pool_data
             self.pool_data[_pool].coins[i] = ZERO_ADDRESS
+            self._unregister_coin(coins[i])
         if ucoins[i] != ZERO_ADDRESS:
             # delete underlying_coin from pool_data
             self.pool_data[_pool].ul_coins[i] = ZERO_ADDRESS
+            if self.coins[ucoins[i]].register_count != 0:
+                self._unregister_coin(ucoins[i])
 
+    is_meta: bool = self.pool_data[_pool].base_pool != ZERO_ADDRESS
     for i in range(MAX_COINS):
         coin: address = coins[i]
         ucoin: address = ucoins[i]
@@ -932,6 +1132,12 @@ def remove_pool(_pool: address):
             if coin != ucoin or coinx != ucoinx:
                 self._remove_market(_pool, ucoin, ucoinx)
 
+            if is_meta and not ucoin in coins:
+                key: uint256 = bitwise_xor(convert(ucoin, uint256), convert(ucoinx, uint256))
+                self._register_coin_pair(ucoin, ucoinx, key)
+
+    self.pool_data[_pool].base_pool = ZERO_ADDRESS
+    self.last_updated = block.timestamp
     log PoolRemoved(_pool)
 
 
@@ -949,6 +1155,7 @@ def set_pool_gas_estimates(_addr: address[5], _amount: uint256[2][5]):
         if _pool == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_pool] = _amount[i]
+    self.last_updated = block.timestamp
 
 
 @external
@@ -965,6 +1172,7 @@ def set_coin_gas_estimates(_addr: address[10], _amount: uint256[10]):
         if _coin == ZERO_ADDRESS:
             break
         self.gas_estimate_values[_coin][0] = _amount[i]
+    self.last_updated = block.timestamp
 
 
 @external
@@ -977,6 +1185,7 @@ def set_gas_estimate_contract(_pool: address, _estimator: address):
     assert msg.sender == self.address_provider.admin()  # dev: admin-only function
 
     self.gas_estimate_contracts[_pool] = _estimator
+    self.last_updated = block.timestamp
 
 
 @external
@@ -1000,3 +1209,37 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
             self.liquidity_gauges[_pool][i] = ZERO_ADDRESS
         else:
             break
+    self.last_updated = block.timestamp
+
+
+@external
+def set_pool_asset_type(_pool: address, _asset_type: uint256):
+    """
+    @notice Set the asset type name for a curve pool
+    @dev This is a simple way to setting the cache of categories instead of
+        performing some computation for no reason. Pool's don't necessarily
+        change once they are deployed.
+    @param _pool Pool address
+    @param _asset_type String of asset type
+    """
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
+
+    self.pool_data[_pool].asset_type = _asset_type
+    self.last_updated = block.timestamp
+
+
+@external
+def batch_set_pool_asset_type(_pools: address[32], _asset_types: uint256[32]):
+    """
+    @notice Batch set the asset type name for curve pools
+    @dev This is a simple way of setting the cache of categories instead of
+        performing some computation for no reason. Pool's don't necessarily
+        change once they are deployed.
+    """
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
+
+    for i in range(32):
+        if _pools[i] == ZERO_ADDRESS:
+            break
+        self.pool_data[_pools[i]].asset_type = _asset_types[i]
+    self.last_updated = block.timestamp

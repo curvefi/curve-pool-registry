@@ -11,6 +11,7 @@ MAX_COINS: constant(int128) = 8
 
 interface AddressProvider:
     def get_registry() -> address: view
+    def admin() -> address: view
 
 interface Registry:
     def get_coins(_pool: address) -> address[MAX_COINS]: view
@@ -22,6 +23,8 @@ interface Registry:
     def get_rates(_pool: address) -> uint256[MAX_COINS]: view
     def get_lp_token(_pool: address) -> address: view
     def get_parameters(_pool: address) -> PoolParams: view
+    def is_meta(_pool: address) -> bool: view
+    def get_pool_name(_pool: address) -> String[64]: view
 
 
 struct PoolParams:
@@ -44,6 +47,8 @@ struct PoolInfo:
     rates: uint256[MAX_COINS]
     lp_token: address
     params: PoolParams
+    is_meta: bool
+    name: String[64]
 
 struct PoolCoins:
     coins: address[MAX_COINS]
@@ -99,4 +104,6 @@ def get_pool_info(_pool: address) -> PoolInfo:
         rates: Registry(registry).get_rates(_pool),
         lp_token: Registry(registry).get_lp_token(_pool),
         params: Registry(registry).get_parameters(_pool),
+        is_meta: Registry(registry).is_meta(_pool),
+        name: Registry(registry).get_pool_name(_pool),
     })

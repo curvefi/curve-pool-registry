@@ -1,3 +1,5 @@
+import math
+
 import brownie
 import pytest
 
@@ -17,6 +19,7 @@ def registry(
     n_coins,
     is_v1,
     underlying_decimals,
+    chain,
 ):
     registry = Registry.deploy(provider, gauge_controller, {"from": alice})
     registry.add_pool_without_underlying(
@@ -28,8 +31,10 @@ def registry(
         0,  # use rates
         hasattr(swap, "initial_A"),
         is_v1,
+        "",
         {"from": alice},
     )
+    chain.sleep(10)
     registry.remove_pool(swap, {"from": alice})
     yield registry
 
@@ -97,3 +102,39 @@ def test_get_pool_from_lp_token(registry, lp_token):
 @pytest.mark.once
 def test_get_lp_token(registry, swap):
     assert registry.get_lp_token(swap) == ZERO_ADDRESS
+
+
+def test_coin_count_is_correct(registry):
+
+    assert registry.coin_count() == 0
+
+
+def test_get_all_swappable_coins(registry, underlying_coins):
+    coin_count = len(underlying_coins)
+
+    coins = set(registry.get_coin(i) for i in range(coin_count))
+
+    assert coins == {ZERO_ADDRESS}
+
+
+@pytest.mark.once
+def test_last_updated_getter(registry, history):
+    registry_txs = history.filter(receiver=registry.address)
+    assert math.isclose(
+        registry_txs[-1].timestamp, registry.last_updated(), rel_tol=0.001, abs_tol=4
+    )
+
+
+def test_coin_swap_count(registry, underlying_coins):
+    for coin in underlying_coins:
+        assert registry.get_coin_swap_count(coin) == 0
+
+
+def test_swap_coin_for(registry, underlying_coins):
+    coin_set = set(map(str, underlying_coins))
+
+    for coin in coin_set:
+        coin_swap_count = len(coin_set) - 1
+        swap_coins = {registry.get_coin_swap_complement(coin, i) for i in range(coin_swap_count)}
+
+        assert swap_coins == {ZERO_ADDRESS}
