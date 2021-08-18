@@ -18,7 +18,7 @@ factory: public(address)
 chain_id: public(uint256)
 
 gauge_count: public(uint256)
-gauge_list: public(address[MAX_UINT256])
+gauge_list: public(address[MAX_INT128])
 # [pool_address 20 bytes][version 12 bytes]
 gauge_data: HashMap[address, uint256]
 
