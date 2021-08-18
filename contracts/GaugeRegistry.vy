@@ -36,7 +36,7 @@ def _get_proxy_codehash(_impl_addr: Bytes[20]) -> bytes32:
 
 
 @external
-def register(_gauge: address, _version: uint256, _pool: address = ZERO_ADDRESS):
+def register(_gauge: address, _pool: address, _version: uint256):
     impl_addr: Bytes[20] = slice(
         convert(Factory(self.factory).gauge_implementation(), bytes32), 12, 20
     )
