@@ -20,7 +20,6 @@ PROXY_POST_BYTECODE: constant(Bytes[15]) = 0x5af43d82803e903d91602b57fd5bf3
 
 
 factory: public(address)
-proxy_codehash: public(bytes32)
 chain_id: public(uint256)
 
 gauge_count: public(uint256)
@@ -37,17 +36,17 @@ def __init__():
 
 @external
 def register(_gauge: address, _pool: address, _version: uint256):
-    if msg.sender.is_contract:
-        proxy_codehash: bytes32 = keccak256(
-            concat(
-                PROXY_PRE_BYTECODE,
-                slice(convert(Factory(self.factory).gauge_implementation(), bytes32), 12, 20),
-                PROXY_POST_BYTECODE,
-            )
+    proxy_codehash: bytes32 = keccak256(
+        concat(
+            PROXY_PRE_BYTECODE,
+            slice(convert(Factory(self.factory).gauge_implementation(), bytes32), 12, 20),
+            PROXY_POST_BYTECODE,
         )
-        assert msg.sender.codehash == proxy_codehash
-    else:
-        assert msg.sender == AddressProvider(ADDR_PROVIDER).admin()
+    )
+    assert (
+        msg.sender.codehash == proxy_codehash
+        or msg.sender == AddressProvider(ADDR_PROVIDER).admin()
+    )
 
     index: uint256 = self.gauge_count
     self.gauge_list[index] = _gauge
