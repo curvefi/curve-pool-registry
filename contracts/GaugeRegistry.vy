@@ -28,7 +28,7 @@ gauge_data: HashMap[address, uint256]
 
 
 @external
-def __init__(_factory: address):
+def __init__():
     self.chain_id = chain.id
     self.factory = AddressProvider(ADDR_PROVIDER).get_address(3)  # metapool factory
 
