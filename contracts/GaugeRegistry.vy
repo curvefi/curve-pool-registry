@@ -27,6 +27,8 @@ gauge_list: public(address[MAX_INT128])
 # [pool_address 20 bytes][version 12 bytes]
 gauge_data: HashMap[address, uint256]
 
+last_updated: public(uint256)
+
 
 @external
 def __init__():
@@ -53,6 +55,8 @@ def register(_gauge: address, _pool: address, _version: uint256):
     self.gauge_count = index + 1
 
     self.gauge_data[_gauge] = shift(convert(_pool, uint256), 96) + _version
+
+    self.last_updated = block.timestamp
 
 
 @view
