@@ -5,16 +5,20 @@
 """
 
 
+interface AddressProvider:
+    def admin() -> address: view
+    def get_address(_id: uint256) -> address: view
+
 interface Factory:
     def gauge_implementation() -> address: view
 
 
+ADDR_PROVIDER: constant(address) = 0x0000000022D53366457F9D5E68EC105046FC4383
 PROXY_PRE_BYTECODE: constant(Bytes[15]) = 0x366000600037611000600036600073
 PROXY_POST_BYTECODE: constant(Bytes[16]) = 0x5AF4602C57600080FD5B6110006000F3
 
 
-owner: public(address)
-factory: public(address)
+proxy_codehash: public(bytes32)
 chain_id: public(uint256)
 
 gauge_count: public(uint256)
@@ -25,22 +29,23 @@ gauge_data: HashMap[address, uint256]
 
 @external
 def __init__(_factory: address):
-    self.owner = msg.sender
     self.chain_id = chain.id
-
-
-@pure
-@internal
-def _get_proxy_codehash(_impl_addr: Bytes[20]) -> bytes32:
-    return keccak256(concat(PROXY_PRE_BYTECODE, _impl_addr, PROXY_POST_BYTECODE))
+    self.factory = AddressProvider(ADDR_PROVIDER).get_address(3)  # metapool factory
 
 
 @external
 def register(_gauge: address, _pool: address, _version: uint256):
-    impl_addr: Bytes[20] = slice(
-        convert(Factory(self.factory).gauge_implementation(), bytes32), 12, 20
-    )
-    assert msg.sender.codehash == self._get_proxy_codehash(impl_addr) or msg.sender == self.owner
+    if msg.sender.is_contract:
+        proxy_codehash: bytes32 = keccak256(
+            concat(
+                PROXY_PRE_BYTECODE,
+                slice(convert(Factory(self.factory).gauge_implementation(), bytes32), 12, 20),
+                PROXY_POST_BYTECODE,
+            )
+        )
+        assert msg.sender.codehash == proxy_codehash
+    else:
+        assert msg.sender == AddressProvider(ADDR_PROVIDER).admin()
 
     index: uint256 = self.gauge_count
     self.gauge_list[index] = _gauge
