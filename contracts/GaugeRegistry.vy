@@ -64,3 +64,8 @@ def pool_address(_gauge: address) -> address:
 @external
 def gauge_version(_gauge: address) -> uint256:
     return self.gauge_data[_gauge] % 2 ** 96
+
+
+@external
+def cache_factory():
+    self.factory = AddressProvider(ADDR_PROVIDER).get_address(3)
