@@ -2,7 +2,7 @@ import pytest
 from brownie import ERC20, ERC20NoReturn, ERC20ReturnFalse, cERC20, compile_source, yERC20
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-ADDR_PROVIDER = "0x0000000022D53366457F9D5E68EC105046FC4383"
+ADDR_PROVIDER = "0x0000000022D53366457F9d5E68Ec105046FC4383"
 
 RATE_METHOD_IDS = {
     "cERC20": cERC20.signatures["exchangeRateStored"],
@@ -334,11 +334,11 @@ def mock_factory(alice, MockFactory, gauge_implementation, provider):
     # give the factory id # 3
     while provider.max_id() < 4:
         provider.add_new_id(factory, "Metapool Factory", {"from": alice})
-    return mock_factory
+    return factory
 
 
 @pytest.fixture(scope="module")
-def gauge_registry(alice, provider, GaugeRegistry):
+def gauge_registry(alice, provider, GaugeRegistry, mock_factory):
     NewGaugeRegistry = compile_source(
         GaugeRegistry._build["source"].replace(ADDR_PROVIDER, provider.address)
     ).Vyper
