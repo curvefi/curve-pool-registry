@@ -14,6 +14,7 @@ interface Factory:
 
 
 ADDR_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
+# See: https://eips.ethereum.org/EIPS/eip-1167
 PROXY_PRE_BYTECODE: constant(Bytes[10]) = 0x363d3d373d3d3d363d73
 PROXY_POST_BYTECODE: constant(Bytes[15]) = 0x5af43d82803e903d91602b57fd5bf3
 
