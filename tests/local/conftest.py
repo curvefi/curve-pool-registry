@@ -323,7 +323,7 @@ def liquidity_gauge_meta(LiquidityGaugeMock, alice, gauge_controller, meta_lp_to
 @pytest.fixture(scope="module")
 def gauge_implementation(alice, MockGauge, provider):
     NewMockGauge = compile_source(
-        MockGauge._build["source"].replace(ADDR_PROVIDER, provider.address)
+        MockGauge._build["source"].replace(ADDR_PROVIDER, provider.address), vyper_version="0.2.15"
     ).Vyper
     return NewMockGauge.deploy({"from": alice})
 
@@ -340,7 +340,8 @@ def mock_factory(alice, MockFactory, gauge_implementation, provider):
 @pytest.fixture(scope="module")
 def gauge_registry(alice, provider, GaugeRegistry, mock_factory):
     NewGaugeRegistry = compile_source(
-        GaugeRegistry._build["source"].replace(ADDR_PROVIDER, provider.address)
+        GaugeRegistry._build["source"].replace(ADDR_PROVIDER, provider.address),
+        vyper_version="0.2.15",
     ).Vyper
     gauge_registry = NewGaugeRegistry.deploy({"from": alice})
     # add to address provider at id = 5
