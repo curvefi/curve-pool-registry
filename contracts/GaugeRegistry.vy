@@ -58,7 +58,7 @@ def register(_gauge: address, _pool: address, _version: uint256):
 @view
 @external
 def pool_address(_gauge: address) -> address:
-    return convert(shift(self.gauge_data[_gauge], 96), address)
+    return convert(shift(self.gauge_data[_gauge], -96), address)
 
 
 @view
