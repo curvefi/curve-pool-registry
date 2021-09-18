@@ -1,4 +1,4 @@
-# @version 0.2.12
+# @version 0.2.16
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -313,7 +313,8 @@ def get_best_rate(
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    for registry in [self.registry, self.factory_registry]:
+    registry_list: address[2] = [self.registry, self.factory_registry]
+    for registry in registry_list:
         for i in range(65536):
             pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
             if pool == ZERO_ADDRESS:
