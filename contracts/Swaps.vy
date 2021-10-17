@@ -1,4 +1,4 @@
-# @version 0.2.11
+# @version 0.2.16
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -33,6 +33,7 @@ interface Registry:
     def get_underlying_decimals(_pool: address) -> uint256[MAX_COINS]: view
     def find_pool_for_coins(_from: address, _to: address, i: uint256) -> address: view
     def get_lp_token(_pool: address) -> address: view
+    def is_meta(_pool: address) -> bool: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -119,7 +120,7 @@ def _get_exchange_amount(
     is_underlying: bool = False
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to) # dev: no market
 
-    if is_underlying:
+    if is_underlying and (_registry == self.registry or Registry(_registry).is_meta(_pool)):
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
 
     return CurvePool(_pool).get_dy(i, j, _amount)
@@ -147,6 +148,8 @@ def _exchange(
     j: int128 = 0
     is_underlying: bool = False
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
+    if is_underlying and _registry == self.factory_registry and Registry(_registry).is_meta(_pool):
+        is_underlying = False
 
     # record initial balance
     if _to == ETH_ADDRESS:
@@ -310,7 +313,8 @@ def get_best_rate(
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    for registry in [self.registry, self.factory_registry]:
+    registry_list: address[2] = [self.registry, self.factory_registry]
+    for registry in registry_list:
         for i in range(65536):
             pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
             if pool == ZERO_ADDRESS:
