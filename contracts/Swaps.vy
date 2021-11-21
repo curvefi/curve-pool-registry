@@ -658,6 +658,7 @@ def update_registry_address() -> bool:
     address_provider: address = self.address_provider.address
     self.registry = AddressProvider(address_provider).get_registry()
     self.factory_registry = AddressProvider(address_provider).get_address(3)
+    self.crypto_registry = AddressProvider(address_provider).get_address(5)
 
     return True
 
