@@ -40,6 +40,7 @@ interface CryptoRegistry:
 
 interface CryptoPool:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
+    def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
 
 interface CryptoPoolETH:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
@@ -136,6 +137,31 @@ def _get_exchange_amount(
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
 
     return CurvePool(_pool).get_dy(i, j, _amount)
+
+
+@view
+@internal
+def _get_crypto_exchange_amount(
+    _registry: address,
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256
+) -> uint256:
+    """
+    @notice Get the current number of coins received in an exchange
+    @param _registry Registry address
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_from` to be sent
+    @return Quantity of `_to` to be received
+    """
+    i: uint256 = 0
+    j: uint256 = 0
+    i, j = CryptoRegistry(_registry).get_coin_indices(_pool, _from, _to) # dev: no market
+
+    return CryptoPool(_pool).get_dy(i, j, _amount)
 
 
 @internal
@@ -423,7 +449,29 @@ def get_best_rate(
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
 
-    registry: address = self.registry
+    initial: address = _from
+    target: address = _to
+    if _from == ETH_ADDRESS:
+        initial = WETH_ADDRESS
+    if _to == ETH_ADDRESS:
+        target = WETH_ADDRESS
+
+    registry: address = self.crypto_registry
+    for i in range(65536):
+        pool: address = Registry(registry).find_pool_for_coins(initial, target, i)
+        if pool == ZERO_ADDRESS:
+            if i == 0:
+                # we only check for stableswap pools if we did not find any crypto pools
+                break
+            return best_pool, max_dy
+        elif pool in _exclude_pools:
+            continue
+        dy: uint256 = self._get_crypto_exchange_amount(registry, pool, initial, target, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    registry = self.registry
     for i in range(65536):
         pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
         if pool == ZERO_ADDRESS:
@@ -465,7 +513,18 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
     @param _amount Quantity of `_from` to be sent
     @return Quantity of `_to` to be received
     """
-    registry: address = self.registry
+
+    registry: address = self.crypto_registry
+    if Registry(registry).get_lp_token(_pool) != ZERO_ADDRESS:
+        initial: address = _from
+        target: address = _to
+        if _from == ETH_ADDRESS:
+            initial = WETH_ADDRESS
+        if _to == ETH_ADDRESS:
+            target = WETH_ADDRESS
+        return self._get_crypto_exchange_amount(registry, _pool, initial, target, _amount)
+
+    registry = self.registry
     if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
         registry = self.factory_registry
     return self._get_exchange_amount(registry, _pool, _from, _to, _amount)
