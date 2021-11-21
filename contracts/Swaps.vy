@@ -313,18 +313,33 @@ def get_best_rate(
     """
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
-    registry_list: address[2] = [self.registry, self.factory_registry]
-    for registry in registry_list:
-        for i in range(65536):
-            pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
-            if pool == ZERO_ADDRESS:
-                break
-            elif pool in _exclude_pools:
-                continue
-            dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
-            if dy > max_dy:
-                best_pool = pool
-                max_dy = dy
+
+    registry: address = self.registry
+    for i in range(65536):
+        pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
+        if pool == ZERO_ADDRESS:
+            break
+        elif pool in _exclude_pools:
+            continue
+        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    registry = self.factory_registry
+    for i in range(65536):
+        pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
+        if pool == ZERO_ADDRESS:
+            break
+        elif pool in _exclude_pools:
+            continue
+        if ERC20(pool).totalSupply() == 0:
+            # ignore pools without TVL as the call to `get_dy` will revert
+            continue
+        dy: uint256 = self._get_exchange_amount(registry, pool, _from, _to, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
 
     return best_pool, max_dy
 
