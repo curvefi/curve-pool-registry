@@ -1,4 +1,4 @@
-# @version 0.2.16
+# @version 0.3.0
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -35,6 +35,16 @@ interface Registry:
     def get_lp_token(_pool: address) -> address: view
     def is_meta(_pool: address) -> bool: view
 
+interface CryptoRegistry:
+    def get_coin_indices(_pool: address, _from: address, _to: address) -> (uint256, uint256): view
+
+interface CryptoPool:
+    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
+    def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
+
+interface CryptoPoolETH:
+    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
+
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
                rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
@@ -55,6 +65,7 @@ event TokenExchange:
 
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 MAX_COINS: constant(int128) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
 EMPTY_POOL_LIST: constant(address[8]) = [
@@ -72,6 +83,7 @@ EMPTY_POOL_LIST: constant(address[8]) = [
 address_provider: AddressProvider
 registry: public(address)
 factory_registry: public(address)
+crypto_registry: public(address)
 
 default_calculator: public(address)
 is_killed: public(bool)
@@ -88,6 +100,7 @@ def __init__(_address_provider: address, _calculator: address):
     self.address_provider = AddressProvider(_address_provider)
     self.registry = AddressProvider(_address_provider).get_registry()
     self.factory_registry = AddressProvider(_address_provider).get_address(3)
+    self.crypto_registry = AddressProvider(_address_provider).get_address(5)
     self.default_calculator = _calculator
 
 
@@ -124,6 +137,31 @@ def _get_exchange_amount(
         return CurvePool(_pool).get_dy_underlying(i, j, _amount)
 
     return CurvePool(_pool).get_dy(i, j, _amount)
+
+
+@view
+@internal
+def _get_crypto_exchange_amount(
+    _registry: address,
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256
+) -> uint256:
+    """
+    @notice Get the current number of coins received in an exchange
+    @param _registry Registry address
+    @param _pool Pool address
+    @param _from Address of coin to be sent
+    @param _to Address of coin to be received
+    @param _amount Quantity of `_from` to be sent
+    @return Quantity of `_to` to be received
+    """
+    i: uint256 = 0
+    j: uint256 = 0
+    i, j = CryptoRegistry(_registry).get_coin_indices(_pool, _from, _to) # dev: no market
+
+    return CryptoPool(_pool).get_dy(i, j, _amount)
 
 
 @internal
@@ -218,6 +256,100 @@ def _exchange(
     return received_amount
 
 
+@internal
+def _crypto_exchange(
+    _pool: address,
+    _from: address,
+    _to: address,
+    _amount: uint256,
+    _expected: uint256,
+    _sender: address,
+    _receiver: address,
+) -> uint256:
+
+    assert not self.is_killed
+
+    initial: address = _from
+    target: address = _to
+
+    if _from == ETH_ADDRESS:
+        initial = WETH_ADDRESS
+    if _to == ETH_ADDRESS:
+        target = WETH_ADDRESS
+
+    initial_balance: uint256 = 0
+    received_amount: uint256 = 0
+
+    i: uint256 = 0
+    j: uint256 = 0
+    i, j = CryptoRegistry(self.crypto_registry).get_coin_indices(_pool, initial, target)  # dev: no market
+
+    # record initial balance
+    if _to == ETH_ADDRESS:
+        initial_balance = self.balance
+    else:
+        initial_balance = ERC20(_to).balanceOf(self)
+
+    # perform / verify input transfer
+    if _from != ETH_ADDRESS:
+        response: Bytes[32] = raw_call(
+            _from,
+            _abi_encode(
+                _sender,
+                self,
+                _amount,
+                method_id=method_id("transferFrom(address,address,uint256)"),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+    # approve input token
+    if not self.is_approved[_from][_pool]:
+        response: Bytes[32] = raw_call(
+            _from,
+            _abi_encode(
+                _pool,
+                MAX_UINT256,
+                method_id=method_id("approve(address,uint256)"),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+        self.is_approved[_from][_pool] = True
+
+    # perform coin exchange
+    if _from == ETH_ADDRESS:
+        CryptoPoolETH(_pool).exchange(i, j, _amount, _expected, True, value=_amount)
+    else:
+        CryptoPool(_pool).exchange(i, j, _amount, _expected)
+
+    # perform output transfer
+    if _to == ETH_ADDRESS:
+        received_amount = self.balance - initial_balance
+        raw_call(_receiver, b"", value=received_amount)
+    else:
+        received_amount = ERC20(_to).balanceOf(self) - initial_balance
+        response: Bytes[32] = raw_call(
+            _to,
+            _abi_encode(
+                _receiver,
+                received_amount,
+                method_id=method_id("transfer(address,uint256)"),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+    log TokenExchange(_sender, _receiver, _pool, _from, _to, _amount, received_amount)
+
+    return received_amount
+
+
+
 @payable
 @external
 @nonreentrant("lock")
@@ -291,6 +423,9 @@ def exchange(
     else:
         assert msg.value == 0, "Incorrect ETH amount"
 
+    if Registry(self.crypto_registry).get_lp_token(_pool) != ZERO_ADDRESS:
+        return self._crypto_exchange(_pool, _from, _to, _amount, _expected, msg.sender, _receiver)
+
     registry: address = self.registry
     if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
         registry = self.factory_registry
@@ -314,7 +449,29 @@ def get_best_rate(
     best_pool: address = ZERO_ADDRESS
     max_dy: uint256 = 0
 
-    registry: address = self.registry
+    initial: address = _from
+    target: address = _to
+    if _from == ETH_ADDRESS:
+        initial = WETH_ADDRESS
+    if _to == ETH_ADDRESS:
+        target = WETH_ADDRESS
+
+    registry: address = self.crypto_registry
+    for i in range(65536):
+        pool: address = Registry(registry).find_pool_for_coins(initial, target, i)
+        if pool == ZERO_ADDRESS:
+            if i == 0:
+                # we only check for stableswap pools if we did not find any crypto pools
+                break
+            return best_pool, max_dy
+        elif pool in _exclude_pools:
+            continue
+        dy: uint256 = self._get_crypto_exchange_amount(registry, pool, initial, target, _amount)
+        if dy > max_dy:
+            best_pool = pool
+            max_dy = dy
+
+    registry = self.registry
     for i in range(65536):
         pool: address = Registry(registry).find_pool_for_coins(_from, _to, i)
         if pool == ZERO_ADDRESS:
@@ -356,7 +513,18 @@ def get_exchange_amount(_pool: address, _from: address, _to: address, _amount: u
     @param _amount Quantity of `_from` to be sent
     @return Quantity of `_to` to be received
     """
-    registry: address = self.registry
+
+    registry: address = self.crypto_registry
+    if Registry(registry).get_lp_token(_pool) != ZERO_ADDRESS:
+        initial: address = _from
+        target: address = _to
+        if _from == ETH_ADDRESS:
+            initial = WETH_ADDRESS
+        if _to == ETH_ADDRESS:
+            target = WETH_ADDRESS
+        return self._get_crypto_exchange_amount(registry, _pool, initial, target, _amount)
+
+    registry = self.registry
     if Registry(registry).get_lp_token(_pool) == ZERO_ADDRESS:
         registry = self.factory_registry
     return self._get_exchange_amount(registry, _pool, _from, _to, _amount)
@@ -490,6 +658,7 @@ def update_registry_address() -> bool:
     address_provider: address = self.address_provider.address
     self.registry = AddressProvider(address_provider).get_registry()
     self.factory_registry = AddressProvider(address_provider).get_address(3)
+    self.crypto_registry = AddressProvider(address_provider).get_address(5)
 
     return True
 
