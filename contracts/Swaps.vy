@@ -270,6 +270,7 @@ def _crypto_exchange(
     if _to == ETH_ADDRESS:
         target = WETH_ADDRESS
 
+    eth_amount: uint256 = 0
     received_amount: uint256 = 0
 
     i: uint256 = 0
@@ -277,7 +278,9 @@ def _crypto_exchange(
     i, j = CryptoRegistry(self.crypto_registry).get_coin_indices(_pool, initial, target)  # dev: no market
 
     # perform / verify input transfer
-    if _from != ETH_ADDRESS:
+    if _from == ETH_ADDRESS:
+        eth_amount = _amount
+    else:
         response: Bytes[32] = raw_call(
             _from,
             _abi_encode(
@@ -307,8 +310,8 @@ def _crypto_exchange(
         self.is_approved[_from][_pool] = True
 
     # perform coin exchange
-    if _from == ETH_ADDRESS:
-        CryptoPoolETH(_pool).exchange(i, j, _amount, _expected, True, value=_amount)
+    if ETH_ADDRESS in [_from, _to]:
+        CryptoPoolETH(_pool).exchange(i, j, _amount, _expected, True, value=eth_amount)
     else:
         CryptoPool(_pool).exchange(i, j, _amount, _expected)
 
