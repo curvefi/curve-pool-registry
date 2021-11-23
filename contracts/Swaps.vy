@@ -432,6 +432,126 @@ def exchange(
     return self._exchange(registry, _pool, _from, _to, _amount, _expected, msg.sender, _receiver)
 
 
+@external
+@payable
+def exchange_multiple(
+    _route: address[9],
+    _swap_params: uint256[3][4],
+    _amount: uint256,
+    _expected: uint256,
+    _receiver: address=msg.sender
+) -> uint256:
+    """
+    @notice Perform up to four swaps in a single transaction
+    @dev Routing and swap params must be determined off-chain. This
+         functionality is designed for gas efficiency over ease-of-use.
+    @param _route Array of [initial token, pool, token, pool, token, ...]
+                  The array is iterated until a pool address of 0x00, then the last
+                  given token is transferred to `_receiver`
+    @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
+                        values for the n'th pool in `_route`. The swap type should be 1 for
+                        a stableswap `exchange`, 2 for stableswap `exchange_underlying` and 3
+                        for a cryptoswap `exchange`.
+    @param _expected The minimum amount received after the final swap.
+    @param _receiver Address to transfer the final output token to.
+    @return Received amount of final output token
+    """
+    input_token: address = _route[0]
+    amount: uint256 = _amount
+    output_token: address = ZERO_ADDRESS
+
+    # validate / transfer initial token
+    if input_token == ETH_ADDRESS:
+        assert msg.value == amount
+    else:
+        assert msg.value == 0
+        response: Bytes[32] = raw_call(
+            input_token,
+            _abi_encode(
+                msg.sender,
+                self,
+                amount,
+                method_id=method_id("transferFrom(address,address,uint256)"),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+    for i in range(1,5):
+        # 4 rounds of iteration to perform up to 4 swaps
+        swap: address = _route[i*2-1]
+        output_token = _route[i*2]
+        params: uint256[3] = _swap_params[i-1]  # i, j, swap type
+
+        if not self.is_approved[input_token][swap]:
+            # approve the pool to transfer the input token
+            response: Bytes[32] = raw_call(
+                input_token,
+                _abi_encode(
+                    swap,
+                    MAX_UINT256,
+                    method_id=method_id("approve(address,uint256)"),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
+            self.is_approved[input_token][swap] = True
+
+        # perform the swap according to the swap type
+        if params[2] == 1:
+            eth_amount: uint256 = 0
+            if input_token == ETH_ADDRESS:
+                eth_amount = amount
+            CurvePool(swap).exchange(convert(params[0], int128), convert(params[1], int128), amount, 0, value=eth_amount)
+        elif params[2] == 2:
+            CurvePool(swap).exchange_underlying(convert(params[0], int128), convert(params[1], int128), amount, 0)
+        elif params[2] == 3:
+            if input_token == ETH_ADDRESS:
+                CryptoPoolETH(swap).exchange(params[0], params[1], amount, 0, True, value=amount)
+            else:
+                CryptoPool(swap).exchange(params[0], params[1], amount, 0)
+        else:
+            raise "Bad swap type"
+
+        # update the amount received
+        if output_token == ETH_ADDRESS:
+            amount = self.balance
+        else:
+            amount = ERC20(output_token).balanceOf(self)
+
+        # sanity check, if the routing data is incorrect we will have a 0 balance and that is bad
+        assert amount != 0, "Received nothing"
+
+        # check if this was the last swap
+        if i == 4 or _route[i*2+1] == ZERO_ADDRESS:
+            break
+        # if there is another swap, the output token becomes the input for the next round
+        input_token = output_token
+
+    # validate the final amount received
+    assert amount >= _expected
+
+    # transfer the final token to the receiver
+    if output_token == ETH_ADDRESS:
+        raw_call(_receiver, b"", value=amount)
+    else:
+        response: Bytes[32] = raw_call(
+            output_token,
+            _abi_encode(
+                _receiver,
+                amount,
+                method_id=method_id("transfer(address,uint256)"),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+    return amount
+
+
 @view
 @external
 def get_best_rate(
