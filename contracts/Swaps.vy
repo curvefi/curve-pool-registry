@@ -178,7 +178,6 @@ def _exchange(
 
     assert not self.is_killed
 
-    initial_balance: uint256 = 0
     eth_amount: uint256 = 0
     received_amount: uint256 = 0
 
@@ -188,12 +187,6 @@ def _exchange(
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
     if is_underlying and _registry == self.factory_registry and Registry(_registry).is_meta(_pool):
         is_underlying = False
-
-    # record initial balance
-    if _to == ETH_ADDRESS:
-        initial_balance = self.balance
-    else:
-        initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
     if _from == ETH_ADDRESS:
@@ -235,10 +228,10 @@ def _exchange(
 
     # perform output transfer
     if _to == ETH_ADDRESS:
-        received_amount = self.balance - initial_balance
-        raw_call(_receiver, b"", value=received_amount)
+        received_amount = self.balance
+        raw_call(_receiver, b"", value=self.balance)
     else:
-        received_amount = ERC20(_to).balanceOf(self) - initial_balance
+        received_amount = ERC20(_to).balanceOf(self)
         response: Bytes[32] = raw_call(
             _to,
             concat(
@@ -277,18 +270,11 @@ def _crypto_exchange(
     if _to == ETH_ADDRESS:
         target = WETH_ADDRESS
 
-    initial_balance: uint256 = 0
     received_amount: uint256 = 0
 
     i: uint256 = 0
     j: uint256 = 0
     i, j = CryptoRegistry(self.crypto_registry).get_coin_indices(_pool, initial, target)  # dev: no market
-
-    # record initial balance
-    if _to == ETH_ADDRESS:
-        initial_balance = self.balance
-    else:
-        initial_balance = ERC20(_to).balanceOf(self)
 
     # perform / verify input transfer
     if _from != ETH_ADDRESS:
@@ -328,10 +314,10 @@ def _crypto_exchange(
 
     # perform output transfer
     if _to == ETH_ADDRESS:
-        received_amount = self.balance - initial_balance
-        raw_call(_receiver, b"", value=received_amount)
+        received_amount = self.balance
+        raw_call(_receiver, b"", value=self.balance)
     else:
-        received_amount = ERC20(_to).balanceOf(self) - initial_balance
+        received_amount = ERC20(_to).balanceOf(self)
         response: Bytes[32] = raw_call(
             _to,
             _abi_encode(
