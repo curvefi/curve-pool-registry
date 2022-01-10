@@ -87,6 +87,9 @@ market_counts: HashMap[uint256, uint256]
 
 liquidity_gauges: HashMap[address, address[10]]
 
+# mapping of pool -> deposit/exchange zap
+get_zap: public(HashMap[address, address])
+
 last_updated: public(uint256)
 
 
@@ -528,6 +531,7 @@ def add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
+    _zap: address,
     _decimals: uint256,
     _name: String[64],
 ):
@@ -562,6 +566,9 @@ def add_pool(
     if decimals == 0:
         decimals = self._get_new_pool_decimals(coins, _n_coins)
     self.pool_data[_pool].decimals = decimals
+
+    if _zap != ZERO_ADDRESS:
+        self.get_zap[_pool] = _zap
 
     self.last_updated = block.timestamp
     log PoolAdded(_pool)
@@ -621,6 +628,9 @@ def remove_pool(_pool: address):
             if coinx == ZERO_ADDRESS:
                 break
             self._remove_market(_pool, coin, coinx)
+
+    if self.get_zap[_pool] != ZERO_ADDRESS:
+        self.get_zap[_pool] = ZERO_ADDRESS
 
     self.last_updated = block.timestamp
     log PoolRemoved(_pool)
