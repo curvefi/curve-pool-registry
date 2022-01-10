@@ -643,7 +643,7 @@ def remove_pool(_pool: address):
 @external
 def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
     """
-    @notice Set liquidity gauge contracts``
+    @notice Set liquidity gauge contracts
     @param _pool Pool address
     @param _liquidity_gauges Liquidity gauge address
     """
@@ -659,4 +659,24 @@ def set_liquidity_gauges(_pool: address, _liquidity_gauges: address[10]):
             self.liquidity_gauges[_pool][i] = ZERO_ADDRESS
         else:
             break
+    self.last_updated = block.timestamp
+
+
+@external
+def batch_set_liquidity_gauges(_pools: address[10], _liquidity_gauges: address[10]):
+    """
+    @notice Set many liquidity gauge contracts
+    @param _pools List of pool addresses
+    @param _liquidity_gauges List of liquidity gauge addresses
+    """
+    assert msg.sender == self.address_provider.admin()  # dev: admin-only function
+
+    for i in range(10):
+        _pool: address = _pools[i]
+        if _pool == ZERO_ADDRESS:
+            break
+        _gauge: address = _liquidity_gauges[i]
+        assert LiquidityGauge(_gauge).lp_token() == self.get_lp_token[_pool]  # dev: wrong token
+        self.liquidity_gauges[_pool][0] = _gauge
+
     self.last_updated = block.timestamp
