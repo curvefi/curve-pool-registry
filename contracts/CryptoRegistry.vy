@@ -531,6 +531,7 @@ def add_pool(
     _pool: address,
     _n_coins: uint256,
     _lp_token: address,
+    _gauge: address,
     _zap: address,
     _decimals: uint256,
     _name: String[64],
@@ -569,6 +570,9 @@ def add_pool(
 
     if _zap != ZERO_ADDRESS:
         self.get_zap[_pool] = _zap
+
+    if _gauge != ZERO_ADDRESS:
+        self.liquidity_gauges[_pool][0] = _gauge
 
     self.last_updated = block.timestamp
     log PoolAdded(_pool)
