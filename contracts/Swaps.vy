@@ -488,17 +488,17 @@ def exchange_multiple(
                 assert convert(response, bool)
             self.is_approved[input_token][swap] = True
 
+        eth_amount: uint256 = 0
+        if input_token == ETH_ADDRESS:
+            eth_amount = amount
         # perform the swap according to the swap type
         if params[2] == 1:
-            eth_amount: uint256 = 0
-            if input_token == ETH_ADDRESS:
-                eth_amount = amount
             CurvePool(swap).exchange(convert(params[0], int128), convert(params[1], int128), amount, 0, value=eth_amount)
         elif params[2] == 2:
-            CurvePool(swap).exchange_underlying(convert(params[0], int128), convert(params[1], int128), amount, 0)
+            CurvePool(swap).exchange_underlying(convert(params[0], int128), convert(params[1], int128), amount, 0, value=eth_amount)
         elif params[2] == 3:
-            if input_token == ETH_ADDRESS:
-                CryptoPoolETH(swap).exchange(params[0], params[1], amount, 0, True, value=amount)
+            if input_token == ETH_ADDRESS or output_token == ETH_ADDRESS:
+                CryptoPoolETH(swap).exchange(params[0], params[1], amount, 0, True, value=eth_amount)
             else:
                 CryptoPool(swap).exchange(params[0], params[1], amount, 0)
         else:
