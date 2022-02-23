@@ -40,7 +40,9 @@ interface CryptoRegistry:
 
 interface CryptoPool:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
+    def exchange_underlying(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
     def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
+    def get_dy_underlying(i: uint256, j: uint256, amount: uint256) -> uint256: view
 
 interface CryptoPoolETH:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
@@ -444,7 +446,8 @@ def exchange_multiple(
     @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
                         values for the n'th pool in `_route`. The swap type should be 1 for
                         a stableswap `exchange`, 2 for stableswap `exchange_underlying`, 3
-                        for a cryptoswap `exchange` and 4 for Polygon factory metapools `exchange_underlying`
+                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`
+                        and 5 for Polygon factory metapools `exchange_underlying`
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
@@ -509,6 +512,8 @@ def exchange_multiple(
             else:
                 CryptoPool(swap).exchange(params[0], params[1], amount, 0)
         elif params[2] == 4:
+            CryptoPool(swap).exchange_underlying(params[0], params[1], amount, 0, value=eth_amount)
+        elif params[2] == 5:
             PolygonMetaZap(swap).exchange_underlying(pool, convert(params[0], int128), convert(params[1], int128), amount, 0)
         else:
             raise "Bad swap type"
