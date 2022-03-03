@@ -1,4 +1,4 @@
-# @version 0.3.0
+# @version 0.3.1
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -19,6 +19,7 @@ interface CurvePool:
     def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
     def get_dy(i: int128, j: int128, amount: uint256) -> uint256: view
     def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
+    def coins(i: uint256) -> address: view
 
 interface Registry:
     def address_provider() -> address: view
@@ -95,6 +96,7 @@ is_killed: public(bool)
 pool_calculator: HashMap[address, address]
 
 is_approved: HashMap[address, HashMap[address, bool]]
+base_coins: HashMap[address, address[2]]
 
 
 @external
@@ -191,7 +193,13 @@ def _exchange(
     is_underlying: bool = False
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
     if is_underlying and _registry == self.factory_registry and Registry(_registry).is_meta(_pool):
-        is_underlying = False
+        base_coins: address[2] = self.base_coins[_pool]
+        if base_coins == empty(address[2]):
+            base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
+            self.base_coins[_pool] = base_coins
+
+        # we only need to use exchange underlying if the input or output is not in the base coins
+        is_underlying = _from not in base_coins or _to not in base_coins
 
     # perform / verify input transfer
     if _from == ETH_ADDRESS:
@@ -211,7 +219,7 @@ def _exchange(
             assert convert(response, bool)
 
     # approve input token
-    if not self.is_approved[_from][_pool]:
+    if _from != ETH_ADDRESS and not self.is_approved[_from][_pool]:
         response: Bytes[32] = raw_call(
             _from,
             _abi_encode(
