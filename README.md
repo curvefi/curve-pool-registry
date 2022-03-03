@@ -8,9 +8,11 @@ See the [documentation](https://curve.readthedocs.io/) for information on how th
 
 ## Deployments
 
-- [`AddressProvider`](contracts/AddressProvider.vy): [0x0000000022D53366457F9d5E68Ec105046FC4383](https://etherscan.io/address/0x0000000022d53366457f9d5e68ec105046fc4383)
-- [`Registry`](contracts/Registry.vy): [0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c](https://etherscan.io/address/0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c)
-- [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
+- Ethereum/Polygon/Fantom/Optimism/Arbitrum/Avalanche
+  - [`AddressProvider`](contracts/AddressProvider.vy): [0x0000000022D53366457F9d5E68Ec105046FC4383](https://blockscan.com/address/0x0000000022d53366457f9d5e68ec105046fc4383)
+- Ethereum:
+  - [`Registry`](contracts/Registry.vy): [0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c](https://etherscan.io/address/0x7D86446dDb609eD0F5f8684AcF30380a356b2B4c)
+  - [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
 
 ## Testing and Development
 
