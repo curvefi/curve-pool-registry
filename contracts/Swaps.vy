@@ -14,13 +14,6 @@ interface AddressProvider:
     def get_registry() -> address: view
     def get_address(idx: uint256) -> address: view
 
-interface CurvePool:
-    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
-    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
-    def get_dy(i: int128, j: int128, amount: uint256) -> uint256: view
-    def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
-    def coins(i: uint256) -> address: view
-
 interface Registry:
     def address_provider() -> address: view
     def get_A(_pool: address) -> uint256: view
@@ -39,6 +32,13 @@ interface Registry:
 interface CryptoRegistry:
     def get_coin_indices(_pool: address, _from: address, _to: address) -> (uint256, uint256): view
 
+interface CurvePool:
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def get_dy(i: int128, j: int128, amount: uint256) -> uint256: view
+    def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
+    def coins(i: uint256) -> address: view
+
 interface CryptoPool:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
     def exchange_underlying(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
@@ -50,6 +50,14 @@ interface CryptoPoolETH:
 
 interface PolygonMetaZap:
     def exchange_underlying(pool: address, i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
+
+interface BasePool:
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
+
+interface BaseLendingPool:
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256, use_underlying: bool) -> uint256: nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -454,8 +462,9 @@ def exchange_multiple(
     @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
                         values for the n'th pool in `_route`. The swap type should be 1 for
                         a stableswap `exchange`, 2 for stableswap `exchange_underlying`, 3
-                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`
-                        and 5 for Polygon factory metapools `exchange_underlying`
+                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`,
+                        5 for Polygon factory metapools `exchange_underlying`, 6 and 7 for
+                        LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
@@ -523,6 +532,10 @@ def exchange_multiple(
             CryptoPool(swap).exchange_underlying(params[0], params[1], amount, 0, value=eth_amount)
         elif params[2] == 5:
             PolygonMetaZap(swap).exchange_underlying(pool, convert(params[0], int128), convert(params[1], int128), amount, 0)
+        elif params[2] == 6:
+            BasePool(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0)
+        elif params[2] == 7:
+            BaseLendingPool(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0, True) # aave on Polygon
         else:
             raise "Bad swap type"
 
