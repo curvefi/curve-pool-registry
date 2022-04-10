@@ -465,11 +465,12 @@ def exchange_multiple(
                         for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`,
                         5 for Polygon factory metapools `exchange_underlying`, 6 and 7 for
                         LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+    @param _amount The amount of `_route[0]` token being sent.
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
     @param _receiver Address to transfer the final output token to.
-    @return Received amount of final output token
+    @return Received amount of the final output token
     """
     input_token: address = _route[0]
     amount: uint256 = _amount
@@ -772,6 +773,63 @@ def get_exchange_amounts(
     if calculator == ZERO_ADDRESS:
         calculator = self.default_calculator
     return Calculator(calculator).get_dy(n_coins, balances, amp, fee, rates, decimals, i, j, _amounts)
+
+
+@view
+@external
+def get_exchange_multiple_amount(
+    _route: address[9],
+    _swap_params: uint256[3][4],
+    _amount: uint256,
+    _pools: address[4]=[ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
+) -> uint256:
+    """
+    @notice Get the current number the final output tokens received in an exchange
+    @dev Routing and swap params must be determined off-chain. This
+         functionality is designed for gas efficiency over ease-of-use.
+    @param _route Array of [initial token, pool, token, pool, token, ...]
+                  The array is iterated until a pool address of 0x00, then the last
+                  given token is transferred to `_receiver`
+    @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
+                        values for the n'th pool in `_route`. The swap type should be 1 for
+                        a stableswap `exchange`, 2 for stableswap `exchange_underlying`, 3
+                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`,
+                        5 for Polygon factory metapools `exchange_underlying`, 6 and 7 for
+                        LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+    @param _amount The amount of `_route[0]` token to be sent.
+    @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
+                  Polygon meta-factories underlying swaps.
+    @return Expected amount of the final output token
+    """
+    amount: uint256 = _amount
+
+    for i in range(1,5):
+        # 4 rounds of iteration to perform up to 4 swaps
+        swap: address = _route[i*2-1]
+        pool: address = _pools[i-1] # Only for Polygon meta-factories underlying swap (swap_type == 4)
+        params: uint256[3] = _swap_params[i-1]  # i, j, swap type
+
+        # Calc output amount according to the swap type
+        if params[2] == 1:
+            amount = CurvePool(swap).get_dy(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] == 2:
+            amount = CurvePool(swap).get_dy_underlying(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] == 3:
+            amount = CryptoPool(swap).get_dy(params[0], params[1], amount)
+        elif params[2] == 4:
+            amount = CryptoPool(swap).get_dy_underlying(params[0], params[1], amount)
+        elif params[2] == 5:
+            amount = CurvePool(pool).get_dy_underlying(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] in [6, 7]:
+            amount = BasePool(swap).calc_withdraw_one_coin(amount, convert(params[1], int128))
+        else:
+            raise "Bad swap type"
+
+        # check if this was the last swap
+        if i == 4 or _route[i*2+1] == ZERO_ADDRESS:
+            break
+
+    return amount
 
 
 @view
