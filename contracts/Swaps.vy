@@ -210,14 +210,18 @@ def _exchange(
     j: int128 = 0
     is_underlying: bool = False
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
-    if is_underlying and _registry == self.factory_registry and Registry(_registry).is_meta(_pool):
-        base_coins: address[2] = self.base_coins[_pool]
-        if base_coins == empty(address[2]):
-            base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
-            self.base_coins[_pool] = base_coins
+    if is_underlying and _registry == self.factory_registry:
+        if Registry(_registry).is_meta(_pool):
+            base_coins: address[2] = self.base_coins[_pool]
+            if base_coins == empty(address[2]):
+                base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
+                self.base_coins[_pool] = base_coins
 
-        # we only need to use exchange underlying if the input or output is not in the base coins
-        is_underlying = _from not in base_coins or _to not in base_coins
+            # we only need to use exchange underlying if the input or output is not in the base coins
+            is_underlying = _from not in base_coins or _to not in base_coins
+        else:
+            # not a metapool so no underlying exchange method
+            is_underlying = False
 
     # perform / verify input transfer
     if _from == ETH_ADDRESS:
