@@ -48,8 +48,12 @@ interface CryptoPool:
 interface CryptoPoolETH:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
 
-interface PolygonMetaZap:
+interface LendingBasePoolMetaZap:
     def exchange_underlying(pool: address, i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
+
+interface CryptoMetaZap:
+    def get_dy(pool: address, i: uint256, j: uint256, dx: uint256) -> uint256: view
+    def exchange(pool: address, i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
 
 interface BasePool2Coins:
     def add_liquidity(amounts: uint256[2], min_mint_amount: uint256): nonpayable
@@ -63,7 +67,7 @@ interface BasePool3Coins:
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
     def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
 
-interface BaseLendingPool3Coins:
+interface LendingBasePool3Coins:
     def add_liquidity(amounts: uint256[3], min_mint_amount: uint256, use_underlying: bool): nonpayable
     def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256, use_underlying: bool) -> uint256: nonpayable
@@ -474,12 +478,15 @@ def exchange_multiple(
                   The array is iterated until a pool address of 0x00, then the last
                   given token is transferred to `_receiver`
     @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
-                        values for the n'th pool in `_route`. The swap type should be 1 for
-                        a stableswap `exchange`, 2 for stableswap `exchange_underlying`, 3
-                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`,
-                        5 for Polygon factory metapools `exchange_underlying`, 6-8 for
-                        underlying coin -> LP token "exchange" (actually `add_liquidity`), 9 and 10
-                        for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+                        values for the n'th pool in `_route`. The swap type should be
+                        1 for a stableswap `exchange`,
+                        2 for stableswap `exchange_underlying`,
+                        3 for a cryptoswap `exchange`,
+                        4 for a cryptoswap `exchange_underlying`,
+                        5 for factory metapools with lending base pool `exchange_underlying`,
+                        6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
+                        7-9 for underlying coin -> LP token "exchange" (actually `add_liquidity`),
+                        10-11 for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
     @param _amount The amount of `_route[0]` token being sent.
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
@@ -547,25 +554,28 @@ def exchange_multiple(
         elif params[2] == 4:
             CryptoPool(swap).exchange_underlying(params[0], params[1], amount, 0, value=eth_amount)
         elif params[2] == 5:
-            PolygonMetaZap(swap).exchange_underlying(pool, convert(params[0], int128), convert(params[1], int128), amount, 0)
+            LendingBasePoolMetaZap(swap).exchange_underlying(pool, convert(params[0], int128), convert(params[1], int128), amount, 0)
         elif params[2] == 6:
+            use_eth: bool = input_token == ETH_ADDRESS or output_token == ETH_ADDRESS
+            CryptoMetaZap(swap).exchange(pool, params[0], params[1], amount, 0, use_eth)
+        elif params[2] == 7:
             _amounts: uint256[2] = [0, 0]
             _amounts[params[0]] = amount
             BasePool2Coins(swap).add_liquidity(_amounts, 0)
-        elif params[2] == 7:
-            _amounts: uint256[3] = [0, 0, 0]
-            _amounts[params[0]] = amount
-            BasePool3Coins(swap).add_liquidity(_amounts, 0)
         elif params[2] == 8:
             _amounts: uint256[3] = [0, 0, 0]
             _amounts[params[0]] = amount
-            BaseLendingPool3Coins(swap).add_liquidity(_amounts, 0, True) # aave on Polygon
+            BasePool3Coins(swap).add_liquidity(_amounts, 0)
         elif params[2] == 9:
-            # The number of coins doesn't matter here
-            BasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0)
+            _amounts: uint256[3] = [0, 0, 0]
+            _amounts[params[0]] = amount
+            LendingBasePool3Coins(swap).add_liquidity(_amounts, 0, True) # example: aave on Polygon
         elif params[2] == 10:
             # The number of coins doesn't matter here
-            BaseLendingPool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0, True) # aave on Polygon
+            BasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0)
+        elif params[2] == 11:
+            # The number of coins doesn't matter here
+            LendingBasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0, True) # example: aave on Polygon
         else:
             raise "Bad swap type"
 
@@ -820,12 +830,15 @@ def get_exchange_multiple_amount(
                   The array is iterated until a pool address of 0x00, then the last
                   given token is transferred to `_receiver`
     @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
-                        values for the n'th pool in `_route`. The swap type should be 1 for
-                        a stableswap `exchange`, 2 for stableswap `exchange_underlying`, 3
-                        for a cryptoswap `exchange`, 4 for a cryptoswap `exchange_underlying`,
-                        5 for Polygon factory metapools `exchange_underlying`, 6-8 for
-                        underlying coin -> LP token "exchange" (actually `add_liquidity`), 9 and 10
-                        for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+                        values for the n'th pool in `_route`. The swap type should be
+                        1 for a stableswap `exchange`,
+                        2 for stableswap `exchange_underlying`,
+                        3 for a cryptoswap `exchange`,
+                        4 for a cryptoswap `exchange_underlying`,
+                        5 for factory metapools with lending base pool `exchange_underlying`,
+                        6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
+                        7-9 for underlying coin -> LP token "exchange" (actually `add_liquidity`),
+                        10-11 for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
     @param _amount The amount of `_route[0]` token to be sent.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
@@ -851,14 +864,16 @@ def get_exchange_multiple_amount(
         elif params[2] == 5:
             amount = CurvePool(pool).get_dy_underlying(convert(params[0], int128), convert(params[1], int128), amount)
         elif params[2] == 6:
+            amount = CryptoMetaZap(swap).get_dy(pool, params[0], params[1], amount)
+        elif params[2] == 7:
             _amounts: uint256[2] = [0, 0]
             _amounts[params[0]] = amount
             amount = BasePool2Coins(swap).calc_token_amount(_amounts, True)
-        elif params[2] in [7, 8]:
+        elif params[2] in [8, 9]:
             _amounts: uint256[3] = [0, 0, 0]
             _amounts[params[0]] = amount
             amount = BasePool3Coins(swap).calc_token_amount(_amounts, True)
-        elif params[2] in [9, 10]:
+        elif params[2] in [10, 11]:
             # The number of coins doesn't matter here
             amount = BasePool3Coins(swap).calc_withdraw_one_coin(amount, convert(params[1], int128))
         else:
