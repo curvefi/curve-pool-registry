@@ -59,19 +59,37 @@ interface BasePool2Coins:
     def add_liquidity(amounts: uint256[2], min_mint_amount: uint256): nonpayable
     def calc_token_amount(amounts: uint256[2], is_deposit: bool) -> uint256: view
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
-    def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
 
 interface BasePool3Coins:
     def add_liquidity(amounts: uint256[3], min_mint_amount: uint256): nonpayable
     def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
-    def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
 
 interface LendingBasePool3Coins:
     def add_liquidity(amounts: uint256[3], min_mint_amount: uint256, use_underlying: bool): nonpayable
     def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256, use_underlying: bool) -> uint256: nonpayable
-    def calc_withdraw_one_coin(token_amount: uint256, i: int128,) -> uint256: view
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface CryptoBasePool3Coins:
+    def add_liquidity(amounts: uint256[3], min_mint_amount: uint256, use_underlying: bool): nonpayable
+    def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: uint256) -> uint256: view
+
+interface BasePool4Coins:
+    def add_liquidity(amounts: uint256[4], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[4], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface BasePool5Coins:
+    def add_liquidity(amounts: uint256[5], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[5], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -485,8 +503,8 @@ def exchange_multiple(
                         4 for a cryptoswap `exchange_underlying`,
                         5 for factory metapools with lending base pool `exchange_underlying`,
                         6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
-                        7-9 for underlying coin -> LP token "exchange" (actually `add_liquidity`),
-                        10-11 for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+                        7-11 for wrapped coin (underlying for lending or fake pool) -> LP token "exchange" (actually `add_liquidity`),
+                        12-14 for LP token -> wrapped coin (underlying for lending pool) "exchange" (actually `remove_liquidity_one_coin`)
     @param _amount The amount of `_route[0]` token being sent.
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
@@ -571,11 +589,22 @@ def exchange_multiple(
             _amounts[params[0]] = amount
             LendingBasePool3Coins(swap).add_liquidity(_amounts, 0, True) # example: aave on Polygon
         elif params[2] == 10:
+            _amounts: uint256[4] = [0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            BasePool4Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 11:
+            _amounts: uint256[5] = [0, 0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            BasePool5Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 12:
             # The number of coins doesn't matter here
             BasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0)
-        elif params[2] == 11:
+        elif params[2] == 13:
             # The number of coins doesn't matter here
             LendingBasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0, True) # example: aave on Polygon
+        elif params[2] == 14:
+            # The number of coins doesn't matter here
+            CryptoBasePool3Coins(swap).remove_liquidity_one_coin(amount, params[1], 0) # example: atricrypto3 on Polygon
         else:
             raise "Bad swap type"
 
@@ -837,8 +866,8 @@ def get_exchange_multiple_amount(
                         4 for a cryptoswap `exchange_underlying`,
                         5 for factory metapools with lending base pool `exchange_underlying`,
                         6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
-                        7-9 for underlying coin -> LP token "exchange" (actually `add_liquidity`),
-                        10-11 for LP token -> underlying coin "exchange" (actually `remove_liquidity_one_coin`)
+                        7-11 for wrapped coin (underlying for lending pool) -> LP token "exchange" (actually `add_liquidity`),
+                        12-14 for LP token -> wrapped coin (underlying for lending or fake pool) "exchange" (actually `remove_liquidity_one_coin`)
     @param _amount The amount of `_route[0]` token to be sent.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
@@ -873,9 +902,20 @@ def get_exchange_multiple_amount(
             _amounts: uint256[3] = [0, 0, 0]
             _amounts[params[0]] = amount
             amount = BasePool3Coins(swap).calc_token_amount(_amounts, True)
-        elif params[2] in [10, 11]:
+        elif params[2] == 10:
+            _amounts: uint256[4] = [0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool4Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] == 11:
+            _amounts: uint256[5] = [0, 0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool5Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] in [12, 13]:
             # The number of coins doesn't matter here
             amount = BasePool3Coins(swap).calc_withdraw_one_coin(amount, convert(params[1], int128))
+        elif params[2] == 14:
+            # The number of coins doesn't matter here
+            amount = CryptoBasePool3Coins(swap).calc_withdraw_one_coin(amount, params[1])
         else:
             raise "Bad swap type"
 
