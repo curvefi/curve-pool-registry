@@ -91,6 +91,10 @@ interface BasePool5Coins:
     def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
     def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
 
+interface wETH:
+    def deposit(): payable
+    def withdraw(_amount: uint256): nonpayable
+
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
                rates: uint256[MAX_COINS], precisions: uint256[MAX_COINS],
@@ -505,6 +509,7 @@ def exchange_multiple(
                         6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
                         7-11 for wrapped coin (underlying for lending or fake pool) -> LP token "exchange" (actually `add_liquidity`),
                         12-14 for LP token -> wrapped coin (underlying for lending pool) "exchange" (actually `remove_liquidity_one_coin`)
+                        15 for WETH -> ETH "exchange" (actually deposit/withdraw)
     @param _amount The amount of `_route[0]` token being sent.
     @param _expected The minimum amount received after the final swap.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
@@ -605,6 +610,13 @@ def exchange_multiple(
         elif params[2] == 14:
             # The number of coins doesn't matter here
             CryptoBasePool3Coins(swap).remove_liquidity_one_coin(amount, params[1], 0) # example: atricrypto3 on Polygon
+        elif params[2] == 15:
+            if input_token == ETH_ADDRESS:
+                wETH(swap).deposit(value=amount)
+            elif output_token == ETH_ADDRESS:
+                wETH(swap).withdraw(amount)
+            else:
+                raise "One of the coins must be ETH for swap type 15"
         else:
             raise "Bad swap type"
 
@@ -868,6 +880,7 @@ def get_exchange_multiple_amount(
                         6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
                         7-11 for wrapped coin (underlying for lending pool) -> LP token "exchange" (actually `add_liquidity`),
                         12-14 for LP token -> wrapped coin (underlying for lending or fake pool) "exchange" (actually `remove_liquidity_one_coin`)
+                        15 for WETH -> ETH "exchange" (actually deposit/withdraw)
     @param _amount The amount of `_route[0]` token to be sent.
     @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
                   Polygon meta-factories underlying swaps.
@@ -916,6 +929,9 @@ def get_exchange_multiple_amount(
         elif params[2] == 14:
             # The number of coins doesn't matter here
             amount = CryptoBasePool3Coins(swap).calc_withdraw_one_coin(amount, params[1])
+        elif params[2] == 15:
+            # ETH <--> WETH rate is 1:1
+            pass
         else:
             raise "Bad swap type"
 
