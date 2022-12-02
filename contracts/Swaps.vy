@@ -113,6 +113,14 @@ event TokenExchange:
     amount_sold: uint256
     amount_bought: uint256
 
+event ExchangeMultiple:
+    buyer: indexed(address)
+    receiver: indexed(address)
+    route: address[9]
+    swap_params: uint256[3][4]
+    pools: address[4]
+    amount_sold: uint256
+    amount_bought: uint256
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
@@ -653,6 +661,8 @@ def exchange_multiple(
         )
         if len(response) != 0:
             assert convert(response, bool)
+
+    log ExchangeMultiple(msg.sender, _receiver, _route, _swap_params, _pools, _amount, amount)
 
     return amount
 
