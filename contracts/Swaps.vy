@@ -1,4 +1,4 @@
-# @version 0.3.1
+# @version 0.3.3
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -124,7 +124,7 @@ event ExchangeMultiple:
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-MAX_COINS: constant(int128) = 8
+MAX_COINS: constant(uint256) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
 EMPTY_POOL_LIST: constant(address[8]) = [
     ZERO_ADDRESS,
@@ -247,7 +247,7 @@ def _exchange(
     if is_underlying and _registry == self.factory_registry:
         if Registry(_registry).is_meta(_pool):
             base_coins: address[2] = self.base_coins[_pool]
-            if base_coins == empty(address[2]):
+            if base_coins[0] == empty(address) and base_coins[1] == empty(address):
                 base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
                 self.base_coins[_pool] = base_coins
 
