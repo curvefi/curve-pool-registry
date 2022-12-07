@@ -64,8 +64,8 @@ def registry_swap(Swaps, alice, registry, provider, factory, calculator, underly
 
     for coin in underlying_coins:
         if coin != ETH_ADDRESS:
-            coin.approve(contract, 2 ** 256 - 1, {"from": alice})
-            coin._mint_for_testing(alice, 10 ** 18, {"from": alice})
+            coin.approve(contract, 2**256 - 1, {"from": alice})
+            coin._mint_for_testing(alice, 10**18, {"from": alice})
 
     yield contract
 
@@ -80,14 +80,14 @@ def test_get_best_rate(registry_swap, swap1, swap2, swap3, underlying_coins, sen
     best_rate = 0
     for swap in (swap1, swap2, swap3):
         try:
-            rate = registry_swap.get_exchange_amount(swap, send, recv, 10 ** 18)
+            rate = registry_swap.get_exchange_amount(swap, send, recv, 10**18)
             if rate > best_rate:
                 best_rate = rate
                 best_swap = swap
         except VirtualMachineError:
             pass
 
-    assert registry_swap.get_best_rate(send, recv, 10 ** 18) == (best_swap, best_rate)
+    assert registry_swap.get_best_rate(send, recv, 10**18) == (best_swap, best_rate)
 
 
 @pytest.mark.params(n_coins=4)
@@ -103,14 +103,14 @@ def test_get_best_rate_with_exclusion(
     best_rate = 0
     for swap in (swap1, swap2, swap3):
         try:
-            rate = registry_swap.get_exchange_amount(swap, send, recv, 10 ** 18)
+            rate = registry_swap.get_exchange_amount(swap, send, recv, 10**18)
             if rate > best_rate and swap not in exclude_list:
                 best_rate = rate
                 best_swap = swap
         except VirtualMachineError:
             pass
 
-    assert registry_swap.get_best_rate(send, recv, 10 ** 18, exclude_list) == (best_swap, best_rate)
+    assert registry_swap.get_best_rate(send, recv, 10**18, exclude_list) == (best_swap, best_rate)
 
 
 @pytest.mark.params(n_coins=4)
@@ -134,7 +134,7 @@ def test_exchange_with_best_rate(
         except VirtualMachineError:
             pass
 
-    value = 10 ** 18 if send == ETH_ADDRESS else 0
+    value = 10**18 if send == ETH_ADDRESS else 0
     tx = registry_swap.exchange_with_best_rate(
         send, recv, amount, 0, {"from": alice, "value": value}
     )

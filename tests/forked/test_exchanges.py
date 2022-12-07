@@ -8,7 +8,7 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 def initial_approvals(registry_swap, alice, underlying_coins):
     for coin in underlying_coins:
         if coin != "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-            coin.approve(registry_swap, 2 ** 256 - 1, {"from": alice})
+            coin.approve(registry_swap, 2**256 - 1, {"from": alice})
 
 
 @pytest.mark.itercoins("send", "recv", underlying=True)
@@ -19,7 +19,7 @@ def test_exchange(alice, registry_swap, swap, underlying_coins, underlying_decim
     recv = underlying_coins[recv]
     balance = alice.balance()
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -46,7 +46,7 @@ def test_exchange_wrapped(alice, registry_swap, swap, wrapped_coins, wrapped_dec
     recv = wrapped_coins[recv]
     balance = alice.balance()
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -74,7 +74,7 @@ def test_min_expected(
     recv = underlying_coins[recv]
 
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0

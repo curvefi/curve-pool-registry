@@ -4,10 +4,10 @@ from hypothesis import Phase, settings
 
 @given(
     st_precision=strategy("uint[4]", min_value=6, max_value=18),
-    st_balance=strategy("uint[4]", min_value=10 ** 21, max_value=10 ** 23, unique=True),
-    st_rates=strategy("uint[4]", min_value=10 ** 18, max_value=10 ** 19, unique=True),
+    st_balance=strategy("uint[4]", min_value=10**21, max_value=10**23, unique=True),
+    st_rates=strategy("uint[4]", min_value=10**18, max_value=10**19, unique=True),
     st_idx=strategy("uint[2]", max_value=3, unique=True),
-    dx=strategy("uint", min_value=10 ** 19, max_value=10 ** 20),
+    dx=strategy("uint", min_value=10**19, max_value=10**20),
 )
 @settings(phases=[Phase.reuse, Phase.generate])
 def test_dy_dx(calculator, st_precision, st_balance, st_rates, st_idx, dx):
@@ -29,10 +29,10 @@ def test_dy_dx(calculator, st_precision, st_balance, st_rates, st_idx, dx):
 
 @given(
     st_precision=strategy("uint[4]", min_value=6, max_value=18),
-    st_balance=strategy("uint[4]", min_value=10 ** 21, max_value=10 ** 23, unique=True),
-    st_rates=strategy("uint[4]", min_value=10 ** 18, max_value=10 ** 19, unique=True),
+    st_balance=strategy("uint[4]", min_value=10**21, max_value=10**23, unique=True),
+    st_rates=strategy("uint[4]", min_value=10**18, max_value=10**19, unique=True),
     st_idx=strategy("uint[2]", max_value=3, unique=True),
-    dy=strategy("uint", min_value=10 ** 19, max_value=10 ** 20),
+    dy=strategy("uint", min_value=10**19, max_value=10**20),
 )
 @settings(phases=[Phase.reuse, Phase.generate])
 def test_dx_dy(calculator, st_precision, st_balance, st_rates, st_idx, dy):

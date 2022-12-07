@@ -45,9 +45,9 @@ def registry_swap(
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
             bob.transfer(meta_swap, "10 ether")
         else:
-            coin.approve(contract, 2 ** 256 - 1, {"from": alice})
+            coin.approve(contract, 2**256 - 1, {"from": alice})
     for coin in meta_coins:
-        coin.approve(contract, 2 ** 256 - 1, {"from": alice})
+        coin.approve(contract, 2**256 - 1, {"from": alice})
 
     yield contract
 
@@ -60,7 +60,7 @@ def test_exchange(alice, registry_swap, meta_swap, meta_coins, meta_decimals, se
     send = meta_coins[send]
     recv = meta_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -120,7 +120,7 @@ def test_base_to_meta(
     recv = meta_coins[recv]
 
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         value = 0
         send._mint_for_testing(alice, amount, {"from": alice})
@@ -148,7 +148,7 @@ def test_exchange_underlying(
     send = underlying_coins[send]
     recv = underlying_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0

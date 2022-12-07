@@ -57,7 +57,7 @@ class BaseHelper:
         """Deploy an instance of a wrapped coin."""
         count = len(self.cERC20)
         name, symbol, decimals = f"Wrapped Token {count}", f"wTST {count}", 18
-        return self.cERC20.deploy(name, symbol, decimals, erc20, 10 ** 18, self.tx_params)
+        return self.cERC20.deploy(name, symbol, decimals, erc20, 10**18, self.tx_params)
 
     def _batch_deploy_wrapped_erc20(self, erc20s: List[Contract]) -> List[Contract]:
         """Batch deploy a set of wrapped ERC20 contracts."""
@@ -107,7 +107,7 @@ class BaseHelper:
 class StateMachine(BaseHelper):
 
     st_sleep = strategy("uint256", max_value=86400)
-    st_random = strategy("uint256", max_value=2 ** 32)
+    st_random = strategy("uint256", max_value=2**32)
 
     def __init__(cls, registry: Contract, *args, **kwargs):
         super().__init__(cls, *args, **kwargs)

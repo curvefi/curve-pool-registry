@@ -212,7 +212,7 @@ class _MintableTestToken(MintableForkToken):
 
     def _get_rate(self):
         if not self._rate_fn:
-            return 10 ** 18
+            return 10**18
         return self._rate_fn.call()
 
 

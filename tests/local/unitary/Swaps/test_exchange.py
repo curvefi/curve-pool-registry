@@ -31,7 +31,7 @@ def registry_swap(Swaps, alice, bob, registry, provider, swap, calculator, under
         if coin == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
             bob.transfer(swap, "10 ether")
         else:
-            coin.approve(contract, 2 ** 256 - 1, {"from": alice})
+            coin.approve(contract, 2**256 - 1, {"from": alice})
 
     yield contract
 
@@ -45,7 +45,7 @@ def test_exchange(alice, registry_swap, swap, underlying_coins, underlying_decim
     send = underlying_coins[send]
     recv = underlying_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -83,22 +83,22 @@ def test_existing_balance(
 
     bob.transfer(registry_swap, "10 ether")
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
-        send._mint_for_testing(registry_swap, 10 ** 19, {"from": alice})
+        send._mint_for_testing(registry_swap, 10**19, {"from": alice})
         value = 0
 
     if recv != "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        recv._mint_for_testing(registry_swap, 10 ** 19, {"from": alice})
+        recv._mint_for_testing(registry_swap, 10**19, {"from": alice})
 
     registry_swap.exchange(swap, send, recv, amount, 0, {"from": alice, "value": value})
 
     assert registry_swap.balance() == "10 ether"
     if send != "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        assert send.balanceOf(registry_swap) == 10 ** 19
+        assert send.balanceOf(registry_swap) == 10**19
     if recv != "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        assert recv.balanceOf(registry_swap) == 10 ** 19
+        assert recv.balanceOf(registry_swap) == 10**19
 
 
 @pytest.mark.params(n_coins=4)
@@ -112,7 +112,7 @@ def test_min_expected(
     recv = underlying_coins[recv]
 
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -137,14 +137,14 @@ def test_existing_balance_insufficient_send(
 
     bob.transfer(registry_swap, "10 ether")
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18 - 1
+        value = 10**18 - 1
     else:
         send._mint_for_testing(alice, amount - 1, {"from": alice})
-        send._mint_for_testing(registry_swap, 10 ** 19, {"from": alice})
+        send._mint_for_testing(registry_swap, 10**19, {"from": alice})
         value = 0
 
     if recv != "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        recv._mint_for_testing(registry_swap, 10 ** 19, {"from": alice})
+        recv._mint_for_testing(registry_swap, 10**19, {"from": alice})
 
     with brownie.reverts():
         registry_swap.exchange(swap, send, recv, amount, 0, {"from": alice, "value": value})
@@ -161,7 +161,7 @@ def test_receiver(
     send = underlying_coins[send]
     recv = underlying_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0

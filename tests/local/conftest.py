@@ -183,7 +183,7 @@ def _wrapped_coins(_underlying_coins, _wrapped_decimals, lending, alice):
             coins.append(coin)
             continue
         contract = lending.deploy(
-            f"Wrapped Test Token {i}", f"wTST{i}", decimals, coin, 10 ** 18, {"from": alice}
+            f"Wrapped Test Token {i}", f"wTST{i}", decimals, coin, 10**18, {"from": alice}
         )
         coins.append(contract)
 
