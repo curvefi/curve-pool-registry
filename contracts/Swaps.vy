@@ -1,4 +1,4 @@
-# @version 0.3.1
+# @version 0.3.3
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -123,8 +123,8 @@ event ExchangeMultiple:
     amount_bought: uint256
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-MAX_COINS: constant(int128) = 8
+WETH_ADDRESS: immutable(address)
+MAX_COINS: constant(uint256) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
 EMPTY_POOL_LIST: constant(address[8]) = [
     ZERO_ADDRESS,
@@ -152,7 +152,7 @@ base_coins: HashMap[address, address[2]]
 
 
 @external
-def __init__(_address_provider: address, _calculator: address):
+def __init__(_address_provider: address, _calculator: address, _weth: address):
     """
     @notice Constructor function
     """
@@ -161,6 +161,8 @@ def __init__(_address_provider: address, _calculator: address):
     self.factory_registry = AddressProvider(_address_provider).get_address(3)
     self.crypto_registry = AddressProvider(_address_provider).get_address(5)
     self.default_calculator = _calculator
+
+    WETH_ADDRESS = _weth
 
 
 @external
@@ -247,7 +249,7 @@ def _exchange(
     if is_underlying and _registry == self.factory_registry:
         if Registry(_registry).is_meta(_pool):
             base_coins: address[2] = self.base_coins[_pool]
-            if base_coins == empty(address[2]):
+            if base_coins[0] == empty(address) and base_coins[1] == empty(address):
                 base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
                 self.base_coins[_pool] = base_coins
 
