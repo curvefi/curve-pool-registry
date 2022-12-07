@@ -71,7 +71,7 @@ def test_get_pool_coins(registry_pool_info, swap, underlying_coins, underlying_d
 
 
 def test_get_rates(registry, registry_pool_info, swap, n_coins):
-    expected = [10 ** 18] * n_coins + [0] * (8 - n_coins)
+    expected = [10**18] * n_coins + [0] * (8 - n_coins)
     assert registry.get_rates(swap) == expected
     assert registry_pool_info.get_pool_info(swap)["rates"] == expected
 
@@ -135,7 +135,7 @@ def test_get_fees(alice, registry, swap):
 
 @pytest.mark.once
 def test_get_virtual_price_from_lp_token(alice, registry, swap, lp_token):
-    assert registry.get_virtual_price_from_lp_token(lp_token) == 10 ** 18
+    assert registry.get_virtual_price_from_lp_token(lp_token) == 10**18
     swap._set_virtual_price(12345678, {"from": alice})
     assert registry.get_virtual_price_from_lp_token(lp_token) == 12345678
 
