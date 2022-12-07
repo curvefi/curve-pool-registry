@@ -123,7 +123,7 @@ event ExchangeMultiple:
     amount_bought: uint256
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+WETH_ADDRESS: immutable(address)
 MAX_COINS: constant(uint256) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
 EMPTY_POOL_LIST: constant(address[8]) = [
@@ -152,7 +152,7 @@ base_coins: HashMap[address, address[2]]
 
 
 @external
-def __init__(_address_provider: address, _calculator: address):
+def __init__(_address_provider: address, _calculator: address, _weth: address):
     """
     @notice Constructor function
     """
@@ -161,6 +161,8 @@ def __init__(_address_provider: address, _calculator: address):
     self.factory_registry = AddressProvider(_address_provider).get_address(3)
     self.crypto_registry = AddressProvider(_address_provider).get_address(5)
     self.default_calculator = _calculator
+
+    WETH_ADDRESS = _weth
 
 
 @external
