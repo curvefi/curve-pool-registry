@@ -56,7 +56,7 @@ def test_get_underlying_balances(registry, swap, n_coins, wrapped_coins, underly
         else:
             rate = wrapped_coins[i]._get_rate()
             decimals = underlying_coins[i].decimals()
-            assert balance * rate // 10 ** decimals == underlying_balances[i]
+            assert balance * rate // 10**decimals == underlying_balances[i]
 
 
 @pytest.mark.meta

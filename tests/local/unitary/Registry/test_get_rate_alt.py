@@ -38,12 +38,12 @@ def registry(ERC20, Registry, RateCalcMock, provider, gauge_controller, alice, a
     yield registry
 
 
-@given(new_ratio=strategy("uint256", min_value=1, max_value=10 ** 18 - 1))
+@given(new_ratio=strategy("uint256", min_value=1, max_value=10**18 - 1))
 def test_get_rates(alice, registry, registry_pool_info, new_ratio, ankr_swap):
     ankrETH[0].update_ratio(new_ratio, {"from": alice})
 
     rates = [0] * 8
-    rates[0] = (10 ** 36) // new_ratio
+    rates[0] = (10**36) // new_ratio
 
     assert registry.get_rates(ankr_swap) == rates
     assert registry_pool_info.get_pool_info(ankr_swap)["rates"] == rates

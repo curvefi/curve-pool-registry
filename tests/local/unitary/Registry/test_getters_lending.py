@@ -111,10 +111,10 @@ def test_get_rates(registry, registry_pool_info, lending_swap, wrapped_coins):
     rates = []
     for i, coin in enumerate(wrapped_coins, start=1):
         if hasattr(coin, "_set_exchange_rate"):
-            rates.append(int(10 ** 18 * ((100 + i) / 100)))
+            rates.append(int(10**18 * ((100 + i) / 100)))
             coin._set_exchange_rate(rates[-1])
         else:
-            rates.append(10 ** 18)
+            rates.append(10**18)
     rates += [0] * (8 - len(rates))
 
     assert registry.get_rates(lending_swap) == rates
@@ -139,13 +139,13 @@ def test_get_underlying_balances(
     rates = []
     for i, coin in enumerate(wrapped_coins, start=1):
         if hasattr(coin, "_set_exchange_rate"):
-            rates.append(int(10 ** 18 * ((100 + i) / 100)))
+            rates.append(int(10**18 * ((100 + i) / 100)))
             coin._set_exchange_rate(rates[-1])
         else:
-            rates.append(10 ** 18)
+            rates.append(10**18)
     rates += [0] * (8 - len(rates))
 
-    balances = [i * r // 10 ** d for i, r, d in zip(balances, rates, underlying_decimals)]
+    balances = [i * r // 10**d for i, r, d in zip(balances, rates, underlying_decimals)]
     expected = balances[:n_coins] + [0] * (8 - n_coins)
 
     assert registry.get_underlying_balances(lending_swap) == expected
@@ -210,7 +210,7 @@ def test_get_fees(alice, registry, registry_pool_info, lending_swap):
 
 @pytest.mark.once
 def test_get_virtual_price_from_lp_token(alice, registry, lending_swap, lp_token):
-    assert registry.get_virtual_price_from_lp_token(lp_token) == 10 ** 18
+    assert registry.get_virtual_price_from_lp_token(lp_token) == 10**18
     lending_swap._set_virtual_price(12345678, {"from": alice})
     assert registry.get_virtual_price_from_lp_token(lp_token) == 12345678
 

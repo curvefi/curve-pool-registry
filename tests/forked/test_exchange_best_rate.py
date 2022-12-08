@@ -21,9 +21,9 @@ def test_exchange(
     send = underlying_coins[send]
     recv = underlying_coins[recv]
     balance = bob.balance()
-    value = 10 ** 18 if send == ETH_ADDRESS else 0
+    value = 10**18 if send == ETH_ADDRESS else 0
     if send != ETH_ADDRESS:
-        send.approve(registry_swap, 2 ** 256 - 1, {"from": alice})
+        send.approve(registry_swap, 2**256 - 1, {"from": alice})
         send._mint_for_testing(alice, amount, {"from": alice})
 
     registry_swap.exchange_with_best_rate(
@@ -49,9 +49,9 @@ def test_exchange_wrapped(alice, bob, registry_swap, wrapped_coins, wrapped_deci
     send = wrapped_coins[send]
     recv = wrapped_coins[recv]
     balance = alice.balance()
-    value = 10 ** 18 if send == ETH_ADDRESS else 0
+    value = 10**18 if send == ETH_ADDRESS else 0
     if send != ETH_ADDRESS:
-        send.approve(registry_swap, 2 ** 256 - 1, {"from": alice})
+        send.approve(registry_swap, 2**256 - 1, {"from": alice})
         send._mint_for_testing(alice, amount, {"from": alice})
 
     registry_swap.exchange_with_best_rate(

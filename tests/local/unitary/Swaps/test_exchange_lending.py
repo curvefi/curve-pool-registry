@@ -43,9 +43,9 @@ def registry_swap(
         if underlying == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
             bob.transfer(lending_swap, "10 ether")
             continue
-        underlying.approve(contract, 2 ** 256 - 1, {"from": alice})
+        underlying.approve(contract, 2**256 - 1, {"from": alice})
         if underlying != wrapped:
-            wrapped.approve(contract, 2 ** 256 - 1, {"from": alice})
+            wrapped.approve(contract, 2**256 - 1, {"from": alice})
 
     yield contract
 
@@ -58,7 +58,7 @@ def test_exchange(alice, registry_swap, lending_swap, wrapped_coins, wrapped_dec
     send = wrapped_coins[send]
     recv = wrapped_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -90,7 +90,7 @@ def test_exchange_underlying(
     send = underlying_coins[send]
     recv = underlying_coins[recv]
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0
@@ -123,7 +123,7 @@ def test_min_expected(
     recv = underlying_coins[recv]
 
     if send == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE":
-        value = 10 ** 18
+        value = 10**18
     else:
         send._mint_for_testing(alice, amount, {"from": alice})
         value = 0

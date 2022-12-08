@@ -1,4 +1,4 @@
-# @version 0.3.0
+# @version 0.3.3
 """
 @title Curve Registry Exchange Contract
 @license MIT
@@ -13,12 +13,6 @@ interface AddressProvider:
     def admin() -> address: view
     def get_registry() -> address: view
     def get_address(idx: uint256) -> address: view
-
-interface CurvePool:
-    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
-    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
-    def get_dy(i: int128, j: int128, amount: uint256) -> uint256: view
-    def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
 
 interface Registry:
     def address_provider() -> address: view
@@ -38,12 +32,68 @@ interface Registry:
 interface CryptoRegistry:
     def get_coin_indices(_pool: address, _from: address, _to: address) -> (uint256, uint256): view
 
+interface CurvePool:
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def exchange_underlying(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def get_dy(i: int128, j: int128, amount: uint256) -> uint256: view
+    def get_dy_underlying(i: int128, j: int128, amount: uint256) -> uint256: view
+    def coins(i: uint256) -> address: view
+
 interface CryptoPool:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
+    def exchange_underlying(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
     def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
+    def get_dy_underlying(i: uint256, j: uint256, amount: uint256) -> uint256: view
 
 interface CryptoPoolETH:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
+
+interface LendingBasePoolMetaZap:
+    def exchange_underlying(pool: address, i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
+
+interface CryptoMetaZap:
+    def get_dy(pool: address, i: uint256, j: uint256, dx: uint256) -> uint256: view
+    def exchange(pool: address, i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
+
+interface BasePool2Coins:
+    def add_liquidity(amounts: uint256[2], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[2], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface BasePool3Coins:
+    def add_liquidity(amounts: uint256[3], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface LendingBasePool3Coins:
+    def add_liquidity(amounts: uint256[3], min_mint_amount: uint256, use_underlying: bool): nonpayable
+    def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256, use_underlying: bool) -> uint256: nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface CryptoBasePool3Coins:
+    def add_liquidity(amounts: uint256[3], min_mint_amount: uint256, use_underlying: bool): nonpayable
+    def calc_token_amount(amounts: uint256[3], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: uint256) -> uint256: view
+
+interface BasePool4Coins:
+    def add_liquidity(amounts: uint256[4], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[4], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface BasePool5Coins:
+    def add_liquidity(amounts: uint256[5], min_mint_amount: uint256): nonpayable
+    def calc_token_amount(amounts: uint256[5], is_deposit: bool) -> uint256: view
+    def remove_liquidity_one_coin(token_amount: uint256, i: int128, min_amount: uint256): nonpayable
+    def calc_withdraw_one_coin(token_amount: uint256, i: int128) -> uint256: view
+
+interface wETH:
+    def deposit(): payable
+    def withdraw(_amount: uint256): nonpayable
 
 interface Calculator:
     def get_dx(n_coins: uint256, balances: uint256[MAX_COINS], amp: uint256, fee: uint256,
@@ -63,10 +113,18 @@ event TokenExchange:
     amount_sold: uint256
     amount_bought: uint256
 
+event ExchangeMultiple:
+    buyer: indexed(address)
+    receiver: indexed(address)
+    route: address[9]
+    swap_params: uint256[3][4]
+    pools: address[4]
+    amount_sold: uint256
+    amount_bought: uint256
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
-WETH_ADDRESS: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
-MAX_COINS: constant(int128) = 8
+WETH_ADDRESS: immutable(address)
+MAX_COINS: constant(uint256) = 8
 CALC_INPUT_SIZE: constant(uint256) = 100
 EMPTY_POOL_LIST: constant(address[8]) = [
     ZERO_ADDRESS,
@@ -90,10 +148,11 @@ is_killed: public(bool)
 pool_calculator: HashMap[address, address]
 
 is_approved: HashMap[address, HashMap[address, bool]]
+base_coins: HashMap[address, address[2]]
 
 
 @external
-def __init__(_address_provider: address, _calculator: address):
+def __init__(_address_provider: address, _calculator: address, _weth: address):
     """
     @notice Constructor function
     """
@@ -102,6 +161,8 @@ def __init__(_address_provider: address, _calculator: address):
     self.factory_registry = AddressProvider(_address_provider).get_address(3)
     self.crypto_registry = AddressProvider(_address_provider).get_address(5)
     self.default_calculator = _calculator
+
+    WETH_ADDRESS = _weth
 
 
 @external
@@ -185,8 +246,18 @@ def _exchange(
     j: int128 = 0
     is_underlying: bool = False
     i, j, is_underlying = Registry(_registry).get_coin_indices(_pool, _from, _to)  # dev: no market
-    if is_underlying and _registry == self.factory_registry and Registry(_registry).is_meta(_pool):
-        is_underlying = False
+    if is_underlying and _registry == self.factory_registry:
+        if Registry(_registry).is_meta(_pool):
+            base_coins: address[2] = self.base_coins[_pool]
+            if base_coins[0] == empty(address) and base_coins[1] == empty(address):
+                base_coins = [CurvePool(_pool).coins(0), CurvePool(_pool).coins(1)]
+                self.base_coins[_pool] = base_coins
+
+            # we only need to use exchange underlying if the input or output is not in the base coins
+            is_underlying = _from not in base_coins or _to not in base_coins
+        else:
+            # not a metapool so no underlying exchange method
+            is_underlying = False
 
     # perform / verify input transfer
     if _from == ETH_ADDRESS:
@@ -206,7 +277,7 @@ def _exchange(
             assert convert(response, bool)
 
     # approve input token
-    if not self.is_approved[_from][_pool]:
+    if _from != ETH_ADDRESS and not self.is_approved[_from][_pool]:
         response: Bytes[32] = raw_call(
             _from,
             _abi_encode(
@@ -428,6 +499,7 @@ def exchange_multiple(
     _swap_params: uint256[3][4],
     _amount: uint256,
     _expected: uint256,
+    _pools: address[4]=[ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
     _receiver: address=msg.sender
 ) -> uint256:
     """
@@ -438,12 +510,22 @@ def exchange_multiple(
                   The array is iterated until a pool address of 0x00, then the last
                   given token is transferred to `_receiver`
     @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
-                        values for the n'th pool in `_route`. The swap type should be 1 for
-                        a stableswap `exchange`, 2 for stableswap `exchange_underlying` and 3
-                        for a cryptoswap `exchange`.
+                        values for the n'th pool in `_route`. The swap type should be
+                        1 for a stableswap `exchange`,
+                        2 for stableswap `exchange_underlying`,
+                        3 for a cryptoswap `exchange`,
+                        4 for a cryptoswap `exchange_underlying`,
+                        5 for factory metapools with lending base pool `exchange_underlying`,
+                        6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
+                        7-11 for wrapped coin (underlying for lending or fake pool) -> LP token "exchange" (actually `add_liquidity`),
+                        12-14 for LP token -> wrapped coin (underlying for lending pool) "exchange" (actually `remove_liquidity_one_coin`)
+                        15 for WETH -> ETH "exchange" (actually deposit/withdraw)
+    @param _amount The amount of `_route[0]` token being sent.
     @param _expected The minimum amount received after the final swap.
+    @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
+                  Polygon meta-factories underlying swaps.
     @param _receiver Address to transfer the final output token to.
-    @return Received amount of final output token
+    @return Received amount of the final output token
     """
     input_token: address = _route[0]
     amount: uint256 = _amount
@@ -470,6 +552,7 @@ def exchange_multiple(
     for i in range(1,5):
         # 4 rounds of iteration to perform up to 4 swaps
         swap: address = _route[i*2-1]
+        pool: address = _pools[i-1] # Only for Polygon meta-factories underlying swap (swap_type == 4)
         output_token = _route[i*2]
         params: uint256[3] = _swap_params[i-1]  # i, j, swap type
 
@@ -488,19 +571,62 @@ def exchange_multiple(
                 assert convert(response, bool)
             self.is_approved[input_token][swap] = True
 
+        eth_amount: uint256 = 0
+        if input_token == ETH_ADDRESS:
+            eth_amount = amount
         # perform the swap according to the swap type
         if params[2] == 1:
-            eth_amount: uint256 = 0
-            if input_token == ETH_ADDRESS:
-                eth_amount = amount
             CurvePool(swap).exchange(convert(params[0], int128), convert(params[1], int128), amount, 0, value=eth_amount)
         elif params[2] == 2:
-            CurvePool(swap).exchange_underlying(convert(params[0], int128), convert(params[1], int128), amount, 0)
+            CurvePool(swap).exchange_underlying(convert(params[0], int128), convert(params[1], int128), amount, 0, value=eth_amount)
         elif params[2] == 3:
-            if input_token == ETH_ADDRESS:
-                CryptoPoolETH(swap).exchange(params[0], params[1], amount, 0, True, value=amount)
+            if input_token == ETH_ADDRESS or output_token == ETH_ADDRESS:
+                CryptoPoolETH(swap).exchange(params[0], params[1], amount, 0, True, value=eth_amount)
             else:
                 CryptoPool(swap).exchange(params[0], params[1], amount, 0)
+        elif params[2] == 4:
+            CryptoPool(swap).exchange_underlying(params[0], params[1], amount, 0, value=eth_amount)
+        elif params[2] == 5:
+            LendingBasePoolMetaZap(swap).exchange_underlying(pool, convert(params[0], int128), convert(params[1], int128), amount, 0)
+        elif params[2] == 6:
+            use_eth: bool = input_token == ETH_ADDRESS or output_token == ETH_ADDRESS
+            CryptoMetaZap(swap).exchange(pool, params[0], params[1], amount, 0, use_eth)
+        elif params[2] == 7:
+            _amounts: uint256[2] = [0, 0]
+            _amounts[params[0]] = amount
+            BasePool2Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 8:
+            _amounts: uint256[3] = [0, 0, 0]
+            _amounts[params[0]] = amount
+            BasePool3Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 9:
+            _amounts: uint256[3] = [0, 0, 0]
+            _amounts[params[0]] = amount
+            LendingBasePool3Coins(swap).add_liquidity(_amounts, 0, True) # example: aave on Polygon
+        elif params[2] == 10:
+            _amounts: uint256[4] = [0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            BasePool4Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 11:
+            _amounts: uint256[5] = [0, 0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            BasePool5Coins(swap).add_liquidity(_amounts, 0)
+        elif params[2] == 12:
+            # The number of coins doesn't matter here
+            BasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0)
+        elif params[2] == 13:
+            # The number of coins doesn't matter here
+            LendingBasePool3Coins(swap).remove_liquidity_one_coin(amount, convert(params[1], int128), 0, True) # example: aave on Polygon
+        elif params[2] == 14:
+            # The number of coins doesn't matter here
+            CryptoBasePool3Coins(swap).remove_liquidity_one_coin(amount, params[1], 0) # example: atricrypto3 on Polygon
+        elif params[2] == 15:
+            if input_token == ETH_ADDRESS:
+                wETH(swap).deposit(value=amount)
+            elif output_token == ETH_ADDRESS:
+                wETH(swap).withdraw(amount)
+            else:
+                raise "One of the coins must be ETH for swap type 15"
         else:
             raise "Bad swap type"
 
@@ -537,6 +663,8 @@ def exchange_multiple(
         )
         if len(response) != 0:
             assert convert(response, bool)
+
+    log ExchangeMultiple(msg.sender, _receiver, _route, _swap_params, _pools, _amount, amount)
 
     return amount
 
@@ -737,6 +865,93 @@ def get_exchange_amounts(
     if calculator == ZERO_ADDRESS:
         calculator = self.default_calculator
     return Calculator(calculator).get_dy(n_coins, balances, amp, fee, rates, decimals, i, j, _amounts)
+
+
+@view
+@external
+def get_exchange_multiple_amount(
+    _route: address[9],
+    _swap_params: uint256[3][4],
+    _amount: uint256,
+    _pools: address[4]=[ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS]
+) -> uint256:
+    """
+    @notice Get the current number the final output tokens received in an exchange
+    @dev Routing and swap params must be determined off-chain. This
+         functionality is designed for gas efficiency over ease-of-use.
+    @param _route Array of [initial token, pool, token, pool, token, ...]
+                  The array is iterated until a pool address of 0x00, then the last
+                  given token is transferred to `_receiver`
+    @param _swap_params Multidimensional array of [i, j, swap type] where i and j are the correct
+                        values for the n'th pool in `_route`. The swap type should be
+                        1 for a stableswap `exchange`,
+                        2 for stableswap `exchange_underlying`,
+                        3 for a cryptoswap `exchange`,
+                        4 for a cryptoswap `exchange_underlying`,
+                        5 for factory metapools with lending base pool `exchange_underlying`,
+                        6 for factory crypto-meta pools underlying exchange (`exchange` method in zap),
+                        7-11 for wrapped coin (underlying for lending pool) -> LP token "exchange" (actually `add_liquidity`),
+                        12-14 for LP token -> wrapped coin (underlying for lending or fake pool) "exchange" (actually `remove_liquidity_one_coin`)
+                        15 for WETH -> ETH "exchange" (actually deposit/withdraw)
+    @param _amount The amount of `_route[0]` token to be sent.
+    @param _pools Array of pools for swaps via zap contracts. This parameter is only needed for
+                  Polygon meta-factories underlying swaps.
+    @return Expected amount of the final output token
+    """
+    amount: uint256 = _amount
+
+    for i in range(1,5):
+        # 4 rounds of iteration to perform up to 4 swaps
+        swap: address = _route[i*2-1]
+        pool: address = _pools[i-1] # Only for Polygon meta-factories underlying swap (swap_type == 4)
+        params: uint256[3] = _swap_params[i-1]  # i, j, swap type
+
+        # Calc output amount according to the swap type
+        if params[2] == 1:
+            amount = CurvePool(swap).get_dy(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] == 2:
+            amount = CurvePool(swap).get_dy_underlying(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] == 3:
+            amount = CryptoPool(swap).get_dy(params[0], params[1], amount)
+        elif params[2] == 4:
+            amount = CryptoPool(swap).get_dy_underlying(params[0], params[1], amount)
+        elif params[2] == 5:
+            amount = CurvePool(pool).get_dy_underlying(convert(params[0], int128), convert(params[1], int128), amount)
+        elif params[2] == 6:
+            amount = CryptoMetaZap(swap).get_dy(pool, params[0], params[1], amount)
+        elif params[2] == 7:
+            _amounts: uint256[2] = [0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool2Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] in [8, 9]:
+            _amounts: uint256[3] = [0, 0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool3Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] == 10:
+            _amounts: uint256[4] = [0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool4Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] == 11:
+            _amounts: uint256[5] = [0, 0, 0, 0, 0]
+            _amounts[params[0]] = amount
+            amount = BasePool5Coins(swap).calc_token_amount(_amounts, True)
+        elif params[2] in [12, 13]:
+            # The number of coins doesn't matter here
+            amount = BasePool3Coins(swap).calc_withdraw_one_coin(amount, convert(params[1], int128))
+        elif params[2] == 14:
+            # The number of coins doesn't matter here
+            amount = CryptoBasePool3Coins(swap).calc_withdraw_one_coin(amount, params[1])
+        elif params[2] == 15:
+            # ETH <--> WETH rate is 1:1
+            pass
+        else:
+            raise "Bad swap type"
+
+        # check if this was the last swap
+        if i == 4 or _route[i*2+1] == ZERO_ADDRESS:
+            break
+
+    return amount
 
 
 @view
