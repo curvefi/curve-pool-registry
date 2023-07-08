@@ -13,6 +13,9 @@ See the [documentation](https://curve.readthedocs.io/) for information on how th
 - [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
 - [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0x5b94bFD07fcd3D6b1a53Ac1f7cB9e0fD9c383030)
 
+- [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C)
+- [`PoolInfo`](contracts/PoolInfo.vy): [0xe64608E223433E8a03a1DaaeFD8Cb638C14B552C](https://etherscan.io/address/0x5b94bFD07fcd3D6b1a53Ac1f7cB9e0fD9c383030)
+
 ## Testing and Development
 
 ### Dependencies
