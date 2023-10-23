@@ -1,7 +1,8 @@
 import pytest
-from brownie import ERC20, ERC20NoReturn, ERC20ReturnFalse, cERC20, yERC20
+from brownie import ERC20, ERC20NoReturn, ERC20ReturnFalse, cERC20, compile_source, yERC20
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+ADDR_PROVIDER = "0x0000000022D53366457F9d5E68Ec105046FC4383"
 
 RATE_METHOD_IDS = {
     "cERC20": cERC20.signatures["exchangeRateStored"],
@@ -317,3 +318,33 @@ def liquidity_gauge_meta(LiquidityGaugeMock, alice, gauge_controller, meta_lp_to
     gauge = LiquidityGaugeMock.deploy(meta_lp_token, {"from": alice})
     gauge_controller._set_gauge_type(gauge, 2, {"from": alice})
     yield gauge
+
+
+@pytest.fixture(scope="module")
+def gauge_implementation(alice, MockGauge, provider):
+    NewMockGauge = compile_source(
+        MockGauge._build["source"].replace(ADDR_PROVIDER, provider.address), vyper_version="0.2.15"
+    ).Vyper
+    return NewMockGauge.deploy({"from": alice})
+
+
+@pytest.fixture(scope="module")
+def mock_factory(alice, MockFactory, gauge_implementation, provider):
+    factory = MockFactory.deploy(gauge_implementation, {"from": alice})
+    # give the factory id # 3
+    while provider.max_id() < 4:
+        provider.add_new_id(factory, "Metapool Factory", {"from": alice})
+    return factory
+
+
+@pytest.fixture(scope="module")
+def gauge_registry(alice, provider, GaugeRegistry, mock_factory):
+    NewGaugeRegistry = compile_source(
+        GaugeRegistry._build["source"].replace(ADDR_PROVIDER, provider.address),
+        vyper_version="0.2.15",
+    ).Vyper
+    gauge_registry = NewGaugeRegistry.deploy({"from": alice})
+    # add to address provider at id = 5
+    while provider.max_id() < 6:
+        provider.add_new_id(gauge_registry, "Gauge Registry", {"from": alice})
+    return gauge_registry
